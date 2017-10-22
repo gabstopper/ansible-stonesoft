@@ -1,0 +1,11 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: resolve NAT aliases
+    alias_facts:
+      limit: 0
+      filter: nat
+      engine: sg_vm
+      exact_match: no
+      case_sensitive: no

@@ -1,0 +1,8 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: add a layer 3 interface to a single fw
+    category_facts:
+      limit: 5
+      filter: footag

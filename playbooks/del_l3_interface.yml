@@ -1,0 +1,18 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: add a layer 3 interface to a single fw
+    l3fw_interface:
+      name: 'myfirewall'
+      interface_id: 5
+      state: absent
+    register: result
+  - name: add another interface
+    l3fw_interface:
+      name: 'myfirewall'
+      interface_id: 6
+      state: absent
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

@@ -1,0 +1,7 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: add a layer 3 interface to a single fw
+    l3fw_policy_facts:
+      filter: smcpython

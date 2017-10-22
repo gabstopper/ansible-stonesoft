@@ -1,0 +1,4 @@
+- name: install smc-python
+  pip: name=smc-python
+       state=present
+  become: yes

@@ -1,0 +1,26 @@
+- name: create or delete interfaces in a loop
+  hosts: localhost
+  gather_facts: no
+  vars:
+    interfaces:
+      interface10:
+        interface_id: 10
+        address: 10.10.10.10
+        network_value: 10.10.10.0/24
+      interface11:
+        interface_id: 11
+        address: 11.11.11.11
+        network_value: 11.11.11.0/24  
+  tasks:
+  - name: add a layer 3 interface to a single fw
+    l3fw_interface:
+      name: myfirewall
+      interface_id: "{{ item.value.interface_id }}"
+      address: "{{ item.value.address }}"
+      network_value: "{{ item.value.network_value }}"
+    with_dict: "{{ interfaces }}"
+
+    register: result
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

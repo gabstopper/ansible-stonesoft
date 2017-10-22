@@ -1,0 +1,13 @@
+- name: creating and deleting layer 3 firewalls
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: create a single layer 3 firewall
+    l3fw:
+      name: 'myfirewall'
+      state: absent
+    register: result
+  
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

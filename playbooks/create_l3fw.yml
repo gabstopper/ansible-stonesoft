@@ -1,0 +1,24 @@
+- name: creating and deleting layer 3 firewalls
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: create a single layer 3 firewall
+    l3fw:
+      name: 'myfirewall'
+      mgmt_ip: '1.1.1.1'
+      mgmt_network: '1.1.1.0/24'
+      mgmt_interface: 1
+      default_nat: yes
+      domain_server_address:
+        - 10.0.0.1
+        - 10.0.0.2
+      enable_antivirus: yes
+      enable_gti: yes
+      enable_sidewinder_proxy: yes
+      tags: 
+        - footag
+    register: result
+  
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

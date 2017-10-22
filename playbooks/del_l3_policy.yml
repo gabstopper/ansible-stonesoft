@@ -1,0 +1,13 @@
+- name: policy
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: add a firewall policy
+    l3fw_policy:
+      name: foopolicy
+      state: absent
+    register: result
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'
+

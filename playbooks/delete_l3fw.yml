@@ -1,0 +1,14 @@
+- name: creating and deleting layer 3 firewalls
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: delete l3fw
+    stonesoft_l3fw:
+      smc_alt_filepath: /Users/davidlepage/smc
+      name: 'myfirewall'
+      state: 'absent'
+    register: result
+  
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

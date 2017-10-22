@@ -1,0 +1,36 @@
+- name: creating and deleting layer 3 firewalls
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: create a single layer 3 firewall
+    register: result
+    l3fw:
+      name: myfirewall
+      mgmt_ip: 10.10.0.1
+      mgmt_network: 10.10.0.0/24
+      mgmt_interface: 0
+      default_nat: yes
+      domain_server_address:
+        - 10.0.0.1
+        - 10.0.0.2
+      enable_antivirus: yes
+      enable_gti: yes
+      enable_sidewinder_proxy: yes
+  - name: create additional interface for external
+    when: result|succeeded
+    l3fw_interface:
+      name: myfirewall
+      interface_id: 1
+      address: 10.10.10.1
+      network_value: 10.10.10.0/24
+  - name: add tunnel interface for route VPN
+    when: result|succeeded
+    l3fw_interface:
+      name: myfirewall
+      interface_id: 1000
+      interface_type: tunnel
+      address: 20.20.20.1
+      network_value: 20.20.20.0/24
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'

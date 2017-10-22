@@ -1,0 +1,8 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Facts related to external VPN gateways
+    vpn_external_gw_facts:
+      filter: extgw
+      
