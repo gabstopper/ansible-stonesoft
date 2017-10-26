@@ -3,6 +3,7 @@
   gather_facts: no
   tasks:
   - name: create a single layer 3 firewall
+    register: result
     l3fw:
       name: 'myfirewall'
       mgmt_ip: '1.1.1.1'
@@ -17,8 +18,7 @@
       enable_sidewinder_proxy: yes
       tags: 
         - footag
-    register: result
-  
+      state: absent
   - name: dump test output
     debug:
       msg: '{{ result }}'

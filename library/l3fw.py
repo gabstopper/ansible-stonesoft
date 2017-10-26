@@ -155,7 +155,6 @@ try:
     from smc.core.engines import Layer3Firewall
     from smc.api.exceptions import SMCException
 except ImportError:
-    # Caught in StonesoftModuleBase
     pass
 
 
@@ -199,8 +198,7 @@ class StonesoftFirewall(StonesoftModuleBase):
         ])
         
         self.results = dict(
-            changed=False,
-            msg=''
+            changed=False
         )
         super(StonesoftFirewall, self).__init__(self.module_args, required_if=required_if)
     
@@ -209,42 +207,44 @@ class StonesoftFirewall(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if state == 'present':
-            try:
-                engine = Layer3Firewall.create(
-                    name=self.name,
-                    mgmt_ip=self.mgmt_ip,
-                    mgmt_network=self.mgmt_network,
-                    mgmt_interface=self.mgmt_interface,
-                    log_server_ref=None,
-                    default_nat=self.default_nat,
-                    reverse_connection=self.reverse_connection,
-                    domain_server_address=self.domain_server_address,
-                    zone_ref=self.zone_ref,
-                    enable_antivirus=self.enable_antivirus,
-                    enable_gti=self.enable_gti,
-                    location_ref=None,
-                    enable_ospf=self.enable_ospf,
-                    sidewinder_proxy_enabled=self.enable_sidewinder_proxy,
-                    ospf_profile=None)
+        changed = False
+        engine = self.fetch_element(Layer3Firewall)
+        
+        try:
+            if state == 'present':
+                if not engine:
+                    engine = Layer3Firewall.create(
+                        name=self.name,
+                        mgmt_ip=self.mgmt_ip,
+                        mgmt_network=self.mgmt_network,
+                        mgmt_interface=self.mgmt_interface,
+                        log_server_ref=None,
+                        default_nat=self.default_nat,
+                        reverse_connection=self.reverse_connection,
+                        domain_server_address=self.domain_server_address,
+                        zone_ref=self.zone_ref,
+                        enable_antivirus=self.enable_antivirus,
+                        enable_gti=self.enable_gti,
+                        location_ref=None,
+                        enable_ospf=self.enable_ospf,
+                        sidewinder_proxy_enabled=self.enable_sidewinder_proxy,
+                        ospf_profile=None)
+                    changed = True
                 
                 if self.tags:
-                    engine.add_category(self.tags)
-   
-            except SMCException as err:
+                    if self.add_tags(engine, self.tags):
+                        engine.add_category(self.tags)
+                        changed = True
+                
+            elif state == 'absent':
+                if engine:
+                    engine.delete()
+                    changed = True
+       
+        except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully created engine', changed=True)
-            
-        elif state == 'absent':
-            try:
-                Layer3Firewall(self.name).delete()
-   
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully deleted engine', changed=True)
-
+        
+        self.results['changed'] = changed
         return self.results
 
 

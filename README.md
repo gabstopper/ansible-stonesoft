@@ -4,7 +4,7 @@ This repository provides [Ansible](https://www.ansible.com)  modules for configu
 
 #### Prerequisites
 
-* smc-python >= 0.5.6
+* smc-python >= 0.5.7
 * Stonesoft Management Center 6.x
 * API client account with permissions
 
@@ -14,7 +14,7 @@ This repository provides [Ansible](https://www.ansible.com)  modules for configu
 ```
 pip install ansible
 git clone https://github.com/gabstopper/ansible-stonesoft.git
-cd ansible-stonsoft
+cd ansible-stonesoft
 pip install -r requirements.txt
 ```
 

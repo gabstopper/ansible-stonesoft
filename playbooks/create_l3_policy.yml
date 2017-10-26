@@ -5,8 +5,8 @@
   - name: add a firewall policy
     l3fw_policy:
       name: foopolicy
-      tags:
-        - footag
+      
+      state: absent
     register: result
   - name: dump test output
     debug:

@@ -1,0 +1,15 @@
+- name: Create or modify an existing Policy VPN
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Create or add gateways to a policy VPN
+    policy_vpn:
+      name: mynewvpn
+      central_gw:
+        - name: myfirewall
+          type: internal
+      satellite_gw:
+        - name: newextgw
+          type: external
+      tags:
+        - footag

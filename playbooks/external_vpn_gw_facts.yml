@@ -1,0 +1,8 @@
+- name: create or delete interfaces
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Facts related to external VPN gateways
+    external_gateway_facts:
+      filter: kileyexternal
+      

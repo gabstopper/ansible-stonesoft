@@ -139,8 +139,7 @@ class StonesoftFWInterface(StonesoftModuleBase):
         ])
         
         self.results = dict(
-            changed=False,
-            msg=''
+            changed=False
         )
         super(StonesoftFWInterface, self).__init__(self.module_args, required_if=required_if)
     
@@ -149,38 +148,37 @@ class StonesoftFWInterface(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if state == 'present':
-            try:
-                engine = Engine(self.name)
+        changed = False
+        engine = self.fetch_element(Engine)
+    
+        try:
+            if state == 'present':
                 
-                if self.interface_type == 'physical':
-                    engine.physical_interface.add_layer3_interface(
-                        interface_id=self.interface_id,
-                        address=self.address,
-                        network_value=self.network_value,
-                        zone_ref=self.zone_ref)
-                else: # Tunnel
-                    engine.tunnel_interface.add_single_node_interface(
-                        tunnel_id=self.interface_id,
-                        address=self.address,
-                        network_value=self.network_value,
-                        zone_ref=self.zone_ref)
-            
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully created interface: %s' % self.interface_id, changed=True)
+                if engine:
+                    if self.interface_type == 'physical':
+                        engine.physical_interface.add_layer3_interface(
+                            interface_id=self.interface_id,
+                            address=self.address,
+                            network_value=self.network_value,
+                            zone_ref=self.zone_ref)
+                    else: # Tunnel
+                        engine.tunnel_interface.add_single_node_interface(
+                            tunnel_id=self.interface_id,
+                            address=self.address,
+                            network_value=self.network_value,
+                            zone_ref=self.zone_ref)
+                    changed = True
         
-        elif state == 'absent':
-            try:
-                engine = Engine(self.name)
-                interface = engine.interface.get(self.interface_id)
-                interface.delete()
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully deleted interface: %s' % self.interface_id, changed=True)
-
+            elif state == 'absent':
+                if engine:
+                    interface = engine.interface.get(self.interface_id)
+                    interface.delete()
+                    changed = True
+                
+        except SMCException as err:
+            self.fail(msg=str(err), exception=traceback.format_exc())
+    
+        self.results['changed'] = changed
         return self.results
 
 

@@ -13,7 +13,8 @@ DOCUMENTATION = '''
 module: l3fw_policy
 short_description: Create or delete layer 3 FW policies
 description:
-  - Top level module for creating and deleting firewall policies
+  - Top level module for creating and deleting firewall policies. You can also
+    add and remove tags
 version_added: '2.5'
 
 options:
@@ -62,11 +63,6 @@ changed:
   description: Whether or not the change succeeded
   returned: always
   type: bool
-msg:
-  description: Simple description message
-  returned: always
-  type: string
-  sample: Successfully created policy foo
 '''
 
 import traceback
@@ -77,7 +73,6 @@ try:
     from smc.policy.layer3 import FirewallPolicy
     from smc.api.exceptions import SMCException
 except ImportError:
-    # Caught in StonesoftModuleBase
     pass
 
 
@@ -96,8 +91,7 @@ class StonesoftFWPolicy(StonesoftModuleBase):
         self.policy_template = None
         
         self.results = dict(
-            changed=False,
-            msg=''
+            changed=False
         )
         super(StonesoftFWPolicy, self).__init__(self.module_args)
     
@@ -106,30 +100,37 @@ class StonesoftFWPolicy(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if state == 'present':
-            
-            if not self.policy_template:
-                self.policy_template = 'Firewall Inspection Template'
+        changed = False
+        policy = self.fetch_element(FirewallPolicy)
         
-            try:
-                policy = FirewallPolicy.create(name=self.name, template=self.policy_template)
-                if self.tags:
-                    policy.add_category(self.tags)
-                    
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successful creation of policy: %s, template: %s' % \
-                                    (self.name, self.policy_template), changed=True)
-            
-        elif state == 'absent':
-            try:
-                FirewallPolicy(self.name).delete()
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully deleted policy: %s' % self.name, changed=True)
+        try:
+            if state == 'present':
+                if not policy:
+                    if not self.policy_template:
+                        self.policy_template = 'Firewall Inspection Template'
 
+                    policy = FirewallPolicy.create(
+                        name=self.name, template=self.policy_template)
+                    changed = True
+                    
+                if self.tags:
+                    if self.add_tags(policy, self.tags):
+                        changed = True
+                    
+            elif state == 'absent':
+                
+                if policy and not self.tags:
+                    policy.delete()
+                    changed = True
+                
+                if self.tags:
+                    if self.remove_tags(policy, self.tags):
+                        changed = True
+                
+        except SMCException as err:
+                self.fail(msg=str(err), exception=traceback.format_exc())
+                
+        self.results['changed'] = changed
         return self.results
 
     

@@ -1,0 +1,21 @@
+- name: Create an external gateway playbook
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Create an external gateway
+    external_gateway:
+      name: myremotevpn
+      sites:
+        - 1.1.1.0/24
+      endpoint:
+        - name: endpoint1
+          address: 33.33.33.40
+          force_nat_t: no
+          balancing_mode: active
+        - name: endpoint2
+          address: 33.33.33.35
+          force_nat_t: yes
+          balancing_mode: active
+      tags: footag
+      
+      

@@ -5,5 +5,5 @@
   - name: add a layer 3 interface to a single fw
     network_element_facts:
       limit: 2
-      filter: 10.10.0.0/24
+      filter: network-4.4.4.0/24
       exact_match: no

@@ -12,6 +12,7 @@ from ansible.module_utils.basic import AnsibleModule
 try:
     from smc import session
     from smc.base.collection import Search
+    from smc.elements.other import Category
     from smc.api.exceptions import ConfigLoadError, SMCException
     HAS_LIB = True
 except ImportError:
@@ -65,9 +66,9 @@ class StonesoftModuleBase(object):
         
         if not HAS_LIB:
             self.module.fail_json(msg='Could not import smc-python required by this module')
-            
-        self.connect(self.module.params)
         
+        self.connect(self.module.params)
+            
         result = self.exec_module(**self.module.params)
         self.success(**result)
     
@@ -144,7 +145,49 @@ class StonesoftModuleBase(object):
             iterator = iterator.limit(self.limit)
         
         return list(iterator)
-
+    
+    def fetch_element(self, cls):
+        """
+        Fetch an element by doing an exact match.
+        
+        :param Element cls: class of type Element
+        :return: element or None
+        """
+        return cls.objects.filter(self.name, exact_match=True).first()
+    
+    def add_tags(self, element, tags):
+        """    
+        Add tag/s to an element.
+        
+        :param Element element: the element to add a tag.
+        :param list tags: list of tags by name
+        :return: boolean success or fail
+        """
+        changed = False
+        current_tags = [tag.name for tag in element.categories]
+        add_tags = set(tags) - set(current_tags)
+        if add_tags:
+            element.add_category(list(add_tags))
+            changed = True
+        return changed
+    
+    def remove_tags(self, element, tags):
+        """
+        Remove tag/s from an element
+        
+        :param Element element: the element to add a tag.
+        :param list tags: list of tags by name
+        :return: boolean success or fail
+        """
+        changed = False
+        current_tags = [tag.name for tag in element.categories]
+        for tag in tags:
+            if tag in current_tags:
+                category = Category(tag)
+                category.remove_element(element)
+                changed = True
+        return changed
+    
     def fail(self, msg, **kwargs):
         self.disconnect()
         self.module.fail_json(msg=msg, **kwargs)

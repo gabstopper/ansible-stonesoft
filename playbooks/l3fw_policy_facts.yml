@@ -4,4 +4,4 @@
   tasks:
   - name: add a layer 3 interface to a single fw
     l3fw_policy_facts:
-      filter: smcpython
+      filter: Layer 3

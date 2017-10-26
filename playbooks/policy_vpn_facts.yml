@@ -3,6 +3,5 @@
   gather_facts: no
   tasks:
   - name: Facts related to external VPN gateways
-    vpn_external_gw_facts:
-      filter: extgw
-      
+    policy_vpn_facts:
+      filter: mynewvpn

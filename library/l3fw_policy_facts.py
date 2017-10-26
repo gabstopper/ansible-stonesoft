@@ -91,7 +91,8 @@ def policy_dict_from_obj(element):
         'tags': [],
         'template': element.template.name,
         'inspection_policy': element.inspection_policy.name,
-        'file_filtering_policy': element.file_filtering_policy.name,
+        'file_filtering_policy': element.file_filtering_policy.name 
+            if element.file_filtering_policy else None,
         'comment': getattr(element, 'comment', None)}
     
     for tag in element.categories:
@@ -114,7 +115,6 @@ class FWPolicyFacts(StonesoftModuleBase):
                 policies=[]
             )
         )
-        
         super(FWPolicyFacts, self).__init__({}, is_fact=True)
 
     def exec_module(self, **kwargs):

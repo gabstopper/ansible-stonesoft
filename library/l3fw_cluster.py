@@ -225,42 +225,49 @@ class StonesoftCluster(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if state == 'present':
-            if not self.cluster_nodes:
-                self.fail_json(msg='You must specify cluster nodes to create a cluster')   
-    
-            try:
-                engine = FirewallCluster.create(
-                    name=self.name,
-                    cluster_virtual=self.cluster_vip,
-                    cluster_mask=self.cluster_vip_mask,
-                    macaddress=self.cluster_macaddress,
-                    cluster_nic=self.cluster_nic_id,
-                    nodes=self.cluster_nodes,
-                    cluster_mode=self.cluster_mode,
-                    log_server_ref=self.log_server,
-                    domain_server_address=self.domain_server_address,
-                    zone_ref=self.zone_ref,
-                    default_nat=self.default_nat,
-                    enable_antivirus=self.enable_antivirus,
-                    enable_gti=self.enable_gti)
+        changed = False
+        engine = self.fetch_element(FirewallCluster)
+        
+        try:
+            if state == 'present':        
+                if not engine:
+                    if not self.cluster_nodes:
+                        self.fail_json(msg='You must specify cluster nodes to create a cluster')  
+                    
+                    engine = FirewallCluster.create(
+                        name=self.name,
+                        cluster_virtual=self.cluster_vip,
+                        cluster_mask=self.cluster_vip_mask,
+                        macaddress=self.cluster_macaddress,
+                        cluster_nic=self.cluster_nic_id,
+                        nodes=self.cluster_nodes,
+                        cluster_mode=self.cluster_mode,
+                        log_server_ref=self.log_server,
+                        domain_server_address=self.domain_server_address,
+                        zone_ref=self.zone_ref,
+                        default_nat=self.default_nat,
+                        enable_antivirus=self.enable_antivirus,
+                        enable_gti=self.enable_gti)
+                    changed = True
+                    
+                    if self.tags:
+                        if self.add_tags(engine, self.tags):
+                            changed = True
+          
+            elif state == 'absent':
+                if engine and not self.tags:
+                    engine.delete()
+                    changed = True
                 
                 if self.tags:
-                    engine.add_category(self.tags)
-
-            except SMCException as err:
+                    if self.tags:
+                        if self.remove_tags(engine, self.tags):
+                            changed = True
+                    
+        except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully created engine', changed=True)
-            
-        elif state == 'absent':
-            try:
-                FirewallCluster(self.name).delete()
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully deleted engine', changed=True)
-
+        
+        self.results['changed'] = changed        
         return self.results
 
 

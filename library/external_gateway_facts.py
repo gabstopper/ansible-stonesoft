@@ -49,18 +49,22 @@ vpn_gateway:
     example: [{
         "comment": null, 
         "external_endpoint": [{
+            "name": "endpoint1 (1.1.1.1)",
             "address": "1.1.1.1", 
             "balancing_mode": "active", 
             "dynamic": false, 
-            "enabled": true, 
+            "enabled": true,
+            "ike_phase1_id_value": null,
             "force_nat_t": false, 
             "nat_t": true
         }, 
         {
+            "name": "endpoint2",
             "address": null, 
             "balancing_mode": "active", 
-            "dynamic": true, 
-            "enabled": false, 
+            "dynamic": true,
+            "enabled": false,
+            "ike_phase1_id_value": "1.1.1.1", 
             "force_nat_t": false, 
             "nat_t": true
         }], 
@@ -69,18 +73,15 @@ vpn_gateway:
         "type": "external_gateway", 
         "vpn_sites": [{
             "name": "newextgw", 
-            "values": [
+            "values": [{
+                "name": "network-4.4.4.0/24", 
+                "type": "network"}, 
                 {
-                    "name": "network-4.4.4.0/24", 
-                    "type": "network"
-                }, 
+                "name": "network-3.3.3.0/24", 
+                "type": "network"}, 
                 {
-                    "name": "network-3.3.3.0/24", 
-                    "type": "network"
-                }, 
-                {
-                    "name": "172.18.1.254", 
-                    "type": "host"
+                "name": "172.18.1.254", 
+                "type": "host"
                 }
             ]
         }]
@@ -114,12 +115,14 @@ def gw_dict_from_obj(element):
     
     for endpoint in element.external_endpoint.all():
         elem['external_endpoint'].append(
-            dict(address=getattr(endpoint, 'address', None),
+            dict(name=endpoint.name,
+                 address=getattr(endpoint, 'address', None),
                  dynamic=getattr(endpoint, 'dynamic', False),
                  enabled=endpoint.enabled,
                  nat_t=getattr(endpoint, 'nat_t', False),
                  force_nat_t=getattr(endpoint, 'force_nat_t', False),
-                 balancing_mode=endpoint.balancing_mode))
+                 balancing_mode=endpoint.balancing_mode,
+                 ike_phase1_id_value=getattr(endpoint, 'ike_phase1_id_value', None)))
     
     for site in element.vpn_site.all():
         site_list = []

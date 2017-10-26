@@ -168,8 +168,7 @@ class StonesoftClusterInterface(StonesoftModuleBase):
         ]
         
         self.results = dict(
-            changed=False,
-            msg=''
+            changed=False
         )
         super(StonesoftClusterInterface, self).__init__(self.module_args,
                                                         required_together=required_together)
@@ -179,35 +178,34 @@ class StonesoftClusterInterface(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if state == 'present':
-            
-            try:
-                engine = FirewallCluster(self.name)
-                engine.physical_interface.add_cluster_virtual_interface(
-                    interface_id=self.cluster_nic_id,
-                    cluster_virtual=self.cluster_vip,
-                    cluster_mask=self.cluster_vip_mask,
-                    macaddress=self.cluster_macaddress,
-                    nodes=self.cluster_nodes,
-                    cvi_mode=self.cluster_mode,
-                    zone_ref=self.zone_ref)
+        changed = False
+        engine = self.fetch_element(FirewallCluster)
+    
+        try:
+            if state == 'present':
+                if engine:
+                    engine = FirewallCluster(self.name)
+                    engine.physical_interface.add_cluster_virtual_interface(
+                        interface_id=self.cluster_nic_id,
+                        cluster_virtual=self.cluster_vip,
+                        cluster_mask=self.cluster_vip_mask,
+                        macaddress=self.cluster_macaddress,
+                        nodes=self.cluster_nodes,
+                        cvi_mode=self.cluster_mode,
+                        zone_ref=self.zone_ref)
+                    self.fail(msg='Finish')
+                    changed = True
 
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully added interface', changed=True)
-            
-        elif state == 'absent':
-            try:
-                engine = FirewallCluster(self.name)
-                interface = engine.physical_interface.get(self.cluster_nic_id)
-                interface.delete()
+            elif state == 'absent':
+                if engine:
+                    interface = engine.physical_interface.get(self.cluster_nic_id)
+                    interface.delete()
+                    changed = True
                 
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
-            else:
-                self.results.update(msg='Successfully deleted interface', changed=True)
-
+        except SMCException as err:
+            self.fail(msg=str(err), exception=traceback.format_exc())
+        
+        self.results['results'] = changed    
         return self.results
 
 
