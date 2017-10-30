@@ -1,0 +1,7 @@
+- name: Routing facts about an engine
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Specify the engine name to get route table
+    routing_facts:
+      name: myfirewall

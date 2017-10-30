@@ -5,7 +5,7 @@ import sys
 import os.path
 import shutil
 
-
+    
 def main():
     try:
         import ansible
@@ -41,9 +41,7 @@ def main():
             print("Copying doc fragment: %s" % filename)
             shutil.copy(os.path.join(here_doc_fragments, filename),
                         os.path.join(module_doc_path, filename))
-        
 
-    
 
 if __name__ == '__main__':
     main()

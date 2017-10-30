@@ -164,7 +164,6 @@ class ServiceFacts(StonesoftModuleBase):
                 services=[]
             )
         )
-        
         super(ServiceFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):

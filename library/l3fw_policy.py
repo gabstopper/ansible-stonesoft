@@ -119,13 +119,14 @@ class StonesoftFWPolicy(StonesoftModuleBase):
                     
             elif state == 'absent':
                 
-                if policy and not self.tags:
-                    policy.delete()
-                    changed = True
-                
-                if self.tags:
-                    if self.remove_tags(policy, self.tags):
+                if policy:
+                    if not self.tags:
+                        policy.delete()
                         changed = True
+                    else:
+                        if self.remove_tags(policy, self.tags):
+                            changed = True
+
                 
         except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())

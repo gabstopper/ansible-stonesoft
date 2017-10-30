@@ -4,7 +4,7 @@
   tasks:
   - name: add a layer 3 interface to a single fw
     register: result
-    # Create a cluster interface
+    # Create a single interface
     l3fw_interface:
       name: myfirewall
       interface_id: 2000
@@ -17,6 +17,7 @@
       interface_id: 6
       address: 6.6.6.6
       network_value: 6.6.6.0/24
+      enable_vpn: yes
   - name: dump test output
     debug:
       msg: '{{ result }}'

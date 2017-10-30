@@ -42,24 +42,51 @@ policy_vpn:
     }]
 
 policy_vpn:
-    description: Return specific policy VPN using filter
+    description: Return policy VPN details using filter
     returned: always
     type: list
-    example: [{
-        "central_gateways": [{
-            "name": "myfirewall - Primary", 
-            "type": "internal_gateway"}], 
-        "comment": null, 
-        "mobile_vpn_topology_mode": "None", 
-        "name": "mynewvpn", 
-        "nat": false, 
-        "satellite_gateways": [{
-            "name": "newextgw", 
-            "type": "external_gateway"}], 
-        "tags": ["footag"], 
-        "type": "vpn", 
-        "vpn_profile": "VPN-A Suite"
-    }]
+    example: [
+        {
+            "central_gateways": [
+                {
+                    "name": "ve-1 - Primary", 
+                    "type": "internal_gateway"
+                }, 
+                {
+                    "name": "sg_vm_vpn", 
+                    "type": "internal_gateway"
+                }, 
+                {
+                    "name": "ve-4 - Primary", 
+                    "type": "internal_gateway"
+                }
+            ], 
+            "comment": null, 
+            "gateway_tunnel": [
+                {
+                    "enabled": true, 
+                    "tunnel_side_a": "sg_vm_vpn", 
+                    "tunnel_side_a_type": "internal_gateway", 
+                    "tunnel_side_b": "ve-1 - Primary", 
+                    "tunnel_side_b_type": "internal_gateway"
+                }, 
+                {
+                    "enabled": true, 
+                    "tunnel_side_a": "sg_vm_vpn", 
+                    "tunnel_side_a_type": "internal_gateway", 
+                    "tunnel_side_b": "ve-4 - Primary", 
+                    "tunnel_side_b_type": "internal_gateway"
+                }
+            ], 
+            "mobile_vpn_topology_mode": "None", 
+            "name": "Amazon AWS", 
+            "nat": true, 
+            "satellite_gateways": [], 
+            "tags": [], 
+            "type": "vpn", 
+            "vpn_profile": "VPN-A Suite"
+        }
+    ]
 '''
 
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
@@ -87,6 +114,7 @@ def vpn_dict_from_obj(vpn):
         'vpn_profile': vpn.vpn_profile.name,
         'central_gateways': [],
         'satellite_gateways': [],
+        'gateway_tunnel': [],
         'tags': []
     }
     
@@ -100,7 +128,26 @@ def vpn_dict_from_obj(vpn):
     for gw in vpn.satellite_gateway_node.all():
         elem['satellite_gateways'].append(
             dict(name=gw.name, type=gw.gateway.typeof))
-
+    
+    # Mapped tunnels
+    for tunnel in vpn.tunnels:
+        tunnel_map = {}
+        tunnela = tunnel.tunnel_side_a
+        tunnelb = tunnel.tunnel_side_b
+        
+        # Gateways
+        gw_tunnela = tunnela.gateway
+        gw_tunnelb = tunnelb.gateway
+        
+        tunnel_map.update(
+            tunnel_side_a=gw_tunnela.name,
+            tunnel_side_a_type=gw_tunnela.typeof,
+            tunnel_side_b=gw_tunnelb.name,
+            tunnel_side_b_type=gw_tunnelb.typeof,
+            enabled=tunnel.enabled
+        )
+        elem['gateway_tunnel'].append(tunnel_map)
+    
     vpn.close()
     return elem
 

@@ -102,4 +102,5 @@ ENV/
 
 # Ansible retry files
 *.retry
-/.DS_Store
+.DS_Store
+/docs/_*

@@ -255,12 +255,11 @@ class StonesoftCluster(StonesoftModuleBase):
                             changed = True
           
             elif state == 'absent':
-                if engine and not self.tags:
-                    engine.delete()
-                    changed = True
-                
-                if self.tags:
-                    if self.tags:
+                if engine:
+                    if not self.tags:
+                        engine.delete()
+                        changed = True
+                    else:
                         if self.remove_tags(engine, self.tags):
                             changed = True
                     

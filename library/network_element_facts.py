@@ -167,7 +167,6 @@ class NetworkElementFacts(StonesoftModuleBase):
                 elements=[]
             )
         )
-        
         super(NetworkElementFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):

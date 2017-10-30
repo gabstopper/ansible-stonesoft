@@ -1,0 +1,14 @@
+- name: Routing facts about an engine
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Specify the engine name to get route table
+    bgp:
+      name: myfirewall
+      autonomous_system: myas
+      bgp_profile: foo
+      external_peer:
+        autonomous_system: peeras
+        neighbor_ip: 1.1.1.1
+        neighbor_port: 179
+      

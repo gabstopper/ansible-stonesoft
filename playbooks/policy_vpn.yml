@@ -6,10 +6,15 @@
     policy_vpn:
       name: mynewvpn
       central_gw:
-        - name: myfirewall
-          type: internal
+        - name: fw33
+          type: internal_gateway
       satellite_gw:
-        - name: newextgw
-          type: external
+        - name: anothergw
+          type: external_gateway
+          preshared_key: abc123
+      gateway_tunnel:
+        - tunnel_side_a: anothergw
+          tunnel_side_b: fw33 - Primary
+          enabled: yes
       tags:
         - footag

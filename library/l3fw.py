@@ -72,6 +72,11 @@ options:
       - Enable Sidewinder proxy capability on the FW
     type: bool
     default: false
+  enable_vpn:
+    description:
+      - Enable VPN on the interface designated for management
+    type: bool
+    default: false
   tags:
     description:
       - Provide an optional category tag to the engine. If the category does not
@@ -126,6 +131,7 @@ EXAMPLES = '''
     enable_antivirus: yes
     enable_gti: yes
     enable_sidewinder_proxy: yes
+    enable_vpn: yes
     tags:
       - footag
 
@@ -141,11 +147,6 @@ changed:
   description: Whether or not the change succeeded
   returned: always
   type: bool
-msg:
-  description: Simple description message
-  returned: always
-  type: string
-  sample: Successfully created engine
 '''
 
 import traceback
@@ -174,6 +175,7 @@ class StonesoftFirewall(StonesoftModuleBase):
             enable_gti=dict(default=False, type='bool'),
             enable_ospf=dict(default=False, type='bool'),
             enable_sidewinder_proxy=dict(default=False, type='bool'),
+            enable_vpn=dict(default=False, type='bool'),
             tags=dict(type='list'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
@@ -191,6 +193,7 @@ class StonesoftFirewall(StonesoftModuleBase):
         self.enable_gti = False
         self.enable_ospf = None
         self.enable_sidewinder_proxy = None
+        self.enable_vpn = None
         
         required_if=([
             ('state', 'present', ['name', 'mgmt_ip', 'mgmt_network']),
@@ -231,6 +234,10 @@ class StonesoftFirewall(StonesoftModuleBase):
                         ospf_profile=None)
                     changed = True
                 
+                if self.enable_vpn is not None and self.enable_vpn:
+                    for internal_gw in engine.vpn_endpoint:
+                        internal_gw.update(enabled=True)
+                    
                 if self.tags:
                     if self.add_tags(engine, self.tags):
                         engine.add_category(self.tags)
@@ -238,9 +245,13 @@ class StonesoftFirewall(StonesoftModuleBase):
                 
             elif state == 'absent':
                 if engine:
-                    engine.delete()
-                    changed = True
-       
+                    if not self.tags:
+                        engine.delete()
+                        changed = True
+                    else:
+                        if self.remove_tags(engine, self.tags):
+                            changed = True
+
         except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
         

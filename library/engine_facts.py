@@ -1,6 +1,10 @@
 #!/usr/bin/python
+#
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
 
 
 ANSIBLE_METADATA = {
@@ -38,7 +42,7 @@ extends_documentation_fragment:
   - stonesoft_facts
 
 requirements:
-  - smc-python
+  - smc-python >= 0.5.7
 author:
   - David LePage (@gabstopper)
 '''
@@ -49,15 +53,18 @@ EXAMPLES = '''
   engine_facts:
     filter: ve-1
     exact_match: yes
+
 - name: Find firewall disabling case sensitivity (exact_match=no)
   engine_facts:
     filter: MyFirewall
     case_sensitive: no
+
 - name: Find firewalls starting with 've', limit to 5 results
   engine_facts:
     filter: ve
     limit: 5
     case_sensitive: no
+
 - name: Retrieve all layer 2 firewalls only
   engine_facts:
     element: ips_clusters
@@ -69,7 +76,7 @@ engines:
     description: List of engines from match query
     returned: always
     type: list
-    example: [{
+    sample: [{
         'antivirus': false,
         'cluster_mode': null,
         'default_nat': false,
@@ -113,19 +120,8 @@ engines:
         'ospf': false,
         'sidewinder_proxy': false,
         'tags': ['footag']
-    }]
+}]
 
-engines:
-    description: Return all firewall elements without a filter
-    returned: always
-    type: list
-    example: [{
-        "name": "ve-5", 
-        "type": "virtual_fw"}, 
-        {
-        "name": "ve-4", 
-        "type": "virtual_fw"
-    }]
 '''
         
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
@@ -150,7 +146,8 @@ def interface_spec():
         interfaces=[],
         vlans=[]
     )
-    
+
+   
 def address_spec():
     return dict(
         address=None,
@@ -158,6 +155,7 @@ def address_spec():
         type=None,
         nodeid=None
     )
+
 
 def interface_map(engine):
     """
@@ -216,11 +214,12 @@ def _unsupported_exc(engine, prop):
         return getattr(engine, prop)
     except UnsupportedEngineFeature:
         return False
-        
+
 
 def engine_dict_from_obj(engine):
     engine_dict = dict(
         name=engine.name,
+        type=engine.type,
         engine_version=engine.data.get('engine_version'),
         cluster_mode=engine.data.get('cluster_mode'),
         interfaces=interface_map(engine),
@@ -228,12 +227,49 @@ def engine_dict_from_obj(engine):
         gti=_unsupported_exc(engine, 'is_gti_enabled'),
         sidewinder_proxy=_unsupported_exc(engine, 'is_sidewinder_proxy_enabled'),
         default_nat=_unsupported_exc(engine, 'is_default_nat_enabled'),
-        ospf=_unsupported_exc(engine, 'is_ospf_enabled'),
         tags=[]
     )
     for tag in engine.categories:
         engine_dict['tags'].append(tag.name)
     
+    try:
+        engine_dict['pending_changes'] = engine.pending_changes.has_changes
+    except UnsupportedEngineFeature:
+        engine_dict['pending_changes'] = False
+    
+    if _unsupported_exc(engine, 'ospf'):
+        ospf = engine.ospf
+        if ospf.is_enabled:
+            ospf_dict = dict(
+                enabled=True,
+                profile=ospf.profile.name,
+                router_id=ospf.router_id)
+            engine_dict['ospf'] = ospf_dict
+        else:
+            engine_dict['ospf'] = {'enabled': False} 
+    
+    if _unsupported_exc(engine, 'bgp'):
+        bgp = engine.bgp
+        if bgp.is_enabled:
+            as_element = bgp.autonomous_system
+            bgp_dict = dict(
+                enabled=True,
+                router_id=getattr(bgp, 'router_id'),
+                autonomous_system=as_element.name,
+                as_number=as_element.as_number,
+                profile=bgp.profile.name,
+                advertisements=[])
+        
+            advertisements = getattr(bgp, 'advertisements', None)
+            if advertisements:
+                for ads in advertisements:
+                    net, routemap = ads
+                    bgp_dict['advertisements'].append({
+                        net.typeof: net.name, 'route_map': routemap.name if routemap else None})
+            engine_dict['bgp'] = bgp_dict
+        else:
+            engine_dict['bgp'] = {'enabled': False}
+
     return engine_dict
 
               
@@ -255,7 +291,6 @@ class EngineFacts(StonesoftModuleBase):
                 engines=[]
             )
         )
-        
         super(EngineFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):

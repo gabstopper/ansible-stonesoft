@@ -41,6 +41,11 @@ options:
   zone_ref:
     description:
       - Assign a zone to this interface. Zone should be by name.
+  enable_vpn:
+    description:
+      - Enable IPSEC VPN on this interface. This is only available on physical
+        interfaces.
+    default: false
   state:
     description:
       - Create or delete layer 3 interface
@@ -73,6 +78,7 @@ EXAMPLES = '''
     interface_id: 6
     address: 6.6.6.6
     network_value: 6.6.6.0/24
+    enable_vpn: yes
 
 # Create a tunnel interface
 - name: add a layer 3 interface to a single fw
@@ -96,11 +102,6 @@ changed:
     description: Whether or not the change succeeded
     returned: always
     type: bool
-msg:
-    description: Simple description message 
-    returned: always
-    type: string
-    sample: Successfully deleted interface
 '''
 
 import traceback
@@ -108,12 +109,16 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
 try:
     from smc.core.engines import Engine
-    from smc.api.exceptions import SMCException
+    from smc.api.exceptions import SMCException, EngineCommandFailed
 except ImportError:
     # Caught in StonesoftModuleBase
     pass
 
 
+def set_boolean(attribute, value):
+    pass
+
+    
 class StonesoftFWInterface(StonesoftModuleBase):
     def __init__(self):
         
@@ -124,6 +129,7 @@ class StonesoftFWInterface(StonesoftModuleBase):
             network_value=dict(type='str'),
             interface_type=dict(type='str', default='physical'),
             zone_ref=dict(type='str'),
+            enable_vpn=dict(type='bool'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
         
@@ -133,6 +139,7 @@ class StonesoftFWInterface(StonesoftModuleBase):
         self.network_value = None
         self.interface_type = None
         self.zone_ref = None
+        self.enable_vpn = None
         
         required_if=([
             ('state', 'present', ['address', 'network_value'])
@@ -155,19 +162,37 @@ class StonesoftFWInterface(StonesoftModuleBase):
             if state == 'present':
                 
                 if engine:
-                    if self.interface_type == 'physical':
-                        engine.physical_interface.add_layer3_interface(
-                            interface_id=self.interface_id,
-                            address=self.address,
-                            network_value=self.network_value,
-                            zone_ref=self.zone_ref)
-                    else: # Tunnel
-                        engine.tunnel_interface.add_single_node_interface(
-                            tunnel_id=self.interface_id,
-                            address=self.address,
-                            network_value=self.network_value,
-                            zone_ref=self.zone_ref)
-                    changed = True
+                    # Check if interface exists before trying to create
+                    try:
+                        interface = engine.interface.get(self.interface_id)
+                    except EngineCommandFailed:
+                        # Interface doesn't exist
+                        if self.interface_type == 'physical':
+                            engine.physical_interface.add_layer3_interface(
+                                interface_id=self.interface_id,
+                                address=self.address,
+                                network_value=self.network_value,
+                                zone_ref=self.zone_ref)
+                        else: # Tunnel
+                            engine.tunnel_interface.add_single_node_interface(
+                                tunnel_id=self.interface_id,
+                                address=self.address,
+                                network_value=self.network_value,
+                                zone_ref=self.zone_ref)
+                        
+                        changed = True
+                        
+                    if self.enable_vpn is not None:
+                        if self.interface_type == 'physical':
+                            # Get the internal endpoint
+                            for gw in engine.vpn_endpoint:
+                                if gw.interface_id == str(self.interface_id):
+                                    if self.enable_vpn and not gw.enabled: 
+                                        gw.update(enabled=True)
+                                        changed = True
+                                    elif gw.enabled and not self.enable_vpn:
+                                        gw.update(enabled=False)
+                                        changed = True
         
             elif state == 'absent':
                 if engine:

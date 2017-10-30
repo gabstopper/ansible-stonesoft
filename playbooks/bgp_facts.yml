@@ -1,0 +1,9 @@
+- name: Routing facts about an engine
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Specify the engine name to get route table
+    bgp_facts:
+      element: autonomous_system
+      filter: myas
+      

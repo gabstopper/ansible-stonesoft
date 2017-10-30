@@ -4,6 +4,12 @@
   tasks:
   - name: add a layer 3 interface to a single fw
     network_element_facts:
-      limit: 2
-      filter: network-4.4.4.0/24
-      exact_match: no
+      element: host
+      filter: 1.1.1.1
+      #limit: 2
+      #filter: Microsoft Yammer Servers 2
+      #exact_match: no
+      smc_address: http://172.18.1.151:8082
+      smc_api_key: AUhABgoiQ6tkDNvbPVA6o3A9
+      smc_timeout: 30
+    
