@@ -4,4 +4,6 @@
   tasks:
   - name: add a layer 3 interface to a single fw
     engine_facts:
-      
+      element: fw_clusters
+      filter: fw
+  

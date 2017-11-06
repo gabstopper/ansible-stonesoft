@@ -1,37 +1,49 @@
 - name: Fully provision a layer 3 FW with VPN
   hosts: localhost
   gather_facts: no
+  vars:
+    - firewall: myfirewall
   tasks:
-  - name: Create a single layer 3 firewall
-    register: result
-    l3fw:
-      name: myfirewall
-      mgmt_ip: 10.10.0.1
-      mgmt_network: 10.10.0.0/24
-      mgmt_interface: 0
-      default_nat: yes
-      domain_server_address:
-        - 10.0.0.1
-        - 10.0.0.2
-      enable_antivirus: yes
-      enable_gti: yes
-      enable_sidewinder_proxy: yes
-  - name: Create interface 1 for external
-    when: result|succeeded
-    l3fw_interface:
-      name: myfirewall
-      interface_id: 1
-      address: 10.10.10.1
-      network_value: 10.10.10.0/24
-      enable_vpn: yes
-  - name: Add a tunnel interface for route VPN
-    when: result|succeeded
-    l3fw_interface:
-      name: myfirewall
-      interface_id: 1000
-      interface_type: tunnel
-      address: 20.20.20.1
-      network_value: 20.20.20.0/24
-  - name: dump test output
-    debug:
-      msg: '{{ result }}'
+    - name: Create a single layer 3 firewall
+      register: result
+      l3fw:
+        name: '{{ firewall }}'
+        mgmt_ip: 10.10.0.1
+        mgmt_network: 10.10.0.0/24
+        mgmt_interface: 0
+        default_nat: yes
+        domain_server_address:
+          - 10.0.0.1
+          - 10.0.0.2
+        enable_antivirus: yes
+        enable_gti: yes
+        enable_sidewinder_proxy: yes
+    - name: Create interface 1 for external
+      when: result|succeeded
+      l3fw_interface:
+        name: '{{ firewall }}'
+        interface_id: 1
+        address: 10.10.10.1
+        network_value: 10.10.10.0/24
+        enable_vpn: yes
+    - name: Add a tunnel interface for route VPN
+      when: result|succeeded
+      l3fw_interface:
+        name: '{{ firewall }}'
+        interface_id: 1000
+        interface_type: tunnel
+        address: 20.20.20.1
+        network_value: 20.20.20.0/24
+      notify:
+        - Upload policy
+  
+    - name: dump test output
+      debug:
+        msg: '{{ result }}'
+
+  handlers:
+    - name: Upload policy
+      policy_deploy:
+        name: '{{ firewall }}'
+        policy: fwpolicy
+        wait_for_finish: yes

@@ -1,12 +1,6 @@
 ############
 Fact Modules
-############
-
-.. toctree::
-   :glob:
-   
-   *
-   
+############   
 
 Fact modules all provide the same interface for retrieving high level or detailed information about specified elements and their existence.
 
@@ -140,3 +134,11 @@ We can just switch the filter to the specific IP address we are looking for to g
 The same methodology applies to other network elements as well.
 
 To view common attributes of network elements, see: `Elements <http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements>`_.
+
+Below is a list of fact modules currently provided for ansible-stonesoft:
+
+.. toctree::
+   :glob:
+   
+   *
+  

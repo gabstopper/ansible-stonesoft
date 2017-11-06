@@ -16,7 +16,9 @@ short_description: Represents a 3rd party gateway used for a VPN configuration
 description:
   - An external gateway is a non-SMC managed VPN endpoint used in either policy
     or route based VPN. When deleting an endpoint, only tags, endpoints and the
-    top level external gateway can be removed.
+    top level external gateway can be removed. External GW settings can be modified
+    if state is present and the gateway already exists.
+
 version_added: '2.5'
 
 options:
@@ -164,11 +166,6 @@ changed:
   description: Whether or not the change succeeded
   returned: always
   type: bool
-msg:
-  description: Simple description message
-  returned: always
-  type: string
-  sample: Successfully created engine
 '''
 
 import traceback
@@ -206,17 +203,17 @@ def endpoint_spec(endpoint):
 
 
 def _get_endpoint_obj(endpoint, current):
-        """
-        Fetch the specific endpoint from a list of existing external
-        endpoints. This is used to operate on the element. 
-        
-        :param str endpoint_name: name of external endpoint to find
-        :param list current: list of ExternalEndpoint from the ExternalGateway
-        :return
-        """
-        for match in current:
-            if match.name.startswith(endpoint.get('name')):
-                return match
+    """
+    Fetch the specific endpoint from a list of existing external
+    endpoints. This is used to operate on the element. 
+    
+    :param str endpoint_name: name of external endpoint to find
+    :param list current: list of ExternalEndpoint from the ExternalGateway
+    :return
+    """
+    for match in current:
+        if match.name.startswith(endpoint.get('name')):
+            return match
 
 
 class ExternalVPNGW(StonesoftModuleBase):
@@ -303,7 +300,7 @@ class ExternalVPNGW(StonesoftModuleBase):
                             spec = endpoint_spec(endpoint)
                             if not spec['address'] and not spec['dynamic']:
                                 self.fail(msg='Creating an endpoint requires an address or '
-                                    'that you set dynamic: yes')
+                                    'set dynamic: yes')
                             elif spec['dynamic'] and not (spec['ike_phase1_id_type'] or \
                                     spec['ike_phase1_id_value']):
                                 self.fail(msg='When specifying a dynamic endpoint, you must '

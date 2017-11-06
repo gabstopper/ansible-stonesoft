@@ -18,6 +18,7 @@ description:
   - A Policy VPN provides IPSEC functionality between either SMC managed or non
     managed devices. This will represent central and satllite gateways in the
     VPN configuration.
+
 version_added: '2.5'
   
 extends_documentation_fragment:
@@ -36,7 +37,7 @@ policy_vpn:
     description: Return all policy VPNs
     returned: always
     type: list
-    example: [{
+    sample: [{
         "name": "mynewvpn", 
         "type": "vpn"
     }]
@@ -45,7 +46,7 @@ policy_vpn:
     description: Return policy VPN details using filter
     returned: always
     type: list
-    example: [
+    sample: [
         {
             "central_gateways": [
                 {

@@ -1,8 +1,8 @@
-.. _l3fw_policy_facts:
+.. _policy_push:
 
 
-l3fw_policy_facts - Facts about layer 3 firewall policies
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+policy_push - Deploy a policy to an engine
+++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Layer 3 firewall policies used on firewall based engines. Also provides information on linked policies such as inspection and the base level template.
+* Each NGFW engine requires that an existing policy be deployed. In addition, when making changes, policy will need to be refreshed. When retrieving engine facts, you can determine from the pending_changes key whether a policy refresh if required. In addition, specifying the policy in the playbook forces the specified policy to be deployed.
 
 
 
@@ -44,48 +44,48 @@ Options
     </tr>
 
     <tr>
-    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
+    <td>max_tries<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>True</td>
+    <td>36</td>
     <td></td>
 	<td>
-        <p>Whether to do a case sensitive match on the filter specified</p>
+        <p>Max number of times to loop through status checks. In case the policy is in 'wait' status (i.e. no connectivity to engine), this will only block for max_tries * sleep</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>exact_match<br/><div style="font-size: small;"></div></td>
+    <td>name<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
 	<td>
-        <p>Whether to do an exact match on the filter specified</p>
+        <p>Name of the engine to deploy policy on</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>policy<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>*</td>
+    <td></td>
     <td></td>
 	<td>
-        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+        <p>A policy to deploy. If the engine does not have an existing policy then specifying a policy is required. If an engine has an existing policy, a refresh of that existing policy is done.</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>limit<br/><div style="font-size: small;"></div></td>
+    <td>sleep<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>10</td>
+    <td>3 sec</td>
     <td></td>
 	<td>
-        <p>Limit the number of results. Set to 0 to remove limit.</p>
+        <p>Amount of time to sleep between checking the task status</p>
 	</td>
 	</tr>
     </td>
@@ -201,6 +201,18 @@ Options
     </td>
     </tr>
 
+    <tr>
+    <td>wait_for_finish<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>True</td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Whether to wait for the task to finish before returning</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
     </table>
     </br>
 
@@ -210,12 +222,28 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Show all policies
-      l3fw_policy_facts:
-        
-    - name: Show policy information for policies contained 'Layer 3'
-        l3fw_policy_facts:
-          filter: Layer 3
+    - name: Refresh policy and wait for task to complete
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Refresh policy
+        policy_push:
+          name: master-eng
+          wait_for_finish: yes
+          max_tries: 10
+          sleep: 3
+          
+    - name: Upload a policy to an engine and wait for task
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Upload policy specified to engine
+        policy_push:
+          name: fw
+          policy: fwpolicy
+          wait_for_finish: yes
+          max_tries: 10
+          sleep: 3
 
 Return Values
 -------------
@@ -235,23 +263,26 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>policies</td>
+    <td>msg</td>
     <td>
-        <div>Return policies with 'Layer 3' as filter</div>
+        <div>Message returned when policy task returns</div>
+    </td>
+    <td align=center></td>
+    <td align=center>str</td>
+    <td align=center></td>
+    </tr>
+
+    <tr>
+    <td>failed</td>
+    <td>
+        <div>Whether or not the task failed or not</div>
     </td>
     <td align=center>always</td>
-    <td align=center>list</td>
-    <td align=center>[{'comment': None, 'inspection_policy': 'High-Security Inspection Policy', 'name': 'Layer 3 Virtual FW Policy', 'template': 'Firewall Inspection Template', 'tags': ['footag'], 'file_filtering_policy': 'Legacy Anti-Malware', 'type': 'fw_policy'}]</td>
+    <td align=center>bool</td>
+    <td align=center></td>
     </tr>
     </table>
     </br></br>
-
-
-Notes
------
-
-.. note::
-    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

@@ -18,6 +18,7 @@ description:
     a VPN, along with modifying central / satellite gateways as well as
     tags. Only satellite gateways, central gateways and tags can be deleted.
     All other options provided in the constructor can be modified or added.
+
 version_added: '2.5'
 
 options:
@@ -356,7 +357,7 @@ class StonesoftPolicyVPN(StonesoftModuleBase):
                 self._validate_subspec(gw)
         
         changed = False
-        vpn = self.fetch_element(PolicyVPN)
+        vpn = self.fetch_element(PolicyVPN) #Element or None
         
         try:
             if state == 'present':

@@ -1,8 +1,8 @@
-.. _l3fw_policy_facts:
+.. _service_element_facts:
 
 
-l3fw_policy_facts - Facts about layer 3 firewall policies
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+service_element_facts - Facts about service elements in the SMC
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Layer 3 firewall policies used on firewall based engines. Also provides information on linked policies such as inspection and the base level template.
+* Service elements can be used as references in many areas of the configuration. This fact module provides the ability to retrieve information related to elements and their values.
 
 
 
@@ -50,6 +50,18 @@ Options
     <td></td>
 	<td>
         <p>Whether to do a case sensitive match on the filter specified</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>*</td>
+    <td><ul><li>service_group</li><li>icmp_service</li><li>protocol</li><li>rpc_service</li><li>icmp_service_group</li><li>url_category</li><li>application_situation</li><li>ip_service_group</li><li>icmp_ipv6_service</li><li>ip_service</li><li>tcp_service</li><li>tcp_service_group</li><li>udp_service</li><li>udp_service_group</li><li>ethernet_service</li></ul></td>
+	<td>
+        <p>Type of service element to retrieve</p>
 	</td>
 	</tr>
     </td>
@@ -210,12 +222,24 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Show all policies
-      l3fw_policy_facts:
-        
-    - name: Show policy information for policies contained 'Layer 3'
-        l3fw_policy_facts:
-          filter: Layer 3
+    - name: Return all services with limit
+      service_element_facts:
+        limit: 10
+    
+    - name: Return only tcp service elements
+      service_element_facts:
+        element: tcp_service
+    
+    - name: Return services with 80 in the value (will match defined ports)
+      service_element_facts:
+        limit: 10
+        element: tcp_service
+        filter: 80
+    
+    - name: Find applications related to facebook
+      service_element_facts:
+        element: application_situation
+        filter: facebook
 
 Return Values
 -------------
@@ -235,13 +259,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>policies</td>
+    <td>services</td>
     <td>
-        <div>Return policies with 'Layer 3' as filter</div>
+        <div>All TCP services with filter of '80'</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'inspection_policy': 'High-Security Inspection Policy', 'name': 'Layer 3 Virtual FW Policy', 'template': 'Firewall Inspection Template', 'tags': ['footag'], 'file_filtering_policy': 'Legacy Anti-Malware', 'type': 'fw_policy'}]</td>
+    <td align=center>[{'comment': '', 'max_dst_port': None, 'type': 'tcp_service', 'name': 'tcp80443', 'min_dst_port': 443}, {'comment': 'Element created for NAT Service', 'max_dst_port': None, 'type': 'tcp_service', 'name': 'HTTP_tcp_port_80', 'min_dst_port': 80}]</td>
     </tr>
     </table>
     </br></br>

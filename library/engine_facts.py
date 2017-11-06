@@ -22,6 +22,7 @@ description:
   - Engines refers to any device that is deployed and managed by the Stonesoft
     Management Center. More specifically, an engine can be physical or virtual,
     an IPS, layer 2 firewall, layer 3 or clusters of these types.
+
 version_added: '2.5'
 
 options:
@@ -121,7 +122,6 @@ engines:
         'sidewinder_proxy': false,
         'tags': ['footag']
 }]
-
 '''
         
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase

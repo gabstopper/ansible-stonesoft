@@ -11,6 +11,14 @@ Welcome to StonesoftAnsible's documentation!
 
    intro
 
+Playbooks
+=========
+
+.. toctree::
+   :maxdepth: 2
+   
+   playbooks
+
 Facts Modules
 =============
 

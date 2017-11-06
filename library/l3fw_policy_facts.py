@@ -17,6 +17,7 @@ short_description: Facts about layer 3 firewall policies
 description:
   - Layer 3 firewall policies used on firewall based engines. Also provides information
     on linked policies such as inspection and the base level template.
+
 version_added: '2.5'
   
 extends_documentation_fragment:
@@ -45,7 +46,7 @@ policies:
     description: Return all policies
     returned: always
     type: list
-    example: [{
+    sample: [{
         "name": "Master Engine Policy", 
         "type": "fw_policy"
         },
@@ -58,7 +59,7 @@ policies:
     description: Return policies with 'Layer 3' as filter
     returned: always
     type: list
-    example: [{
+    sample: [{
         "comment": null, 
         "inspection_policy": "High-Security Inspection Policy",
         "file_filtering_policy": "Legacy Anti-Malware",

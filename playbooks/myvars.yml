@@ -1,0 +1,10 @@
+sub_policy: mysubpolicy
+name: Rule
+source:
+  - host: foo
+    value: 1.1.1.1
+  - network: mynetwork
+    value: 2.2.2.0/24
+destination:
+  - network: any
+

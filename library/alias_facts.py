@@ -13,11 +13,12 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = '''
 ---
 module: alias_facts
-short_description: Facts about aliases mapped to engines
+short_description: Resolve and engine alias to value
 description:
   - Aliases are dynamic elements that have different values based on the
     engine the alias is applied on. This module allows you to retrieve
     aliases and retrieve their mappings.
+
 version_added: '2.5'
 
 options:
@@ -32,7 +33,7 @@ extends_documentation_fragment:
   - stonesoft_facts
 
 requirements:
-  - smc-python
+  - smc-python >= 0.5.7
 author:
   - David LePage (@gabstopper)
 '''
@@ -54,33 +55,19 @@ EXAMPLES = '''
 
 
 RETURN = '''
-aliases:
-    description: List of all aliases, no filter
-    returned: always
-    type: list
-    example: [
-        {
-        "name": "$$ Interface ID 46.net", 
-        "type": "interface_nic_x_net_alias"
-        }, 
-        {
-        "name": "$$ Interface ID 45.net", 
-        "type": "interface_nic_x_net_alias"
-    }]
-
 aliases: 
     description: Resolve NAT alias to firewall engine sg_vm
     returned: always
     type: list
-    example: [
-        {
-        "comment": "Default NAT Address depends on Routing View.", 
-        "name": "$$ Default NAT Address", 
-        "type": "default_nat_address_alias", 
-        "values": [
-            "10.0.0.254"
+    sample: [{
+        'comment': 'Default NAT Address depends on Routing View.', 
+        'name': '$$ Default NAT Address', 
+        'type': 'default_nat_address_alias', 
+        'values': [
+            '10.0.0.254'
             ]
-    }]
+}]
+
 '''
 
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase

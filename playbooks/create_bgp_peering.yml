@@ -1,0 +1,15 @@
+- name: Create a new BGP configuration
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: BGP
+    bgp:
+      name: fw
+      autonomous_system: 100
+      router_id: 1.1.1.1
+      announced_networks:
+        - network: 10.10.0.0/24
+        - network: 11.11.0.0/24
+        - host: 172.18.1.31
+        - group: a_group_of_networks
+      

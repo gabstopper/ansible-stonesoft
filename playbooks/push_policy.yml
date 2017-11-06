@@ -1,0 +1,11 @@
+- name: Create a new BGP configuration
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Refresh policy
+    policy_deploy:
+      name: fw
+      policy: fwpolicy
+      wait_for_finish: yes
+      max_tries: 10
+      sleep: 3

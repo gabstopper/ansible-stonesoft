@@ -14,6 +14,7 @@ module: l3fw_cluster_interface
 short_description: Create or delete Stonesoft FW cluster interfaces
 description:
   - Add or remove cluster CVI's, NDI's or CVI and NDI interfaces to a cluster
+
 version_added: '2.5'
 
 options:
@@ -84,11 +85,6 @@ changed:
   description: Whether or not the change succeeded
   returned: always
   type: bool
-msg:
-  description: Simple description message
-  returned: always
-  type: string
-  sample: Successfully created engine
 '''
 
 EXAMPLES = '''

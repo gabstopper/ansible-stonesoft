@@ -265,7 +265,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center></td>
+    <td align=center>[{'comment': '', 'max_dst_port': None, 'type': 'tcp_service', 'name': 'tcp80443', 'min_dst_port': 443}, {'comment': 'Element created for NAT Service', 'max_dst_port': None, 'type': 'tcp_service', 'name': 'HTTP_tcp_port_80', 'min_dst_port': 80}]</td>
     </tr>
     </table>
     </br></br>

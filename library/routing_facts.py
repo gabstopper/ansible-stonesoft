@@ -18,10 +18,18 @@ description:
   - Show the current routing table for the given engine. This will show references
     to the dst_if for the route along with the gateway and route network. Use
     engine_facts to resolve interface ID's returned by this module.
+
 version_added: '2.5'
-  
+
+options:
+  element:
+    description:
+      - Specify the name of the engine in order to find the routing table
+    required: true
+      
 extends_documentation_fragment:
   - stonesoft
+  - stonesoft_facts
 
 requirements:
   - smc-python
@@ -35,7 +43,7 @@ routes:
     description: Return all policy VPNs
     returned: always
     type: list
-    example: [{
+    sample: [{
         "dst_if": 1, 
         "route_gateway": "10.0.0.1", 
         "route_netmask": 0, 
@@ -77,14 +85,14 @@ class RoutingFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            name=dict(type='str', required=True)
+            element=dict(type='str', required=True)
         )
         
-        self.name = None
+        self.element = None
         
         self.results = dict(
             ansible_facts=dict(
-                policy_vpn=[]
+                routes=[]
             )
         )
         super(RoutingFacts, self).__init__(self.module_args)
@@ -95,7 +103,7 @@ class RoutingFacts(StonesoftModuleBase):
         
         elements = []
         try:
-            engine = Engine(self.name)
+            engine = Engine(self.element)
             elements = [route_dict_from_obj(element) for element in engine.routing_monitoring]
             
         except SMCException as err:

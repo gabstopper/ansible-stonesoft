@@ -4,5 +4,5 @@
   tasks:
   - name: add a layer 3 interface to a single fw
     service_facts:
-      element: ethernet_service
-      filter: AARP
+      element: tcp_service
+      filter: 8080

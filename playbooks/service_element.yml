@@ -1,0 +1,64 @@
+- name: Create a service element
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Example service element creation
+    service_element:
+      elements:
+        - tcp_service: 
+            name: myservice
+            min_dst_port: 8080
+            max_dst_port: 8100
+        - udp_service:
+            name: myudp
+            min_dst_port: 8090
+            max_dst_port: 8091
+            comment: created by dlepage
+        - ip_service:
+            name: new service
+            protocol_number: 8
+            comment: custom EGP service
+        - ethernet_service:
+            name: myethernet service
+            frame_type: eth2
+            ethertype: 32828
+        - icmp_service:
+            name: custom icmp
+            icmp_type: 3
+            icmp_code: 7
+            comment: custom icmp services
+        - icmp_ipv6_service:
+            name: my v6 icmp
+            icmp_type: 139
+            comment: Neighbor Advertisement Message
+        - tcp_service_group:
+            name: mygroup
+            members:
+              - tcp_service:
+                  name: newservice80
+                  min_dst_port: 80
+        - service_group:
+            name: mysvcgrp
+            members:
+              - tcp_service:
+                  name: newservice80
+        - udp_service_group:
+            name: myudp2000
+            members:
+              - udp_service:
+                  name: myudp
+              - udp_service:
+                  name: udp2000
+                  min_dst_port: 2000
+        - icmp_service_group:
+            name: myicmp
+            members:
+              - icmp_service:
+                  name: custom icmp
+        - ip_service_group:
+            name: myipservices
+            members:
+              - ip_service:
+                  name: new service
+        
+        

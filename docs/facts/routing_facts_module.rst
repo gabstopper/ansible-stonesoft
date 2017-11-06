@@ -44,6 +44,66 @@ Options
     </tr>
 
     <tr>
+    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>True</td>
+    <td></td>
+	<td>
+        <p>Whether to do a case sensitive match on the filter specified</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Specify the name of the engine in order to find the routing table</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>exact_match<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Whether to do an exact match on the filter specified</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>*</td>
+    <td></td>
+	<td>
+        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>limit<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>10</td>
+    <td></td>
+	<td>
+        <p>Limit the number of results. Set to 0 to remove limit.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>smc_address<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -182,10 +242,17 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center></td>
+    <td align=center>[{'route_network': '0.0.0.0', 'route_gateway': '10.0.0.1', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 1}, {'route_network': '0.0.0.0', 'route_gateway': '172.18.1.240', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 0}]</td>
     </tr>
     </table>
     </br></br>
+
+
+Notes
+-----
+
+.. note::
+    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

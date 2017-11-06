@@ -1,8 +1,8 @@
 .. _alias_facts:
 
 
-alias_facts - Facts about aliases mapped to engines
-+++++++++++++++++++++++++++++++++++++++++++++++++++
+alias_facts - Resolve and engine alias to value
++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -25,7 +25,7 @@ Synopsis
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python
+  * smc-python >= 0.5.7
 
 
 Options
@@ -258,7 +258,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center></td>
+    <td align=center>[{'comment': 'Default NAT Address depends on Routing View.', 'type': 'default_nat_address_alias', 'values': ['10.0.0.254'], 'name': '$$ Default NAT Address'}]</td>
     </tr>
     </table>
     </br></br>
@@ -268,7 +268,7 @@ Notes
 -----
 
 .. note::
-    - If a filter is not used in the query, this will return all results for the element type. The return data in this case will only contain the meta data for the element which will be name and type.
+    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

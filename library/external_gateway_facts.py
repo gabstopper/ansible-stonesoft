@@ -12,12 +12,13 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: vpn_external_gw_facts
+module: external_gw_facts
 short_description: Facts about external VPN gateways
 description:
   - An external vpn gateway is a non-SMC managed endpoint used for
     terminating a VPN. It defines the remote side networks and settings
     specific to handling VPN.
+
 version_added: '2.5'
   
 extends_documentation_fragment:
@@ -46,7 +47,7 @@ vpn_gateway:
     description: Return policies with 'Layer 3' as filter
     returned: always
     type: list
-    example: [{
+    sample: [{
         "comment": null, 
         "external_endpoint": [{
             "name": "endpoint1 (1.1.1.1)",
@@ -154,7 +155,6 @@ class ExternalGWFacts(StonesoftModuleBase):
                 vpn_gateway=[]
             )
         )
-        
         super(ExternalGWFacts, self).__init__({}, is_fact=True)
 
     def exec_module(self, **kwargs):

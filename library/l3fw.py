@@ -15,6 +15,7 @@ short_description: Create or delete a Stonesoft Layer 3 firewall
 description:
   - Create or delete a Stonesoft Layer 3 Firewall on the Stonesoft
     Management Center.
+
 version_added: '2.5'
 
 options:

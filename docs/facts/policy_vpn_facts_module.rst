@@ -230,7 +230,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center></td>
+    <td align=center>[{'comment': None, 'name': 'Amazon AWS', 'tags': [], 'central_gateways': [{'type': 'internal_gateway', 'name': 've-1 - Primary'}, {'type': 'internal_gateway', 'name': 'sg_vm_vpn'}, {'type': 'internal_gateway', 'name': 've-4 - Primary'}], 'vpn_profile': 'VPN-A Suite', 'nat': True, 'gateway_tunnel': [{'enabled': True, 'tunnel_side_b_type': 'internal_gateway', 'tunnel_side_a': 'sg_vm_vpn', 'tunnel_side_b': 've-1 - Primary', 'tunnel_side_a_type': 'internal_gateway'}, {'enabled': True, 'tunnel_side_b_type': 'internal_gateway', 'tunnel_side_a': 'sg_vm_vpn', 'tunnel_side_b': 've-4 - Primary', 'tunnel_side_a_type': 'internal_gateway'}], 'type': 'vpn', 'mobile_vpn_topology_mode': 'None', 'satellite_gateways': []}]</td>
     </tr>
     </table>
     </br></br>
@@ -240,7 +240,7 @@ Notes
 -----
 
 .. note::
-    - If a filter is not used in the query, this will return all results for the element type. The return data in this case will only contain the meta data for the element which will be name and type.
+    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

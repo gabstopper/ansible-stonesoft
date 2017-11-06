@@ -432,16 +432,6 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>msg</td>
-    <td>
-        <div>Simple description message</div>
-    </td>
-    <td align=center>always</td>
-    <td align=center>string</td>
-    <td align=center>Successfully created engine</td>
-    </tr>
-
-    <tr>
     <td>changed</td>
     <td>
         <div>Whether or not the change succeeded</div>

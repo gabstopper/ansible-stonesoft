@@ -18,6 +18,7 @@ description:
   - Network elements can be used as references in many areas of the
     configuration. This fact module provides the ability to retrieve
     information related to elements and their values.
+
 version_added: '2.5'
 
 options:
@@ -31,8 +32,13 @@ options:
       - network
       - router
       - address_range
-      - zone
+      - interface_zone
       - domain_name
+      - group
+      - ip_list
+      - country
+      - alias
+      - expression
     type: str
   
 extends_documentation_fragment:
@@ -70,7 +76,7 @@ elements:
     description: All elements, no filter
     returned: always
     type: list
-    example: [{
+    sample: [{
         "name": "Any network", 
         "type": "network"
         }, 
@@ -80,10 +86,10 @@ elements:
     }]
 
 elements:
-    description: Return from all elements using filter of 10.10.10
+    description: Return from all elements using filter of 10.
     returned: always
     type: list    
-    example: [{
+    sample: [{
         "comment": null, 
         "ipv4_network": "0.0.0.0/0", 
         "ipv6_network": "::/0", 
@@ -110,43 +116,15 @@ elements:
     }]
 '''
 
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+from ansible.module_utils.stonesoft_util import (
+    StonesoftModuleBase,
+    element_type_dict,
+    ro_element_type_dict,
+    element_dict_from_obj)
 
 
-try:
-    import smc.elements.network as network
-except ImportError:
-    pass
-
-
-ELEMENT_TYPES = dict(
-    host=dict(type=network.Host, attr=['address', 'ipv6_address', 'secondary']),
-    network=dict(type=network.Network, attr=['ipv4_network', 'ipv6_network']),
-    address_range=dict(type=network.AddressRange, attr=['ip_range']),
-    router=dict(type=network.Router, attr=['address', 'secondary', 'ipv6_address']),
-    zone=dict(type=network.Zone),
-    domain_name=dict(type=network.DomainName))
-
-
-def element_dict_from_obj(element):
-    """
-    Resolve the element to the supported types and return a dict
-    with the values of defined attributes
-    
-    :param Element element
-    """
-    known = ELEMENT_TYPES.get(element.typeof)
-    if known:
-        elem = {
-            'name': element.name,
-            'type': element.typeof,
-            'comment': getattr(element, 'comment', None)}
-    else:
-        return dict(name=element.name, type=element.typeof)
-    
-    for attribute in known.get('attr', []):
-        elem[attribute] = getattr(element, attribute, None)
-    return elem
+ELEMENT_TYPES = element_type_dict()
+ELEMENT_TYPES.update(ro_element_type_dict())
 
     
 class NetworkElementFacts(StonesoftModuleBase):
@@ -181,7 +159,7 @@ class NetworkElementFacts(StonesoftModuleBase):
             result = self.search_by_context()
         
         if self.filter:    
-            elements = [element_dict_from_obj(element) for element in result]
+            elements = [element_dict_from_obj(element,ELEMENT_TYPES) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         

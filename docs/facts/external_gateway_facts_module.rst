@@ -1,8 +1,8 @@
-.. _vpn_external_gw_facts:
+.. _external_gw_facts:
 
 
-vpn_external_gw_facts - Facts about external VPN gateways
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+external_gw_facts - Facts about external VPN gateways
++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -241,7 +241,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center></td>
+    <td align=center>[{'comment': None, 'external_endpoint': [{'force_nat_t': False, 'name': 'endpoint1 (1.1.1.1)', 'enabled': True, 'balancing_mode': 'active', 'dynamic': False, 'ike_phase1_id_value': None, 'nat_t': True, 'address': '1.1.1.1'}, {'force_nat_t': False, 'name': 'endpoint2', 'enabled': False, 'balancing_mode': 'active', 'dynamic': True, 'ike_phase1_id_value': '1.1.1.1', 'nat_t': True, 'address': None}], 'vpn_sites': [{'values': [{'type': 'network', 'name': 'network-4.4.4.0/24'}, {'type': 'network', 'name': 'network-3.3.3.0/24'}, {'type': 'host', 'name': '172.18.1.254'}], 'name': 'newextgw'}], 'name': 'newextgw', 'tags': ['footag'], 'type': 'external_gateway'}]</td>
     </tr>
     </table>
     </br></br>
@@ -251,7 +251,7 @@ Notes
 -----
 
 .. note::
-    - If a filter is not used in the query, this will return all results for the element type. The return data in this case will only contain the meta data for the element which will be name and type.
+    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

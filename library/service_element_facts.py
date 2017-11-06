@@ -12,12 +12,13 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: service_facts
+module: service_element_facts
 short_description: Facts about service elements in the SMC
 description:
   - Service elements can be used as references in many areas of the
     configuration. This fact module provides the ability to retrieve
     information related to elements and their values.
+
 version_added: '2.5'
     
 options:
@@ -27,15 +28,21 @@ options:
     required: false
     default: '*'
     choices:
-      - protocol
-      - tcp_service
-      - udp_service
-      - ip_service
+      - service_group
       - icmp_service
+      - protocol
+      - rpc_service
+      - icmp_service_group
       - url_category
-      - icmp_ipv6_service
-      - ethernet_service
       - application_situation
+      - ip_service_group
+      - icmp_ipv6_service
+      - ip_service
+      - tcp_service
+      - tcp_service_group
+      - udp_service
+      - udp_service_group
+      - ethernet_service
     type: str
   
 extends_documentation_fragment:
@@ -51,21 +58,21 @@ author:
 
 EXAMPLES = '''
 - name: Return all services with limit
-  service_facts:
+  service_element_facts:
     limit: 10
 
 - name: Return only tcp service elements
-  service_facts:
+  service_element_facts:
     element: tcp_service
 
 - name: Return services with 80 in the value (will match defined ports)
-  service_facts:
+  service_element_facts:
     limit: 10
     element: tcp_service
     filter: 80
 
 - name: Find applications related to facebook
-  service_facts:
+  service_element_facts:
     element: application_situation
     filter: facebook
 '''    
@@ -76,7 +83,7 @@ services:
     description: All UDP Services, no filter
     returned: always
     type: list
-    example: [{
+    sample: [{
         "name": "api-udp1", 
         "type": "udp_service"
         }, 
@@ -89,7 +96,7 @@ services:
     description: All TCP services with filter of '80'
     returned: always
     type: list    
-    example: [{
+    sample: [{
         "comment": "", 
         "max_dst_port": null, 
         "min_dst_port": 443, 
@@ -104,46 +111,16 @@ services:
         "type": "tcp_service"
     }]
 '''
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+
+from ansible.module_utils.stonesoft_util import (
+    StonesoftModuleBase,
+    service_type_dict,
+    element_dict_from_obj,
+    ro_service_type_dict)
 
 
-try:
-    import smc.elements.service as service
-except ImportError:
-    pass
-
-
-ELEMENT_TYPES = dict(
-    tcp_service=dict(type=service.TCPService, attr=['min_dst_port', 'max_dst_port']),
-    udp_service=dict(type=service.UDPService, attr=['min_dst_port', 'max_dst_port']),
-    application_situation=dict(type=service.ApplicationSituation, attr=['identifiable_with_tls_match']),
-    icmp_service=dict(type=service.ICMPService, attr=['icmp_code', 'icmp_type']),
-    icmp_ipv6_service=dict(type=service.ICMPIPv6Service, attr=['icmp_code', 'icmp_type']),
-    ip_service=dict(type=service.IPService, attr=['protocol_number']),
-    ethernet_service=dict(type=service.EthernetService, attr=['frame_type']),
-    protocol=dict(type=service.Protocol),
-    url_category=dict(type=service.URLCategory))
-
-
-def service_dict_from_obj(element):
-    """
-    Resolve the service to the supported types and return a dict
-    with the values of defined attributes
-    
-    :param Element element
-    """
-    known = ELEMENT_TYPES.get(element.typeof)
-    if known:
-        elem = {
-            'name': element.name,
-            'type': element.typeof,
-            'comment': getattr(element, 'comment', None)}
-    else:
-        return dict(name=element.name, type=element.typeof)
-    
-    for attribute in known.get('attr', []):
-        elem[attribute] = getattr(element, attribute, None)
-    return elem
+ELEMENT_TYPES = service_type_dict()
+ELEMENT_TYPES.update(ro_service_type_dict())
 
 
 class ServiceFacts(StonesoftModuleBase):
@@ -177,8 +154,8 @@ class ServiceFacts(StonesoftModuleBase):
             self.element = 'services_and_applications'
             result = self.search_by_context()
         
-        if self.filter:    
-            elements = [service_dict_from_obj(element) for element in result]
+        if self.filter:
+            elements = [element_dict_from_obj(element, ELEMENT_TYPES) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         

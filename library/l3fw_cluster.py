@@ -15,6 +15,7 @@ short_description: Create or delete Stonesoft FW clusters
 description:
   - Firewall clusters can be created with up to 16 nodes per cluster. For
     each cluster_node specified, this will define a unique cluster member.
+
 version_added: '2.5'
 
 options:
@@ -154,11 +155,6 @@ changed:
   description: Whether or not the change succeeded
   returned: always
   type: bool
-msg:
-  description: Simple description message
-  returned: always
-  type: string
-  sample: Successfully created engine
 '''
 
 import traceback
@@ -216,7 +212,6 @@ class StonesoftCluster(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
-            msg=''
         )
         super(StonesoftCluster, self).__init__(self.module_args, required_if=required_if)
     
@@ -233,6 +228,11 @@ class StonesoftCluster(StonesoftModuleBase):
                 if not engine:
                     if not self.cluster_nodes:
                         self.fail_json(msg='You must specify cluster nodes to create a cluster')  
+                    
+                    required = ['address', 'network_value', 'nodeid']
+                    for node in self.cluster_nodes:
+                        if not all (k in node for k in required):
+                            self.fail(msg='Node syntax invalid.')
                     
                     engine = FirewallCluster.create(
                         name=self.name,
@@ -268,7 +268,7 @@ class StonesoftCluster(StonesoftModuleBase):
         
         self.results['changed'] = changed        
         return self.results
-
+    
 
 def main():
     StonesoftCluster()

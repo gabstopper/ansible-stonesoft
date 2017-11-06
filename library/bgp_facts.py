@@ -18,6 +18,7 @@ description:
   - BGP elements are the building blocks to building a BGP configuration on
     a layer 3 engine. Use this module to obtain available elements and their
     values.
+
 version_added: '2.5'
 
 options:
@@ -79,7 +80,7 @@ elements:
     description: List all BGP Profiles
     returned: always
     type: list    
-    example: [{
+    sample: [{
         "name": "Default BGP Profile", 
         "type": "bgp_profile"
     }]
@@ -88,7 +89,7 @@ elements:
     description: Details of a specific autonomous system
     returned: always
     type: list    
-    example: [{
+    sample: [{
         "as_number": 12000, 
         "comment": null, 
         "name": "myas", 
@@ -99,7 +100,7 @@ elements:
     description: Details about BGP Peering profile
     returned: always
     type: list    
-    example: [{
+    sample: [{
         "comment": null, 
         "connected_check": "disabled", 
         "connection_profile": {

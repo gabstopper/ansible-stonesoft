@@ -1,8 +1,8 @@
-.. _external_gateway:
+.. _network_element:
 
 
-external_gateway - Represents a 3rd party gateway used for a VPN configuration
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+network_element - Create, modify or delete network elements
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* An external gateway is a non-SMC managed VPN endpoint used in either policy or route based VPN. When deleting an endpoint, only tags, endpoints and the top level external gateway can be removed. External GW settings can be modified if state is present and the gateway already exists.
+* Each element type currently supported in this module is documented in the example playbook. Each network element type will have a minimum number of arguments that is required to create the element if it does not exist. Network elements supported by this module have their constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
 
 
 
@@ -43,18 +43,18 @@ Options
     <th class="head">comments</th>
     </tr>
     <tr>
-    <td rowspan="2">endpoint<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
+    <td rowspan="2">elements<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
     <td></td>
     <td></td>
     <td>
-        <div>An endpoint represents an external VPN gateway and it's remote site settings such as IP address, remote site networks, etc.</div>
+        <div>A list of the elements to create, modify or remove</div>
     </tr>
 
     <tr>
     <td colspan="5">
         <table border=1 cellpadding=4>
-        <caption><b>Dictionary object endpoint</b></caption>
+        <caption><b>Dictionary object elements</b></caption>
 
         <tr>
         <th class="head">parameter</th>
@@ -65,92 +65,82 @@ Options
         </tr>
 
         <tr>
-        <td>force_nat_t<br/><div style="font-size: small;"></div></td>
+        <td>group<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>Whether to force NAT_T on the VPN</div>
+            <div>A group of network elements</div>
         </td>
         </tr>
 
         <tr>
-        <td>name<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>Name for the endpoint, unique identifier</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>dynamic<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>yes</li><li>no</li></ul></td>
-        <td>
-            <div>If the VPN gateway is dynamic (dhcp) then set this value. This is mutually exclusive with <em>endpoint_ip</em>.</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>address<br/><div style="font-size: small;"></div></td>
+        <td>network<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>The endpoint IP of the VPN gateway. This is mutually exclusive with <em>endpoint_dynamic</em></div>
+            <div>A network element of type network</div>
         </td>
         </tr>
 
         <tr>
-        <td>enabled<br/><div style="font-size: small;"></div></td>
+        <td>domain_name<br/><div style="font-size: small;"></div></td>
         <td>no</td>
-        <td>True</td>
+        <td></td>
         <td></td>
         <td>
-            <div>Whether to enable the VPN endpoint</div>
+            <div>Domain name element to be used in rule</div>
         </td>
         </tr>
 
         <tr>
-        <td>ike_phase1_id_value<br/><div style="font-size: small;"></div></td>
+        <td>host<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>Value of ika_phase1_id_type. This should conform to the type selected. For example, if email address is used, format should be a@a.com. Required if <em>dynamic=yes</em></div>
+            <div>A network element of type host</div>
         </td>
         </tr>
 
         <tr>
-        <td>nat_t<br/><div style="font-size: small;"></div></td>
+        <td>address_range<br/><div style="font-size: small;"></div></td>
         <td>no</td>
-        <td>True</td>
+        <td></td>
         <td></td>
         <td>
-            <div>Whether to enable nat-t on this VPN.</div>
+            <div>A network element of type address range</div>
         </td>
         </tr>
 
         <tr>
-        <td>balancing_mode<br/><div style="font-size: small;"></div></td>
+        <td>interface_zone<br/><div style="font-size: small;"></div></td>
         <td>no</td>
-        <td>active</td>
-        <td><ul><li>active</li><li>standby</li><li>aggregate</li></ul></td>
+        <td></td>
+        <td></td>
         <td>
-            <div>The role for this VPN gateway.</div>
+            <div>A zone tag optionally assigned to an interface</div>
         </td>
         </tr>
 
         <tr>
-        <td>ike_phase1_id_type<br/><div style="font-size: small;"></div></td>
+        <td>router<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
-        <td><ul><li>0 (DNS)</li><li>1 (Email address)</li><li>2 (Distinguished name)</li><li>3 (IP address)</li></ul></td>
+        <td></td>
         <td>
-            <div>An IKE phase1 id is required if <em>dynamic=yes</em>. This specifies the type of selector to use to identify the dynamic endpoint</div>
+            <div>A router element</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>ip_list<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>An IP list element containing individual addresses and networks</div>
         </td>
         </tr>
 
@@ -158,30 +148,6 @@ Options
 
     </td>
     </tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>name<br/><div style="font-size: small;"></div></td>
-    <td>yes</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The name of the external gateway</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>sites<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>VPN sites defined the networks for this VPN. A site entry should be a network CIDR address. If the network does not exist, the element will be created.</p>
-	</td>
-	</tr>
     </td>
     </tr>
 
@@ -295,30 +261,6 @@ Options
     </td>
     </tr>
 
-    <tr>
-    <td>state<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>present</td>
-    <td><ul><li>present</li><li>absent</li></ul></td>
-	<td>
-        <p>Create or delete flag</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>tags<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Any tags for this gateway</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
     </table>
     </br>
 
@@ -328,57 +270,55 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create an external gateway with static IP addresses
+    - name: Create network elements. Check smc-python documentation for required fields.
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Create an external gateway
-        external_gateway:
-          name: myremotevpn
-          sites:
-            - 1.1.1.0/24
-          endpoint:
-            - name: endpoint1
-              address: 33.33.33.40
-              force_nat_t: no
-              balancing_mode: active
-            - name: endpoint2
-              address: 33.33.33.35
-              force_nat_t: yes
-              balancing_mode: active
-          tags: footag
-    
-    - name: Create an external gateway using dynamic IP
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Create an external gateway
-        external_gateway:
-          name: dynamicendpoint
-          sites:
-            - 1.1.1.0/24
-          endpoint:
-            - name: mydynamicendpoint
-              dynamic: yes
-              ike_phase1_id_type: 1
-              ike_phasee1_id_value: a@a.com
-          tags: footag
-    
-    - name: Modify an existing external endpoint
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Change balancing mode from active to standby
-        external_gateway:
-          name: myremotevpn
-          endpoint:
-            - name: endpoint1
-              balancing_mode: standby
-    
-    - name: Delete an external gateway
-      external_vpn_gw:
-        name: myextgw
-        state: absent
+      - name: Example network element creation
+        network_element:
+          elements:
+            - host: 
+                name: myhost
+                address: 1.1.1.1
+                ipv6_address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+                secondary:
+                  - 1.1.1.2
+                  - 1.1.1.3
+            - network:
+                name: mynetwork
+                ipv4_network: 1.1.1.0/24
+                comment: created by dlepage
+            - address_range:
+                name: myrange
+                ip_range: 1.1.1.1-1.1.1.10
+            - interface_zone:
+                name: myzone
+            - domain_name:
+                name: google.com
+            - router:
+                name: myrouter
+                address: 172.18.1.254
+                secondary:
+                  - 172.18.1.253
+                ipv6_address: 2003:dead:beef:4dad:23:46:bb:101
+            - ip_list: 
+                name: mylist
+                iplist:
+                  - 1.1.1.1
+                  - 1.1.1.2
+                  - 1.1.1.3
+                  - 1.1.1.4
+            - group: 
+                name: group_referencing_existing_elements
+                members:
+                  - host: 
+                      name: grace
+            - group:
+                name: group_and_create_elements
+                members:
+                  - host:
+                      name: newhost
+                      address: 1.1.1.1
 
 Return Values
 -------------
@@ -398,13 +338,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>changed</td>
+    <td>elements</td>
     <td>
-        <div>Whether or not the change succeeded</div>
+        <div>All elements, no filter</div>
     </td>
     <td align=center>always</td>
-    <td align=center>bool</td>
-    <td align=center></td>
+    <td align=center>list</td>
+    <td align=center>[{'type': 'host', 'name': 'myhost2'}, {'type': 'network', 'name': 'mynetwork2'}, {'type': 'address_range', 'name': 'myrange'}, {'type': 'interface_zone', 'name': 'myzone'}, {'type': 'domain_name', 'name': 'google.com'}, {'type': 'router', 'name': 'myrouter2'}, {'type': 'ip_list', 'name': 'mylist2'}, {'type': 'group', 'name': 'group_referencing_existing_elements'}, {'type': 'group', 'name': 'group_and_create_elements'}]</td>
     </tr>
     </table>
     </br></br>

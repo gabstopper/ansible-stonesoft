@@ -1,0 +1,13 @@
+- name: Create an external gateway playbook
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: include variables
+      include_vars: myvars.yml
+    - name: Rule vars in action
+      firewall_rule:
+        name: "{{ name }}"
+        sub_policy: "{{ sub_policy }}"
+        source: "{{ source }}"
+        destination: "{{ destination }}"
+        action: allow

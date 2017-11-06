@@ -17,6 +17,7 @@ short_description: Facts about category tag elements in the SMC
 description:
   - Category tags can be added to most elements in the SMC to identify elements
     and for grouping purposes.
+
 version_added: '2.5'
   
 extends_documentation_fragment:
@@ -53,7 +54,7 @@ categories:
     description: Return all categories
     returned: always
     type: list
-    example: [{
+    sample: [{
         "name": "aws", 
         "type": "category_tag"}, 
         {
@@ -65,7 +66,7 @@ categories:
     description: Return categories and references using 'smc' as filter
     returned: always
     type: list
-    example: [{
+    sample: [{
         "comment": null, 
         "name": "smc-python", 
         "references": [{
