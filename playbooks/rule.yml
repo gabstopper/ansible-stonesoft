@@ -5,61 +5,63 @@
   - name: Example rule creation
     firewall_rule:
       name: myrule
-      policy: some_policy (mutually exclusive with sub_policy)
-      sub_policy: my_sub_policy
+      policy: fwpolicy
+      #sub_policy: my_sub_policy
+      jump_policy: policy_to_jump_to (only required if action=jump)
+      vpn_policy: vpn_to_use (only required if action=use_vpn)
       source:
         - host: foo
           address: 1.1.1.1
+          filter_key: address
         - network: foonetwork
           ipv4_network: 2.2.2.0/24
           comment: foo
         - network: anothernet
+          ipv4_network: 12.12.12.0/24
         - address_range: myrange
           ip_range: 3.3.3.1-3.3.3.5
         - router: myrouter
           address: 172.18.1.254
-        - alias: $ EXTERNAL NET
-        - domain_name: domain.com
+        - alias: $ EXTERNAL_NET
+        - domain_name: domain2222.com
         - interface_zone: internal
-        - group: existinggroup
+        - group: 
+            - foogroup
         - ip_list: mylist
         - country:
             - Armenia
             - United States
             - China
-        - engines:
-            - engine1
-            - engine2
+        - engine:
+            - fw2
       destination:
         - network: any
-      action: 
-        - allow
-        - discard
-        - refuse
-        - continue
-        - jump
-        - use_vpn
-        - apply_blacklist
-      logging:
-        - log_level: none, transient, stored, essential, alert
-        - connection_closing: none, normal, accounting
-        - log_user: default, off, enforced
-        - log_network_apps: default, off, enforced
-        - log_url_cats: default, off, enforced
+      action: allow
       service:
-        - tcp_service: HTTP
-        - tcp_service: HTTPS
-        - tcp_service: 8080
-        - udp_service: 53
-        - icmp_service: echo request
-        - icmp_service: echo reply
-        - service_group: myservicegroup
-      jump_policy: policy_to_jump_to (only required if action=jump)
-      vpn_policy: vpn_to_use (only required if action=use_vpn)
+        - service: any
+      service:
+        - tcp_service: 
+            - HTTP
+            - HTTPS
+        - udp_service: DNS (UDP)
+        - service_group: mysvcgrp
+      logging:
+        log_level: stored
+        connection_closing: on
+        log_accounting: on
+        application_logging: on
+        user_logging: on
+      inspection_options:
+        deep_inspection: on
+        file_filtering: default
+      connection_options:
+        connection_tracking: normal
+        idle_timeout: 20
+        synchronize: on
+        enforce_tcp_mss:
+            min: 1400
+            max: 1450
       blacklist_target: engine_to_apply_bl (only required if action=apply_blacklist)
-      deep_inspection: on/off (only for allow/continue/use vpn)
-      file_filtering: on/off (only for allow/continue/use vpn)
-      connection_tracking: off/normal/strict/loose (only for allow/continue/use vpn)
-      pos: 1
+      position: 1
 
   

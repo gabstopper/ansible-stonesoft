@@ -68,7 +68,7 @@ Options
     <td>none</td>
     <td></td>
 	<td>
-        <p>Source elements to add to the rule. Elements need to specify the type of element to add. If source is not provided, the rule source cell will be set to none and the rule will be disabled.</p>
+        <p>Source elements to add to the rule. Elements need to specify the type of element to add. If source is not provided, the rule source cell will be set to none and the rule will effectively be disabled.</p>
 	</td>
 	</tr>
     </td>

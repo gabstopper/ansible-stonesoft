@@ -18,12 +18,14 @@ description:
   - Each element type currently supported in this module is documented in the example
     playbook. Each network element type will have a minimum number of arguments
     that is required to create the element if it does not exist. Network elements
-    supported by this module have their constructors documented at
+    supported by this module have their `create` constructors documented at
     U(http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements). This module
     uses a 'get or create' logic, therefore it is not possible to create the same element
     twice, instead if it exists, it will be returned. It also means this module can be run
     multiple times with only slight modifications to the playbook. This is useful when an
     error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
+    For groups, you can reference a member by name which will require it to exist, or you
+    can also specify the required options and create the element if it doesn't exist.
 
 version_added: '2.5'
 
@@ -208,6 +210,7 @@ EXAMPLES = '''
         - network:
             name: mynetwork
             ipv4_network: 1.1.1.0/24
+            ipv6_network: fc00::/7
             comment: created by dlepage
         - address_range:
             name: myrange
@@ -249,38 +252,65 @@ elements:
     type: list
     sample: [
         {
-            "name": "myhost2", 
+            "address": "3.3.3.3", 
+            "comment": null, 
+            "ipv6_address": null, 
+            "name": "myhost", 
+            "secondary": [], 
             "type": "host"
         }, 
         {
-            "name": "mynetwork2", 
+            "comment": "created by dlepage", 
+            "ipv4_network": "3.3.3.0/24", 
+            "ipv6_network": "fc00::/7", 
+            "name": "mynetwork_ipv6", 
             "type": "network"
         }, 
         {
+            "comment": null, 
+            "ip_range": "1.1.1.1-1.1.1.10", 
             "name": "myrange", 
             "type": "address_range"
         }, 
         {
+            "comment": null, 
             "name": "myzone", 
             "type": "interface_zone"
         }, 
         {
+            "comment": null, 
             "name": "google.com", 
             "type": "domain_name"
         }, 
         {
-            "name": "myrouter2", 
+            "address": "172.18.1.254", 
+            "comment": null, 
+            "ipv6_address": "2003:dead:beef:4dad:23:46:bb:101", 
+            "name": "myrouter", 
+            "secondary": [
+                "172.18.1.253"
+            ], 
             "type": "router"
         }, 
         {
+            "comment": null, 
+            "iplist": null, 
             "name": "mylist2", 
             "type": "ip_list"
-        }, 
+        },
         {
+            "comment": null, 
+            "members": [
+                "http://172.18.1.151:8082/6.4/elements/host/672"
+            ], 
             "name": "group_referencing_existing_elements", 
             "type": "group"
         }, 
         {
+            "comment": null, 
+            "members": [
+                "http://172.18.1.151:8082/6.4/elements/host/705"
+            ], 
             "name": "group_and_create_elements", 
             "type": "group"
         }
@@ -290,8 +320,8 @@ elements:
 import traceback
 from ansible.module_utils.stonesoft_util import (
     StonesoftModuleBase,
-    is_element_valid,
     element_type_dict,
+    element_dict_from_obj,
     get_or_create_element)
 
 
@@ -313,9 +343,10 @@ class NetworkElement(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
+            state=[],
             elements=[]
         )
-        super(NetworkElement, self).__init__(self.module_args)
+        super(NetworkElement, self).__init__(self.module_args, supports_check_mode=True)
 
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
@@ -326,24 +357,27 @@ class NetworkElement(StonesoftModuleBase):
         
         # Validate elements before proceeding
         for element in self.elements:
-            invalid = is_element_valid(element, ELEMENT_TYPES)
-            if invalid:
-                self.fail(msg=invalid)
-
+            self.is_element_valid(element, ELEMENT_TYPES)
+        
         changed = False
         try:
             if state == 'present':
                 for element in self.elements:
                     for typeof, _ in element.items():
                         if 'group' in typeof:
-                            result = self.create_group(element, ELEMENT_TYPES)
+                            result = self.update_group(element, ELEMENT_TYPES)
                         else:
-                            result = get_or_create_element(element, ELEMENT_TYPES)
-                    
-                        changed = True
+                            result = get_or_create_element(
+                                element, ELEMENT_TYPES, check_mode=self.check_mode)
+                        
+                        if self.check_mode:
+                            if result is not None:
+                                self.results['state'].append(result)
+                        else:            
+                            changed = True
     
-                        self.results['elements'].append(
-                            {'name': result.name, 'type': result.typeof})
+                            self.results['elements'].append(
+                                element_dict_from_obj(result, ELEMENT_TYPES))
                     
             elif state == 'absent':
                 pass
@@ -354,7 +388,7 @@ class NetworkElement(StonesoftModuleBase):
         self.results['changed'] = changed
         return self.results
     
-    def create_group(self, group_dict, type_dict):
+    def update_group(self, group_dict, type_dict):
         """
         Process a group and it's members (if any). Each group member can
         be referenced by name only, or they can be created like a normal
@@ -367,10 +401,18 @@ class NetworkElement(StonesoftModuleBase):
         g = group_dict.get('group')
         if g.get('members'):
             for member in g['members']:
-                members.append(get_or_create_element(member, type_dict).href)
-        
+                m = get_or_create_element(member, type_dict, check_mode=self.check_mode)
+                if self.check_mode:
+                    if m is not None:
+                        members.append(m)
+                else:
+                    members.append(m.href)
+                
         group_dict['group']['members'] = members
-        result = get_or_create_element(group_dict, type_dict)
+        result = get_or_create_element(group_dict, type_dict, check_mode=self.check_mode)
+        if self.check_mode:
+            if result is None and members:
+                return group_dict
         return result
 
 

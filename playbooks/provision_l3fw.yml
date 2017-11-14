@@ -35,15 +35,15 @@
         address: 20.20.20.1
         network_value: 20.20.20.0/24
       notify:
-        - Upload policy
-  
+      - Upload policy
+
     - name: dump test output
       debug:
         msg: '{{ result }}'
-
+    
   handlers:
     - name: Upload policy
-      policy_deploy:
+      policy_push:
         name: '{{ firewall }}'
         policy: fwpolicy
         wait_for_finish: yes

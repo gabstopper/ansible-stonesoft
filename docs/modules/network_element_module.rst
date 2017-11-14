@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Each element type currently supported in this module is documented in the example playbook. Each network element type will have a minimum number of arguments that is required to create the element if it does not exist. Network elements supported by this module have their constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
+* Each element type currently supported in this module is documented in the example playbook. Each network element type will have a minimum number of arguments that is required to create the element if it does not exist. Network elements supported by this module have their constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, you can reference a member by name which will require it to exist, or you can also specify the required options and create the element if it doesn't exist.
 
 
 
@@ -287,6 +287,7 @@ Examples
             - network:
                 name: mynetwork
                 ipv4_network: 1.1.1.0/24
+                ipv6_network: fc00::/7
                 comment: created by dlepage
             - address_range:
                 name: myrange
@@ -314,7 +315,7 @@ Examples
                   - host: 
                       name: grace
             - group:
-                name: group_and_create_elements
+                name: group_and_create_elements_that_dont_exist
                 members:
                   - host:
                       name: newhost

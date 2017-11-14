@@ -120,7 +120,6 @@ class CategoryFacts(StonesoftModuleBase):
                 categories=[]
             )
         )
-        
         super(CategoryFacts, self).__init__({}, is_fact=True)
 
     def exec_module(self, **kwargs):

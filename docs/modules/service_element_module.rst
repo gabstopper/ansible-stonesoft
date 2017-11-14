@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Each service type currently supported in this module is documented in the example playbook. Each service element type will have a minimum number of arguments that is required to create the element if it does not exist. Service elements supported by this module have their constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
+* Each service type currently supported in this module is documented in the example playbook. Each service element type will have a minimum number of arguments that is required to create the element if it does not exist. Service elements supported by this module have their `create` constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, you can reference a member by name which will require it to exist, or you can also specify the required options and create the element if it doesn't exist.
 
 
 

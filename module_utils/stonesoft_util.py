@@ -6,7 +6,6 @@ server.
 import inspect
 import traceback
 from ansible.module_utils.basic import AnsibleModule
-from smc.elements.service import ICMPService, ICMPIPv6Service
 
 
 try:
@@ -14,6 +13,7 @@ try:
     import smc.elements.network as network
     import smc.elements.group as group
     import smc.elements.service as service
+    from smc.core.engine import Engine
     from smc.base.collection import Search
     from smc.elements.other import Category
     from smc.api.exceptions import ConfigLoadError, SMCException
@@ -53,7 +53,8 @@ def ro_element_type_dict():
     types = dict(
         alias=dict(type=network.Alias),
         country=dict(type=network.Country),
-        expression=dict(type=network.Expression))
+        expression=dict(type=network.Expression),
+        engine=dict(type=Engine))
 
     for t in types.keys():
         clazz = types.get(t)['type']
@@ -71,8 +72,8 @@ def service_type_dict():
         udp_service=dict(type=service.UDPService),
         ip_service=dict(type=service.IPService),
         ethernet_service=dict(type=service.EthernetService),
-        icmp_service=dict(type=ICMPService),
-        icmp_ipv6_service=dict(type=ICMPIPv6Service),
+        icmp_service=dict(type=service.ICMPService),
+        icmp_ipv6_service=dict(type=service.ICMPIPv6Service),
         service_group=dict(type=group.ServiceGroup),
         tcp_service_group=dict(type=group.TCPServiceGroup),
         udp_service_group=dict(type=group.UDPServiceGroup),
@@ -103,27 +104,15 @@ def ro_service_type_dict():
     
     return types
 
-    
-SEARCH_HINTS = dict(
-    host='address',
-    router='address',
-    network='ipv4_network',
-    address_range='ip_range')
 
-
-def get_or_create_element(element, type_dict):
+def get_or_create_element(element, type_dict, hint=None, check_mode=False):
     """
-    Create or get the element specified. The strategy is to look at the
-    element type and check the default arguments. Some elements require
-    only name and comment to create. Others require specific arguments.
-    If only name and comment is provided and the constructor requires
-    additional args, try to fetch the element, otherwise call
-    get_or_create. If the constructor only requires name and comment,
-    these will also call get_or_create.
+    Create or get the element specified. Set check_mode to only
+    perform a get against the element versus an actual action.
     
-    :param dict element: dict of the element with single key representing
-        the typeof element, value is the optional arguments for create.
-    :param dict type_dict: map of element type to class and attributes
+    :param dict element: element dict, key is typeof element and values
+    :param dict type_dict: type dict mappings to get class mapping
+    :param str hint: element attribute to use when finding the element
     :raises CreateElementFailed: may fail due to duplicate name or other
     :raises ElementNotFound: if fetch and element doesn't exist
     :return: The result as type Element
@@ -131,77 +120,60 @@ def get_or_create_element(element, type_dict):
     for typeof, values in element.items():
         type_dict = type_dict.get(typeof)
         
-        attr_names = type_dict.get('attr', []) # Constructor args
-        provided_args = set(values)
+        # An optional filter key specifies a valid attribute of
+        # the element that is used to refine the search so the
+        # match is done on that exact attribute. This is generally
+        # useful for networks and address ranges due to how the SMC
+        # interprets / or - when searching attributes. This changes
+        # the query to use the attribute for the top level search to
+        # get matches, then gets the elements attributes for the exact
+        # match. Without filter_key, only the name value is searched.
+        filter_key = {hint: values.get(hint)} if hint in values else None
+        raise_exc = False if check_mode else True
         
-        hint = SEARCH_HINTS.get(typeof)
-        filter_key = {hint: values.get(hint)} if hint else None
-
-        # Args satisfy a call to create
-        if any(arg for arg in provided_args if arg not in ('name', 'comment')):
+        if check_mode:
+            result = type_dict['type'].get(values.get('name'), raise_exc)
+            if result is None:
+                return dict(
+                    name=values.get('name'),
+                    type=typeof,
+                    msg='Specified element does not exist')
+            return None
+        else:
             result = type_dict['type'].get_or_create(filter_key=filter_key, **values)
-        else:
-            # Only name and/or comment was provided.
-            if any(x for x in attr_names if x not in ('name', 'comment')):
-                # Other arguments are required, so we can only try to get
-                result = type_dict['type'].get(values.get('name'))
-            else:
-                # Constructor only requires name, comment so get or create
-                result = type_dict['type'].get_or_create(filter_key=filter_key, **values)
-             
+        
         return result
+                
 
-
-def is_element_valid(element, type_dict, check_required=True):
+def update_or_create_element(element, type_dict, check_mode=False):
     """
-    Are all provided arguments valid for this element type.
-    Name and comment are valid for all. Key of dict should be
-    the typeof element. Value is the data for the element.
+    Update or create the element specified. Set check_mode to only
+    perform a get against the element versus an actual action.
     
-    :param dict element: dict of element
-    :param dict type_dict: provide a type dict to specify which elements
-        are supported for the given context of the call. Default type
-        dict examples are defined in stonesoft_util.
-    :param bool check_required: check required validates that at least
-        one of the required arguments are provided. Skip this when
-        checking group members that may only provide the 'name' field
-        to reference a member to be added to a group versus creating the
-        member.
-    :return: error message on fail, otherwise None
+    :param dict element: element dict, key is typeof element and values
+    :param dict type_dict: type dict mappings to get class mapping
+    :param str hint: element attribute to use when finding the element
+    :raises CreateElementFailed: may fail due to duplicate name or other
+    :raises ElementNotFound: if fetch and element doesn't exist
+    :return: The result as type Element
     """
-    for key, values in element.items():
-        # Key is type, values are dict of values
-        if key not in type_dict:
-            return 'Unsupported element type: {} provided. Valid options {}'\
-                .format(key, type_dict.keys())
+    for typeof, values in element.items():
+        type_dict = type_dict.get(typeof)
         
-        valid_values = type_dict.get(key).get('attr', [])
-        provided_values = values.keys() if isinstance(values, dict) else []
-        if provided_values:
-            # Name is always required
-            if 'name' not in provided_values:
-                return 'Entry: {}, missing required name field'.format(key)
-        
-            for value in provided_values:
-                if value not in valid_values:
-                    return 'Entry with name {} has an invalid field: {}. '\
-                        'Valid values: {} '.format(values['name'], value, valid_values)
+        raise_exc = False if check_mode else True
             
-            if check_required:
-                required_arg = [arg for arg in valid_values if arg not in ('name', 'comment')]
-                if required_arg: #Something other than name and comment fields
-                    if not any(arg for arg in required_arg if arg in provided_values):
-                        return 'Missing a required argument for {} entry, Valid values: {}'\
-                            .format(values['name'], valid_values)
-            
-            if 'group' in element and values.get('members', []):
-                for element in values['members']:
-                    invalid = is_element_valid(element, type_dict, check_required=False)
-                    if invalid:
-                        return 'Invalid group member. {}'.format(invalid)
+        if check_mode:
+            result = type_dict['type'].get(values.get('name'), raise_exc)
+            if result is None:
+                return dict(
+                    name=values.get('name'),
+                    type=typeof,
+                    msg='Specified element does not exist')
+            return None
         else:
-            return 'Entry type: {} has no values. Valid values: {} '\
-                .format(key, valid_values)
+            result = type_dict['type'].update_or_create(**values)   
+        
+        return result
 
 
 def element_dict_from_obj(element, type_dict):
@@ -214,11 +186,10 @@ def element_dict_from_obj(element, type_dict):
     """
     known = type_dict.get(element.typeof)
     if known:
-        elem = {}
+        elem = {'type': element.typeof}
         for attribute in known.get('attr', []):
             elem[attribute] = getattr(element, attribute, None)
         return elem
-    
     else:
         return dict(name=element.name, type=element.typeof)
 
@@ -271,6 +242,7 @@ class StonesoftModuleBase(object):
         if not HAS_LIB:
             self.module.fail_json(msg='Could not import smc-python required by this module')
         
+        self.check_mode = self.module.check_mode
         self.connect(self.module.params)
             
         result = self.exec_module(**self.module.params)
@@ -333,8 +305,7 @@ class StonesoftModuleBase(object):
                 .context_filter(self.element)\
                 .filter(self.filter,
                         exact_match=self.exact_match,
-                        case_sensitive=self.case_sensitive)
-                    
+                        case_sensitive=self.case_sensitive)            
         else:
             # Find all
             iterator = Search.objects.context_filter(self.element)
@@ -409,6 +380,59 @@ class StonesoftModuleBase(object):
                 category.remove_element(element)
                 changed = True
         return changed
+    
+    def is_element_valid(self, element, type_dict, check_required=True):
+        """
+        Used by modules that want to create an element (network and service).
+        This will check that all provided arguments are valid for this element
+        type. When creating an element, name and comment are valid for all.
+        Key of dict should be the valid typeof element. Value is the data
+        for the element.
+        
+        :param dict element: dict of element, key is typeof
+        :param dict type_dict: provide a type dict to specify which elements
+            are supported for the given context of the call. Default type
+            dict examples are defined in stonesoft_util.
+        :param bool check_required: check required validates that at least
+            one of the required arguments are provided. Skip this when
+            checking group members that may only provide the 'name' field
+            to reference a member to be added to a group versus creating the
+            member.
+        :return: error message on fail, otherwise None
+        """
+        for key, values in element.items():
+            if key not in type_dict:
+                self.fail(msg='Unsupported element type: {} provided'.format(key))
+    
+            valid_values = type_dict.get(key).get('attr', [])
+            # Verify that all attributes are supported for this element type
+            provided_values = values.keys() if isinstance(values, dict) else []
+            if provided_values:
+                # Name is always required
+                if 'name' not in provided_values:
+                    self.fail(msg='Entry: {}, missing required name field'.format(key))
+            
+                for value in provided_values:
+                    if value not in valid_values:
+                        self.fail(msg='Entry type: {} with name {} has an invalid field: {}. '\
+                            'Valid values: {} '.format(key, values['name'], value, valid_values))
+                
+                if check_required:
+                    required_arg = [arg for arg in valid_values if arg not in ('name', 'comment')]
+                    if required_arg: #Something other than name and comment fields
+                        if not any(arg for arg in required_arg if arg in provided_values):
+                            self.fail(msg='Missing a required argument for {} entry: {}, Valid values: {}'\
+                                .format(key, values['name'], valid_values))
+                
+                if 'group' in element and values.get('members', []):
+                    for element in values['members']:
+                        if not isinstance(element, dict):
+                            return 'Group {} has a member: {} with an invalid format. Members must be '\
+                                'of type dict.'.format(values['name'], element)
+                        return self.is_element_valid(element, type_dict, check_required=False)
+            else:
+                self.fail(msg='Entry type: {} has no values. Valid values: {} '\
+                    .format(key, valid_values))
     
     def fail(self, msg, **kwargs):
         """

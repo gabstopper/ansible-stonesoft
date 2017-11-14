@@ -5,7 +5,7 @@
   - name: add a layer 3 interface to a single fw
     network_element_facts:
       element: host
-      filter: 1.1.1.1
+      filter: 3.3.3
       #limit: 2
       #filter: Microsoft Yammer Servers 2
       #exact_match: no

@@ -18,12 +18,14 @@ description:
     - Each service type currently supported in this module is documented in the example
       playbook. Each service element type will have a minimum number of arguments
       that is required to create the element if it does not exist. Service elements
-      supported by this module have their constructors documented at
+      supported by this module have their `create` constructors documented at
       U(http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements).
       This module uses a 'get or create' logic, therefore it is not possible to create the same
       element twice, instead if it exists, it will be returned. It also means this module can be run
       multiple times with only slight modifications to the playbook. This is useful when an
-      error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. 
+      error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
+      For groups, you can reference a member by name which will require it to exist, or you
+      can also specify the required options and create the element if it doesn't exist.
 
 version_added: '2.5'
 
@@ -304,48 +306,52 @@ elements:
     type: list    
     sample: [
         {
+            "comment": null, 
+            "max_dst_port": null, 
+            "min_dst_port": 8080, 
             "name": "myservice", 
             "type": "tcp_service"
         }, 
         {
+            "comment": null, 
+            "max_dst_port": 8091, 
+            "min_dst_port": 8090, 
             "name": "myudp", 
             "type": "udp_service"
         }, 
         {
+            "comment": "custom EGP service", 
             "name": "new service", 
+            "protocol_number": "8", 
             "type": "ip_service"
         }, 
         {
+            "comment": null, 
+            "ethertype": null, 
+            "frame_type": "eth2", 
             "name": "myethernet service", 
             "type": "ethernet_service"
         }, 
         {
+            "comment": "custom icmp services", 
+            "icmp_code": 7, 
+            "icmp_type": 3, 
             "name": "custom icmp", 
             "type": "icmp_service"
         }, 
         {
+            "comment": "Neighbor Advertisement Message", 
+            "icmp_type": 139, 
             "name": "my v6 icmp", 
             "type": "icmp_ipv6_service"
         }, 
         {
+            "comment": null, 
+            "members": [
+                "http://172.18.1.151:8082/6.4/elements/tcp_service/611"
+            ], 
             "name": "mygroup", 
             "type": "tcp_service_group"
-        }, 
-        {
-            "name": "mysvcgrp", 
-            "type": "service_group"
-        }, 
-        {
-            "name": "myudp2000", 
-            "type": "udp_service_group"
-        }, 
-        {
-            "name": "myicmp", 
-            "type": "icmp_service_group"
-        }, 
-        {
-            "name": "myipservices", 
-            "type": "ip_service_group"
         }
     ]
 '''
@@ -353,8 +359,8 @@ elements:
 import traceback
 from ansible.module_utils.stonesoft_util import (
     StonesoftModuleBase,
-    is_element_valid,
     service_type_dict,
+    element_dict_from_obj,
     get_or_create_element)
 
 
@@ -376,9 +382,10 @@ class ServiceElement(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
+            state=[],
             elements=[]
         )
-        super(ServiceElement, self).__init__(self.module_args)
+        super(ServiceElement, self).__init__(self.module_args, supports_check_mode=True)
 
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
@@ -389,25 +396,28 @@ class ServiceElement(StonesoftModuleBase):
         
         # Validate elements before proceeding
         for element in self.elements:
-            invalid = is_element_valid(element, ELEMENT_TYPES)
-            if invalid:
-                self.fail(msg=invalid)
-
+            self.is_element_valid(element, ELEMENT_TYPES)
+    
         changed = False
         try:
             if state == 'present':
                 for element in self.elements:
                     for typeof, _ in element.items():
                         if 'group' in typeof:
-                            result = self.create_group(element, ELEMENT_TYPES)
+                            result = self.update_group(element, ELEMENT_TYPES)
                         else:
-                            result = get_or_create_element(element, ELEMENT_TYPES)
+                            result = get_or_create_element(
+                                element, ELEMENT_TYPES, check_mode=self.check_mode)
                     
-                        changed = True
+                        if self.check_mode:
+                            if result is not None:
+                                self.results['state'].append(result)
+                        else:            
+                            changed = True
     
-                        self.results['elements'].append(
-                            {'name': result.name, 'type': result.typeof})
-                    
+                            self.results['elements'].append(
+                                element_dict_from_obj(result, ELEMENT_TYPES))
+
             elif state == 'absent':
                 pass
 
@@ -417,7 +427,7 @@ class ServiceElement(StonesoftModuleBase):
         self.results['changed'] = changed
         return self.results
     
-    def create_group(self, group_dict, type_dict):
+    def update_group(self, group_dict, type_dict):
         """
         Process a group and it's members (if any). Each group member can
         be referenced by name only, or they can be created like a normal
@@ -431,10 +441,18 @@ class ServiceElement(StonesoftModuleBase):
         g = group_dict.get(group_key)
         if g.get('members'):
             for member in g['members']:
-                members.append(get_or_create_element(member, type_dict).href)
-        
+                m = get_or_create_element(member, type_dict, check_mode=self.check_mode)
+                if self.check_mode:
+                    if m is not None:
+                        members.append(m)
+                else:
+                    members.append(m.href)
+    
         group_dict[group_key]['members'] = members
-        result = get_or_create_element(group_dict, type_dict)
+        result = get_or_create_element(group_dict, type_dict, check_mode=self.check_mode)
+        if self.check_mode:
+            if result is None and members:
+                return group_dict
         return result
 
 def main():
