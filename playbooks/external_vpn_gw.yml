@@ -1,13 +1,17 @@
-- name: Create an external gateway playbook
+- name: External Gateways are used as 3rd party VPN definitions
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Create an external gateway
+  - name: Create a static IP based external gateway
+    register: result
     external_gateway:
       name: myremotevpn
-      sites:
-        - 1.1.1.0/24
-      endpoint:
+      vpn_site:
+        - name: site-a
+          site_element:
+            - 2.2.2.0/24
+            - 3.3.3.0/24
+      external_endpoint:
         - name: endpoint1
           address: 33.33.33.40
           force_nat_t: no
@@ -17,5 +21,85 @@
           force_nat_t: yes
           balancing_mode: active
       tags: footag
+
+  - assert:
+      that:
+        - item.address == "33.33.33.40" or item.address == "33.33.33.35"
+        - result.state.vpn_site|length == 1
+        - result.state.vpn_site[0].site_element|length == 2
+    with_items: '{{ result.state.external_endpoint }}'
+
+  - name: Delete an external endpoint from the GW
+    register: result
+    external_gateway:
+      name: myremotevpn
+      external_endpoint:
+        - name: endpoint1
+      state: absent
+  
+  - assert:
+      that:
+        - item.address == "33.33.33.35"
+        - result.state.external_endpoint|length == 1
+    with_items: '{{ result.state.external_endpoint }}'
+  
+  - name: Delete a VPN site from an external gateway
+    register: result
+    external_gateway:
+      name: myremotevpn
+      vpn_site:
+        - name: site-a
+          site_element:
+            - 2.2.2.0/24
+      state: absent
+  
+  - assert:
+      that:
+        - result.state.vpn_site[0].site_element|length == 1
+  
+  - name: Create a dynamic IP based external gateway
+    register: result
+    external_gateway:
+      name: mydynamicgw
+      vpn_site:
+        - name: dynamicsite
+          site_element:
+            - 192.168.5.0/24
+            - 192.168.6.0/24
+            - 192.168.7.0/24
+      external_endpoint:
+        - name: mydynamicendpoint
+          dynamic: yes
+          ike_phase1_id_type: 1
+          ike_phasee1_id_value: a@a.com
+      tags: AWS
+  
+  - assert:
+      that:
+        - item.name == "mydynamicendpoint" and item.dynamic
+        - result.state.vpn_site[0].site_element|length == 3
+    with_items: '{{ result.state.external_endpoint }}'
+
+  - name: Add a new site to existing external GW
+    register: result
+    external_gateway:
+      name: mydynamicgw
+      vpn_site:
+        - name: dynamicsite
+          site_element:
+            - 192.168.8.0/24
+  
+  - assert:
+      that:
+        - '{{ result.state.vpn_site[0].site_element|length == 4 }}'
+  
+  - name: Delete the external GW
+    external_gateway:
+      name: '{{ item }}'
+      state: absent
+    with_items:
+      - mydynamicgw
+      - myremotevpn
+
       
       

@@ -16,4 +16,24 @@ When the ansible client is running the package locally (remote from the SMC), se
   
 If you want to run the playbooks remotely from the SMC but have the execution happen remotely, you will first need to ensure that the `smc-python` dependency library has been installed.
 
+API Logging of playbook run
+---------------------------
 
+You can enable logging of smc-python API calls to file for a playbook run by adding the `smc_logging`
+parameter to a playbook. The logging level is a valid int value per the standard python logging module:
+
+.. code-block:: yaml
+
+  - name: Get group to analyze members
+    register: result
+    network_element_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      element: group
+      filter: mygroup
+      exact_match: yes
+      expand:
+        - group
+ 
+This will provide additional visibility if an error should occur from the smc-python library to SMC.

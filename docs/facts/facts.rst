@@ -39,6 +39,9 @@ Where:
 
 **limit**: Limit the number of results to return
 
+Some modules may also support the **expand** option which can be used to expand attributes that are returned and only have an href
+as value. Each fact module that supports expand also has a list of supported attributes that can be expanded.
+
 .. note:: Best effort is made to keep this interface consistent for all fact 
   modules, however it is advised to check the module documentation to verify additional settings that may be supported.
 
@@ -94,11 +97,12 @@ Using a filter will return the specific drill down data for any matches found, f
           "23.23.23.25"
       ], 
       "type": "host"
-      }]
+      }
+  ]
 
 Notice that in this filter the elements `name` was specified. There may be cases where you don't have the name and instead want all entries with a given value. For example, show me all hosts with an IP address of '1.1.1.1':
 
-Playbook example:
+We can just switch the filter to the specific IP address we are looking for to get those results:
 
 .. code::
 
@@ -107,7 +111,7 @@ Playbook example:
       element: host
       filter: 1.1.1.1
 
-We can just switch the filter to the specific IP address we are looking for to get those results:
+Example output:
 
 .. code::
 
@@ -129,8 +133,53 @@ We can just switch the filter to the specific IP address we are looking for to g
       "name": "foohost", 
       "secondary": [], 
       "type": "host"
-      }]
+      }
+  ]
 
+An example of retrieving a group and using the `expand` attribute to display all of the group members:
+
+.. code::
+
+  - name: Retrieve a specific group and expand all members
+    network_element_facts:
+      element: group
+      filter: foogroup
+      expand:
+        - group
+        
+And the results which show expanded group members:
+
+.. code::
+
+  "elements": [
+    {
+        "comment": null, 
+        "members": [
+		{
+	        "comment": null, 
+	        "ipv4_network": "6.6.6.0/24", 
+	        "ipv6_network": null, 
+	        "name": "another_net", 
+	        "type": "network"
+	        }, 
+	        {
+	        "comment": null, 
+	        "name": "domain.com", 
+	        "type": "domain_name"
+	        }, 
+	        {
+	        "comment": null, 
+	        "ipv4_network": "12.12.12.0/24", 
+	        "ipv6_network": null, 
+	        "name": "anothernet", 
+	        "type": "network"
+		}], 
+    	"name": "foogroup", 
+    	"type": "group"
+    }
+  ]
+  
+        
 The same methodology applies to other network elements as well.
 
 To view common attributes of network elements, see: `Elements <http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements>`_.

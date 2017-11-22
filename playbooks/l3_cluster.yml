@@ -3,7 +3,7 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: layer 3 cluster with 3 members
+  - name: Create a layer 3 FW cluster with 3 members
     l3fw_cluster:
       name: mycluster
       cluster_vip: 1.1.1.1
@@ -29,4 +29,9 @@
       enable_gti: yes
       tags:
         - footag
+
+  - name: Delete a NGFW Cluster
+    l3fw_cluster:
+      name: mycluster
+      state: absent
       

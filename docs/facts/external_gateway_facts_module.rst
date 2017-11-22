@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* An external vpn gateway is a non-SMC managed endpoint used for terminating a VPN. It defines the remote side networks and settings specific to handling VPN.
+* An external vpn gateway is a non-SMC managed endpoint used for terminating a VPN. It defines the remote side networks and settings specific to handling VPN. Use *expand* to specify attributes that should be resolved to raw data instead of href.
 
 
 
@@ -62,6 +62,18 @@ Options
     <td></td>
 	<td>
         <p>Whether to do an exact match on the filter specified</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>vpn_site</li><li>gateway_profile</li></ul></td>
+	<td>
+        <p>Expand sub elements that only provide href data. Specify a list of external gateways by name</p>
 	</td>
 	</tr>
     </td>
@@ -176,9 +188,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -210,12 +270,23 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Return all external gateways
-      vpn_external_gw_facts:
-    
-    - name: Return external gateway configuration using filter
-      vpn_external_gw_facts:
-        filter: extgw      
+    - name: Facts related to external VPN gateways
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Retrieve all external GW's
+        external_gateway_facts:
+      
+      - name: Get a specific external GW details
+        external_gateway_facts:
+          filter: myremotevpn
+      
+      - name: Get a specific external GW, and expand supported attributes
+        external_gateway_facts:
+          filter: myremotevpn
+          expand:
+            - gateway_profile
+            - vpn_site 
 
 Return Values
 -------------
@@ -235,13 +306,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>vpn_gateway</td>
+    <td>external_gateway</td>
     <td>
-        <div>Return policies with 'Layer 3' as filter</div>
+        <div>Example external gateway data</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'external_endpoint': [{'force_nat_t': False, 'name': 'endpoint1 (1.1.1.1)', 'enabled': True, 'balancing_mode': 'active', 'dynamic': False, 'ike_phase1_id_value': None, 'nat_t': True, 'address': '1.1.1.1'}, {'force_nat_t': False, 'name': 'endpoint2', 'enabled': False, 'balancing_mode': 'active', 'dynamic': True, 'ike_phase1_id_value': '1.1.1.1', 'nat_t': True, 'address': None}], 'vpn_sites': [{'values': [{'type': 'network', 'name': 'network-4.4.4.0/24'}, {'type': 'network', 'name': 'network-3.3.3.0/24'}, {'type': 'host', 'name': '172.18.1.254'}], 'name': 'newextgw'}], 'name': 'newextgw', 'tags': ['footag'], 'type': 'external_gateway'}]</td>
+    <td align=center>[{'external_endpoint&quot;': [{'read_only': False, 'udp_encapsulation': False, 'force_nat_t': True, 'name': 'endpoint2', 'enabled': True, 'balancing_mode': 'active', 'dynamic': False, 'system': False, 'nat_t': True, 'address': '33.33.33.35', 'ipsec_vpn': True, 'ike_phase1_id_type': 3}]}, {'gateway_profile': 'http://1.1.1.1:8082/6.4/elements/gateway_profile/3'}, {'name': 'myremotevpn'}, {'read_only': False}, {'system': False}, {'trust_all_cas': True}, {'trusted_certificate_authorities': []}, {'vpn_site': [{'read_only': False, 'site_element': ['http://1.1.1.1:8082/6.4/elements/network/708'], 'system': False, 'name': 'myremotevpn-site', 'gateway': 'http://1.1.1.1:8082/6.4/elements/external_gateway/47'}]}]</td>
     </tr>
     </table>
     </br></br>

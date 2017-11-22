@@ -1,0 +1,21 @@
+- name: Obtain facts about Service Elements
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all Service elements
+    service_element_facts:
+
+  - name: Retrieve only TCP Services
+    service_element_facts:
+      element: tcp_service
+
+  - name: Retrieve only TCP Services with port 8080
+    service_element_facts:
+      element: tcp_service
+      filter: 8080
+
+  - name: Retrieve TCP Service with HTTP in name
+    service_element_facts:
+      element: tcp_service
+      filter: HTTP
+

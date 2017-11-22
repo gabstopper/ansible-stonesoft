@@ -188,9 +188,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -222,25 +270,28 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Find an engine named exactly 've-1' and display details
-      engine_facts:
-        filter: ve-1
-        exact_match: yes
+    - name: Facts about all engines within SMC
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Find all managed engines (IPS, Layer 2, L3FW)
+        engine_facts:
+      
+      - name: Find only Layer 3 FW's
+        engine_facts:
+          element: fw_clusters
+      
+      - name: Find only Layer 2 FW's
+        engine_facts:
+          element: layer2_clusters
     
-    - name: Find firewall disabling case sensitivity (exact_match=no)
-      engine_facts:
-        filter: MyFirewall
-        case_sensitive: no
-    
-    - name: Find firewalls starting with 've', limit to 5 results
-      engine_facts:
-        filter: ve
-        limit: 5
-        case_sensitive: no
-    
-    - name: Retrieve all layer 2 firewalls only
-      engine_facts:
-        element: ips_clusters
+      - name: Find only IPS engines
+        engine_facts:
+          element: ips_clusters
+      
+      - name: Get engine details for 'myfirewall'
+        engine_facts:
+          filter: myfirewall
 
 Return Values
 -------------

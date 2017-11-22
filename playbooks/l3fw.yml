@@ -1,0 +1,50 @@
+- name: creating and deleting layer 3 firewalls
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Create a single layer 3 firewall
+    register: result
+    l3fw:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      name: myfw
+      mgmt_interface: 10
+      interfaces:
+        - interface_id: 0
+          address: 1.1.1.1
+          network_value: 1.1.1.0/24
+          zone_ref: management
+        - interface_id: 10
+          address: 10.10.10.1
+          network_value: 10.10.10.0/24
+          zone_ref: external
+          enable_vpn: yes
+        - interface_id: 11
+        - interface_id: 1000
+          address: 11.11.11.1
+          network_value: 11.11.11.0/24
+          zone_ref: awsvpn
+          type: tunnel_interface 
+      domain_server_address:
+        - 10.0.0.1
+        - 10.0.0.2
+      default_nat: yes
+      enable_antivirus: yes
+      enable_gti: yes
+      enable_sidewinder_proxy: yes
+      tags: 
+        - footag
+
+  # - name: Delete an interface
+  #   l3fw:
+  #     name: myfw
+  #     interfaces:
+  #       - interface_id: 11
+  #     state: absent
+
+  # - name: Delete a NGFW
+  #   l3fw:
+  #     name: myfw
+  #     state: absent
+

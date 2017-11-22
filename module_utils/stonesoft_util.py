@@ -16,7 +16,10 @@ try:
     from smc.core.engine import Engine
     from smc.base.collection import Search
     from smc.elements.other import Category
-    from smc.api.exceptions import ConfigLoadError, SMCException
+    from smc.api.exceptions import (
+        ConfigLoadError,
+        SMCException,
+        ElementNotFound)
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
@@ -105,7 +108,7 @@ def ro_service_type_dict():
     return types
 
 
-def get_or_create_element(element, type_dict, hint=None, check_mode=False):
+def get_or_create(element, type_dict, hint=None, check_mode=False):
     """
     Create or get the element specified. Set check_mode to only
     perform a get against the element versus an actual action.
@@ -129,23 +132,20 @@ def get_or_create_element(element, type_dict, hint=None, check_mode=False):
         # get matches, then gets the elements attributes for the exact
         # match. Without filter_key, only the name value is searched.
         filter_key = {hint: values.get(hint)} if hint in values else None
-        raise_exc = False if check_mode else True
         
         if check_mode:
-            result = type_dict['type'].get(values.get('name'), raise_exc)
+            result = type_dict['type'].get(values.get('name'), raise_exc=False)
             if result is None:
                 return dict(
                     name=values.get('name'),
                     type=typeof,
                     msg='Specified element does not exist')
-            return None
         else:
             result = type_dict['type'].get_or_create(filter_key=filter_key, **values)
-        
-        return result
+            return result
                 
 
-def update_or_create_element(element, type_dict, check_mode=False):
+def update_or_create(element, type_dict, check_mode=False):
     """
     Update or create the element specified. Set check_mode to only
     perform a get against the element versus an actual action.
@@ -160,23 +160,62 @@ def update_or_create_element(element, type_dict, check_mode=False):
     for typeof, values in element.items():
         type_dict = type_dict.get(typeof)
         
-        raise_exc = False if check_mode else True
-            
         if check_mode:
-            result = type_dict['type'].get(values.get('name'), raise_exc)
+            result = type_dict['type'].get(values.get('name'), raise_exc=False)
             if result is None:
                 return dict(
                     name=values.get('name'),
                     type=typeof,
                     msg='Specified element does not exist')
-            return None
         else:
-            result = type_dict['type'].update_or_create(**values)   
+            attr_names = type_dict.get('attr', []) # Constructor args
+            provided_args = set(values)
+                
+            # Guard against calling create for elements that may not exist
+            # and do not have valid `create` constructor arguments
+            if set(attr_names) == set(['name', 'comment']) or \
+                any(arg for arg in provided_args if arg not in ('name',)):
+                
+                result = type_dict['type'].update_or_create(**values)
+            else:
+                result = type_dict['type'].get(values.get('name'))
         
-        return result
+            return result
 
 
-def element_dict_from_obj(element, type_dict):
+def delete_element(element, ignore_if_not_found=True):
+    """
+    Delete an element of any type.
+    
+    :param Element element: the smc api element
+    :param bool ignore_if_not_found: ignore raising an exception when
+        a specified element is not found. This will still be returned
+        for the state result.
+    :raises DeleteElementFailed: failed to delete an element. This is
+        generally thrown when a another configuration area has a
+        dependency on this element (i.e. used in policy, etc).
+    :return: list or None
+    """
+    try:
+        element.delete()
+    except ElementNotFound:
+        if ignore_if_not_found:
+            return dict(
+                name=element.name,
+                type=element.typeof,
+                msg='Element not found, skipping delete')
+    
+
+def format_element(element):
+    """
+    Format a raw json element doc
+    """
+    for key in ('link', 'key'):
+        element.data.pop(key, None)
+    return element.data
+
+
+def element_dict_from_obj(element, type_dict, expand=None):
     """
     Resolve the element to the type and return a dict
     with the values of defined attributes
@@ -184,11 +223,22 @@ def element_dict_from_obj(element, type_dict):
     :param Element element
     :return dict representation of the element
     """
+    expand = expand if expand else []
     known = type_dict.get(element.typeof)
     if known:
         elem = {'type': element.typeof}
         for attribute in known.get('attr', []):
-            elem[attribute] = getattr(element, attribute, None)
+            if 'group' in element.typeof and 'group' in expand:
+                if attribute == 'members':
+                    elem[attribute] = []
+                    for member in element.obtain_members():
+                        m_expand = ['group'] if 'group' in member.typeof else None
+                        elem[attribute].append(
+                            element_dict_from_obj(member, type_dict, m_expand))
+                else:
+                    elem[attribute] = getattr(element, attribute, None)
+            else:        
+                elem[attribute] = getattr(element, attribute, None)
         return elem
     else:
         return dict(name=element.name, type=element.typeof)
@@ -202,7 +252,8 @@ def smc_argument_spec():
         smc_timeout=dict(default=30, type='int'),
         smc_domain=dict(type='str'),
         smc_alt_filepath=dict(type='str'),
-        smc_extra_args=dict(type='dict')
+        smc_extra_args=dict(type='dict'),
+        smc_logging=dict(type='dict')
     )
 
 
@@ -257,6 +308,14 @@ class StonesoftModuleBase(object):
         :param dict params: dict of the SMC credential information
         """
         try:
+            if params.get('smc_logging') is not None:
+                if 'path' not in params['smc_logging']:
+                    self.fail(msg='You must specify a path for SMC logging.')
+        
+                session.set_file_logger(
+                    log_level=params['smc_logging'].get('level', 10),
+                    path=params['smc_logging']['path'])
+                
             if params.get('smc_address') and params.get('smc_api_key'):
                 extra_args = params.get('smc_extra_args')
                 # When connection parameters are defined, alt_filepath is ignored.
@@ -342,6 +401,7 @@ class StonesoftModuleBase(object):
     def fetch_element(self, cls):
         """
         Fetch an element by doing an exact match.
+        Name should be set on self.
         
         :param Element cls: class of type Element
         :return: element or None

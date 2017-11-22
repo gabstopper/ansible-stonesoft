@@ -20,12 +20,15 @@ description:
       that is required to create the element if it does not exist. Service elements
       supported by this module have their `create` constructors documented at
       U(http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements).
-      This module uses a 'get or create' logic, therefore it is not possible to create the same
-      element twice, instead if it exists, it will be returned. It also means this module can be run
-      multiple times with only slight modifications to the playbook. This is useful when an
-      error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run.
-      For groups, you can reference a member by name which will require it to exist, or you
-      can also specify the required options and create the element if it doesn't exist.
+      This module uses a 'update or create' logic, therefore it is not possible to create
+      the same element twice. If the element exists and the attributes provided are 
+      different, the element will be updated before returned. It also means this module can
+      be run multiple times with only slight modifications to the playbook. This is useful
+      when an error is seen with a duplicate name, etc and you must re-adjust the playbook
+      and re-run. For groups, you can reference a member by name which will require it to
+      exist, or you can also specify the required options and create the element if it doesn't
+      exist. If running in check_mode, only fetches will be performed and the state attribute
+      will indicate if an element is not found (i.e. would need to be created).
 
 version_added: '2.5'
 
@@ -108,7 +111,7 @@ options:
               - llc
               - snap
             required: true
-          ethertype:
+          value1:
             description:
               - The hex string code for protocol 
             type: str
@@ -223,6 +226,19 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+  ignore_err_if_not_found:
+    description:
+      - When deleting elements, whether to ignore an error if the element is not found.
+        This is only used when I(state=absent).
+    default: True
+  state:
+    description:
+      - Create or delete flag
+    required: false
+    default: present
+    choices:
+      - present
+      - absent
 
 extends_documentation_fragment:
   - stonesoft
@@ -258,7 +274,7 @@ EXAMPLES = '''
         - ethernet_service:
             name: myethernet service
             frame_type: eth2
-            ethertype: 32828
+            value1: 32828
         - icmp_service:
             name: custom icmp
             icmp_type: 3
@@ -297,11 +313,42 @@ EXAMPLES = '''
             members:
               - ip_service:
                   name: new service
+
+- name: Delete all service elements
+  register: result
+  service_element:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    state: absent
+    elements:
+      - tcp_service_group:
+          - mygroup
+      - service_group:
+          - mysvcgrp
+      - udp_service_group:
+          - myudp2000
+      - icmp_service_group:
+          - myicmp
+      - ip_service_group:
+          - myipservices
+      - tcp_service: 
+          - myservice
+      - udp_service:
+          - myudp
+      - ip_service:
+          - new service
+      - ethernet_service:
+          - 8021q frame
+      - icmp_service:
+          - custom icmp
+      - icmp_ipv6_service:
+          - my v6 icmp
 '''
 
 RETURN = '''
-elements:
-    description: Return from all elements using filter of 10.
+state:
+    description: Current state of service elements
     returned: always
     type: list    
     sample: [
@@ -327,7 +374,7 @@ elements:
         }, 
         {
             "comment": null, 
-            "ethertype": null, 
+            "value1": null, 
             "frame_type": "eth2", 
             "name": "myethernet service", 
             "type": "ethernet_service"
@@ -361,7 +408,8 @@ from ansible.module_utils.stonesoft_util import (
     StonesoftModuleBase,
     service_type_dict,
     element_dict_from_obj,
-    get_or_create_element)
+    update_or_create,
+    delete_element)
 
 
 try:
@@ -375,6 +423,7 @@ class ServiceElement(StonesoftModuleBase):
         
         self.module_args = dict(
             elements=dict(type='list', required=True),
+            ignore_err_if_not_found=dict(type='bool', default=True),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
     
@@ -382,8 +431,7 @@ class ServiceElement(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
-            state=[],
-            elements=[]
+            state=[]
         )
         super(ServiceElement, self).__init__(self.module_args, supports_check_mode=True)
 
@@ -392,37 +440,50 @@ class ServiceElement(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        changed = False
         ELEMENT_TYPES = service_type_dict()
         
-        # Validate elements before proceeding
-        for element in self.elements:
-            self.is_element_valid(element, ELEMENT_TYPES)
-    
-        changed = False
-        try:
-            if state == 'present':
-                for element in self.elements:
-                    for typeof, _ in element.items():
-                        if 'group' in typeof:
-                            result = self.update_group(element, ELEMENT_TYPES)
-                        else:
-                            result = get_or_create_element(
-                                element, ELEMENT_TYPES, check_mode=self.check_mode)
-                    
-                        if self.check_mode:
-                            if result is not None:
-                                self.results['state'].append(result)
-                        else:            
-                            changed = True
-    
-                            self.results['elements'].append(
-                                element_dict_from_obj(result, ELEMENT_TYPES))
+        if state == 'absent':
+            for element in self.elements:
+                for typeof in element:
+                    if typeof not in ELEMENT_TYPES:
+                        self.fail(msg='Element specified is not valid, got: {}, valid: {}'
+                            .format(typeof, ELEMENT_TYPES.keys()))
+                    else:
+                        if not self.check_mode:
+                            for elements in element[typeof]:
+                                result = delete_element(
+                                    ELEMENT_TYPES.get(typeof)['type'](elements), self.ignore_err_if_not_found)
+                                if result:
+                                    self.results['state'].append(result)
+                                else:
+                                    changed = True
+        else:
+            # Validate elements before proceeding
+            for element in self.elements:
+                self.is_element_valid(element, ELEMENT_TYPES)
+        
+            try:
+                if state == 'present':
+                    for element in self.elements:
+                        for typeof, _ in element.items():
+                            if 'group' in typeof:
+                                result = self.update_group(element, ELEMENT_TYPES)
+                            else:
+                                result = update_or_create(
+                                    element, ELEMENT_TYPES, check_mode=self.check_mode)
+                        
+                            if self.check_mode:
+                                if result is not None:
+                                    self.results['state'].append(result)
+                            else:            
+                                changed = True
+        
+                                self.results['state'].append(
+                                    element_dict_from_obj(result, ELEMENT_TYPES))
 
-            elif state == 'absent':
-                pass
-
-        except SMCException as err:
-            self.fail(msg=str(err), exception=traceback.format_exc())
+            except SMCException as err:
+                self.fail(msg=str(err), exception=traceback.format_exc())
         
         self.results['changed'] = changed
         return self.results
@@ -441,7 +502,7 @@ class ServiceElement(StonesoftModuleBase):
         g = group_dict.get(group_key)
         if g.get('members'):
             for member in g['members']:
-                m = get_or_create_element(member, type_dict, check_mode=self.check_mode)
+                m = update_or_create(member, type_dict, check_mode=self.check_mode)
                 if self.check_mode:
                     if m is not None:
                         members.append(m)
@@ -449,7 +510,7 @@ class ServiceElement(StonesoftModuleBase):
                     members.append(m.href)
     
         group_dict[group_key]['members'] = members
-        result = get_or_create_element(group_dict, type_dict, check_mode=self.check_mode)
+        result = update_or_create(group_dict, type_dict, check_mode=self.check_mode)
         if self.check_mode:
             if result is None and members:
                 return group_dict

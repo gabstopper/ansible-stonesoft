@@ -16,9 +16,7 @@ short_description: Create, modify or delete a firewall rule
 description:
   - Firewall rules can be added or removed from either a top level policy
     or a sub-policy. Source/destination and service elements can optionally
-    be created or provided individually or as a list. See examples below. In
-    addition, this module supports check mode. It will still perform get requests
-    to the SMC but will not perform an actual create.
+    be created or provided individually or as a list. See examples for more info.
 
 version_added: '2.5'
 
@@ -58,7 +56,8 @@ from ansible.module_utils.stonesoft_util import (
     ro_element_type_dict,
     service_type_dict,
     ro_service_type_dict,
-    get_or_create_element)
+    get_or_create,
+    format_element)
 
 
 try:
@@ -96,7 +95,14 @@ def check_on_off(value):
     elif value in ('default',):
         return True
     return False
-    
+
+
+def actions():
+    """ 
+    Supported rule actions
+    """
+    return ('allow', 'discard', 'refuse', 'continue', 'jump', 'apply_blacklist',
+            'apply_vpn', 'enforce_vpn', 'forward_vpn')
 
 def connection_tracking_opt():
     """
@@ -157,7 +163,7 @@ def _bool_none(field):
     """
     Enabling, disabling and setting inspection options use 
     True/False/None. This returns None if setting was set
-    to use 'default', otherwise the boolean is valid
+    to use 'default', otherwise the boolean is a valid option.
     """
     if isinstance(field, bool):
         return field
@@ -173,8 +179,7 @@ class FirewallRule(StonesoftModuleBase):
             sub_policy=dict(type='str'),
             source=dict(type='list'),
             destination=dict(type='list'),
-            action=dict(type='str', choices=['allow', 'discard', 'refuse', 'continue',
-                'jump', 'apply_blacklist', 'apply_vpn', 'enforce_vpn', 'forward_vpn']),
+            action=dict(type='str', choices=actions()),
             service=dict(type='list'),
             jump_policy=dict(type='str'),
             vpn_policy=dict(type='str'),
@@ -182,6 +187,7 @@ class FirewallRule(StonesoftModuleBase):
             logging=dict(type='dict'),
             inspection_options=dict(type='dict'),
             connection_options=dict(type='dict'),
+            disable=dict(default=False, type='bool'),
             position=dict(type='str'),
             use_search_hints=dict(default=True, type='bool'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
@@ -201,6 +207,7 @@ class FirewallRule(StonesoftModuleBase):
         self.inspection_options = None
         self.connection_options = None
         self.position = None
+        self.disable = None
         self.use_search_hints = None
         
         mutually_exclusive = [
@@ -315,7 +322,7 @@ class FirewallRule(StonesoftModuleBase):
                 log_options = None if not self.logging else self.logging_options()
                 action = self.action if not (self.inspection_options and self.connection_options) \
                     else self.action_options()
-                    
+                
                 rule = policy.fw_ipv4_access_rules.create(
                     name=self.name,
                     sources=sources,
@@ -324,10 +331,11 @@ class FirewallRule(StonesoftModuleBase):
                     action=action,
                     log_options=log_options,
                     vpn_policy=self.vpn_policy,
-                    sub_policy=self.jump_policy)
+                    sub_policy=self.jump_policy,
+                    is_disabled=self.disable)
                 
-                self.results['state'] = rule.data
-                self.results['changed'] = True
+                self.results['state'] = format_element(rule)
+                changed = True
 
             elif state == 'absent':
                 pass
@@ -449,7 +457,7 @@ class FirewallRule(StonesoftModuleBase):
                         if not filter_key and search_hints:
                             filter_key = search_hints.get(typeof)
                         
-                        result = get_or_create_element(element_dict, type_dict, filter_key, self.check_mode)
+                        result = get_or_create(element_dict, type_dict, filter_key, self.check_mode)
                         if self.check_mode:
                             if result is not None:
                                 self.results['state'].append(result)

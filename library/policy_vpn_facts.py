@@ -90,7 +90,10 @@ policy_vpn:
     ]
 '''
 
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+from ansible.module_utils.six import string_types
+from ansible.module_utils.stonesoft_util import (
+    StonesoftModuleBase,
+    format_element)
 
 
 try:
@@ -99,66 +102,83 @@ except ImportError:
     pass
 
 
-def vpn_dict_from_obj(vpn):
+def to_dict(vpn, expand=None):
     """
-    Characteristics of the policy VPN
+    Flatten the policy VPN
     
-    :param PolicyVPN vpn
+    :param policy_vpn PolicyVPN
+    :return dict
     """
+    expand = expand if expand else []
+    
+    gateway_cache = {} # Cache gateways to reduce repetitive queries
     vpn.open()
-    elem = {
-        'name': vpn.name,
-        'type': vpn.typeof,
-        'comment': getattr(vpn, 'comment', None),
-        'mobile_vpn_topology_mode': getattr(vpn, 'mobile_vpn_topology_mode', None),
-        'nat': getattr(vpn, 'nat', False),
-        'vpn_profile': vpn.vpn_profile.name,
-        'central_gateways': [],
-        'satellite_gateways': [],
-        'gateway_tunnel': [],
-        'tags': []
-    }
+    if 'vpn_profile' in expand:
+        vpn.data['vpn_profile'] = format_element(vpn.vpn_profile)
+
+    central = []
+    for cgw in vpn.central_gateway_node:
+        gateway_cache[cgw.href] = cgw
+        gateway_cache[cgw.gateway.href] = cgw.gateway
+        
+        vpn_site = []
+        for site in cgw.enabled_sites:
+            if cgw.gateway.name in expand:
+                site.data['site_element'] = [format_element(s) for s in site.vpn_site.site_element]
+                vpn_site.append(format_element(site))
+            else:
+                vpn_site.append(format_element(site.vpn_site))
+
+        central.append({'name': cgw.gateway.name, 'type': cgw.gateway.typeof, 'vpn_site': vpn_site})
     
-    for tag in vpn.categories:
-        elem['tags'].append(tag.name)
+    satellite = []
+    for sgw in vpn.satellite_gateway_node:
+        gateway_cache[sgw.href] = sgw
+        gateway_cache[sgw.gateway.href] = sgw.gateway
+        
+        vpn_site = []
+        for site in sgw.enabled_sites:
+            if sgw.gateway.name in expand:
+                site.data['site_element'] = [format_element(s) for s in site.vpn_site.site_element]
+                vpn_site.append(format_element(site))
+            else:
+                vpn_site.append(format_element(site.vpn_site))
+
+        satellite.append({'name': sgw.gateway.name, 'type': sgw.gateway.typeof, 'vpn_site': vpn_site})
     
-    for gw in vpn.central_gateway_node.all():
-        elem['central_gateways'].append(
-            dict(name=gw.name, type=gw.gateway.typeof))
+    gateway_tunnel = []
     
-    for gw in vpn.satellite_gateway_node.all():
-        elem['satellite_gateways'].append(
-            dict(name=gw.name, type=gw.gateway.typeof))
-    
-    # Mapped tunnels
     for tunnel in vpn.tunnels:
         tunnel_map = {}
-        tunnela = tunnel.tunnel_side_a
-        tunnelb = tunnel.tunnel_side_b
         
-        # Gateways
-        gw_tunnela = tunnela.gateway
-        gw_tunnelb = tunnelb.gateway
-        
+        tunnela = gateway_cache.get(tunnel.data.get('gateway_node_1')).gateway
+        tunnelb = gateway_cache.get(tunnel.data.get('gateway_node_2')).gateway
+       
         tunnel_map.update(
-            tunnel_side_a=gw_tunnela.name,
-            tunnel_side_a_type=gw_tunnela.typeof,
-            tunnel_side_b=gw_tunnelb.name,
-            tunnel_side_b_type=gw_tunnelb.typeof,
-            enabled=tunnel.enabled
-        )
-        elem['gateway_tunnel'].append(tunnel_map)
+            tunnel_side_a=tunnela.name,
+            tunnel_side_a_type=tunnela.typeof,
+            tunnel_side_b=tunnelb.name,
+            tunnel_side_b_type=tunnelb.typeof,
+            enabled=tunnel.enabled)
     
+        gateway_tunnel.append(tunnel_map)
+
+    vpn.data.update(central_gateway=central, satellite_gateway=satellite,
+                    gateway_tunnel=gateway_tunnel)       
     vpn.close()
-    return elem
+    return format_element(vpn)
 
 
 class PolicyVPNFacts(StonesoftModuleBase):
     def __init__(self):
         
+        self.module_args = dict(
+            expand=dict(type='list')
+        )
         self.element = 'vpn'
         self.limit = None
         self.filter = None
+        self.expand = None
         self.exact_match = None
         self.case_sensitive = None
         
@@ -167,21 +187,26 @@ class PolicyVPNFacts(StonesoftModuleBase):
                 policy_vpn=[]
             )
         )
-        
-        super(PolicyVPNFacts, self).__init__({}, is_fact=True)
+        super(PolicyVPNFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.expand:
+            for specified in self.expand:
+                if not isinstance(specified, string_types):
+                    self.fail(msg='Expandable attributes should be in string format, got: {}'.format(
+                        type(specified)))
+
         result = self.search_by_type(PolicyVPN)
         # Search by specific element type
         if self.filter:    
-            elements = [vpn_dict_from_obj(element) for element in result]
+            elements = [to_dict(element, self.expand) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         
-        self.results['ansible_facts'] = {'policy_vpn': elements}
+        self.results['ansible_facts']['policy_vpn'] = elements
         return self.results
 
 def main():

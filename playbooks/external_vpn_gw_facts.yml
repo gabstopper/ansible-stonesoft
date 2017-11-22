@@ -1,8 +1,18 @@
-- name: create or delete interfaces
+- name: Facts related to external VPN gateways
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Facts related to external VPN gateways
+  - name: Retrieve all external GW's
     external_gateway_facts:
-      filter: kileyexternal
+  
+  - name: Get a specific external GW details
+    external_gateway_facts:
+      filter: myremotevpn
+  
+  - name: Get a specific external GW, and expand supported attributes
+    external_gateway_facts:
+      filter: myremotevpn
+      expand:
+        - gateway_profile
+        - vpn_site
       

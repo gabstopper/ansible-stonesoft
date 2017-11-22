@@ -10,9 +10,8 @@
       jump_policy: policy_to_jump_to (only required if action=jump)
       vpn_policy: vpn_to_use (only required if action=use_vpn)
       source:
-        - host: foo
+        - host: host-1.1.1.1
           address: 1.1.1.1
-          filter_key: address
         - network: foonetwork
           ipv4_network: 2.2.2.0/24
           comment: foo
@@ -62,6 +61,7 @@
             min: 1400
             max: 1450
       blacklist_target: engine_to_apply_bl (only required if action=apply_blacklist)
+      disable: no
       position: 1
 
   

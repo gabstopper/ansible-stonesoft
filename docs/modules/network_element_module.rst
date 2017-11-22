@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Each element type currently supported in this module is documented in the example playbook. Each network element type will have a minimum number of arguments that is required to create the element if it does not exist. Network elements supported by this module have their constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'get or create' logic, therefore it is not possible to create the same element twice, instead if it exists, it will be returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, you can reference a member by name which will require it to exist, or you can also specify the required options and create the element if it doesn't exist.
+* Each element type currently supported in this module is documented in the example playbook. Each network element type will have a minimum number of arguments that is required to create the element if it does not exist. Network elements supported by this module have their `create` constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'update or create' logic, therefore it is not possible to create the same element twice. If the element exists and the attributes provided are different, the element will be updated before returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, you can reference a member by name which will require it to exist, or you can also specify the required options and create the element if it doesn't exist.
 
 
 
@@ -152,6 +152,18 @@ Options
     </tr>
 
     <tr>
+    <td>ignore_err_if_not_found<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>True</td>
+    <td></td>
+	<td>
+        <p>When deleting elements, whether to ignore an error if the element is not found. This is only used when <em>state=absent</em>.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>smc_address<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -236,9 +248,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -261,6 +321,18 @@ Options
     </td>
     </tr>
 
+    <tr>
+    <td>state<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>present</td>
+    <td><ul><li>present</li><li>absent</li></ul></td>
+	<td>
+        <p>Create or delete flag</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
     </table>
     </br>
 
@@ -270,7 +342,7 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create network elements. Check smc-python documentation for required fields.
+    - name: Create network elements. See smc-python documentation for required fields.
       hosts: localhost
       gather_facts: no
       tasks:
@@ -320,6 +392,32 @@ Examples
                   - host:
                       name: newhost
                       address: 1.1.1.1
+    
+    - name: Delete network elements. Use a list of elements by name
+      network_element:
+        smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
+        state: absent
+        elements:
+          - group:
+              - mygroup
+              - newgroupa
+          - host:
+              - hosta
+              - hostb
+          - network:
+              - networka
+          - address_range:
+              - myrange
+          - interface_zone:
+              - myzone
+          - domain_name:
+              - mydomain.com
+          - router:
+              - myrouter
+          - ip_list:
+              - myiplist
 
 Return Values
 -------------
@@ -339,13 +437,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>elements</td>
+    <td>state</td>
     <td>
-        <div>All elements, no filter</div>
+        <div>Current state of elements</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'type': 'host', 'name': 'myhost2'}, {'type': 'network', 'name': 'mynetwork2'}, {'type': 'address_range', 'name': 'myrange'}, {'type': 'interface_zone', 'name': 'myzone'}, {'type': 'domain_name', 'name': 'google.com'}, {'type': 'router', 'name': 'myrouter2'}, {'type': 'ip_list', 'name': 'mylist2'}, {'type': 'group', 'name': 'group_referencing_existing_elements'}, {'type': 'group', 'name': 'group_and_create_elements'}]</td>
+    <td align=center>[{'comment': None, 'ipv6_address': None, 'name': 'myhost', 'address': '3.3.3.3', 'type': 'host', 'secondary': []}, {'comment': 'created by dlepage', 'ipv6_network': 'fc00::/7', 'ipv4_network': '3.3.3.0/24', 'type': 'network', 'name': 'mynetwork_ipv6'}, {'comment': None, 'type': 'address_range', 'ip_range': '1.1.1.1-1.1.1.10', 'name': 'myrange'}, {'comment': None, 'type': 'interface_zone', 'name': 'myzone'}, {'comment': None, 'type': 'domain_name', 'name': 'google.com'}, {'comment': None, 'ipv6_address': '2003:dead:beef:4dad:23:46:bb:101', 'name': 'myrouter', 'address': '172.18.1.254', 'type': 'router', 'secondary': ['172.18.1.253']}, {'comment': None, 'iplist': None, 'type': 'ip_list', 'name': 'mylist2'}, {'comment': None, 'type': 'group', 'name': 'group_referencing_existing_elements', 'members': ['http://172.18.1.151:8082/6.4/elements/host/672']}, {'comment': None, 'type': 'group', 'name': 'group_and_create_elements', 'members': ['http://172.18.1.151:8082/6.4/elements/host/705']}]</td>
     </tr>
     </table>
     </br></br>

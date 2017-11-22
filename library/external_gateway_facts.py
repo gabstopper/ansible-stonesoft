@@ -17,10 +17,21 @@ short_description: Facts about external VPN gateways
 description:
   - An external vpn gateway is a non-SMC managed endpoint used for
     terminating a VPN. It defines the remote side networks and settings
-    specific to handling VPN.
+    specific to handling VPN. Use I(expand) to specify attributes that
+    should be resolved to raw data instead of href.
 
 version_added: '2.5'
-  
+
+options:
+  expand:
+    description:
+      - Expand sub elements that only provide href data. Specify a list of
+        external gateways by name
+    type: list
+    choices:
+      - vpn_site
+      - gateway_profile
+    
 extends_documentation_fragment:
   - stonesoft
   - stonesoft_facts
@@ -33,63 +44,66 @@ author:
 
 
 EXAMPLES = '''
-- name: Return all external gateways
-  vpn_external_gw_facts:
-
-- name: Return external gateway configuration using filter
-  vpn_external_gw_facts:
-    filter: extgw      
+- name: Facts related to external VPN gateways
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all external GW's
+    external_gateway_facts:
+  
+  - name: Get a specific external GW details
+    external_gateway_facts:
+      filter: myremotevpn
+  
+  - name: Get a specific external GW, and expand supported attributes
+    external_gateway_facts:
+      filter: myremotevpn
+      expand:
+        - gateway_profile
+        - vpn_site 
 '''
 
 
 RETURN = '''
-vpn_gateway:
-    description: Return policies with 'Layer 3' as filter
+external_gateway:
+    description: Example external gateway data 
     returned: always
     type: list
-    sample: [{
-        "comment": null, 
-        "external_endpoint": [{
-            "name": "endpoint1 (1.1.1.1)",
-            "address": "1.1.1.1", 
+    sample: [
+        external_endpoint": [{
+            "address": "33.33.33.35", 
             "balancing_mode": "active", 
             "dynamic": false, 
-            "enabled": true,
-            "ike_phase1_id_value": null,
-            "force_nat_t": false, 
-            "nat_t": true
-        }, 
-        {
-            "name": "endpoint2",
-            "address": null, 
-            "balancing_mode": "active", 
-            "dynamic": true,
-            "enabled": false,
-            "ike_phase1_id_value": "1.1.1.1", 
-            "force_nat_t": false, 
-            "nat_t": true
+            "enabled": true, 
+            "force_nat_t": true, 
+            "ike_phase1_id_type": 3, 
+            "ipsec_vpn": true, 
+            "name": "endpoint2", 
+            "nat_t": true, 
+            "read_only": false, 
+            "system": false, 
+            "udp_encapsulation": false
         }], 
-        "name": "newextgw", 
-        "tags": ["footag"], 
-        "type": "external_gateway", 
-        "vpn_sites": [{
-            "name": "newextgw", 
-            "values": [{
-                "name": "network-4.4.4.0/24", 
-                "type": "network"}, 
-                {
-                "name": "network-3.3.3.0/24", 
-                "type": "network"}, 
-                {
-                "name": "172.18.1.254", 
-                "type": "host"
-                }
-            ]
-        }]
-    }]
+        "gateway_profile": "http://1.1.1.1:8082/6.4/elements/gateway_profile/3", 
+        "name": "myremotevpn", 
+        "read_only": false, 
+        "system": false, 
+        "trust_all_cas": true, 
+        "trusted_certificate_authorities": [], 
+        "vpn_site": [{
+            "gateway": "http://1.1.1.1:8082/6.4/elements/external_gateway/47", 
+            "name": "myremotevpn-site", 
+            "read_only": false, 
+            "site_element": [
+                "http://1.1.1.1:8082/6.4/elements/network/708"
+            ], 
+            "system": false
+        }]]
 '''
 
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+from ansible.module_utils.stonesoft_util import (
+    StonesoftModuleBase,
+    format_element)
 
 
 try:
@@ -97,78 +111,77 @@ try:
 except ImportError:
     pass
 
+       
+def to_dict(external_gw, expand=None):
+    """
+    Flatten the external gateway
+    
+    :param ExternalGateway external_gw
+    :return dict
+    """
+    external_gw.data.update(external_endpoint=
+        [format_element(ep) for ep in external_gw.external_endpoint])
+    
+    expand = expand if expand else []
+    
+    if 'gateway_profile' in expand:
+        external_gw.data['gateway_profile'] = format_element(external_gw.gateway_profile)
+    
+    if 'vpn_site' in expand:
+        vpn_site = []
+        for site in external_gw.vpn_site:
+            site.data['site_element'] = [format_element(s) for s in site.site_element]
+            vpn_site.append(format_element(site))
+        external_gw.data['vpn_site'] = vpn_site
+    else:
+        external_gw.data.update(vpn_site=
+            [format_element(site) for site in external_gw.vpn_site])
 
-def gw_dict_from_obj(element):
-    """
-    Resolve the gateway to the supported types and return a
-    dict with the values of defined attributes
-    
-    :param Element element
-    """
-    elem = {
-        'name': element.name,
-        'type': element.typeof,
-        'comment': getattr(element, 'comment', None),
-        'external_endpoint': [],
-        'vpn_sites': [],
-        'tags': []
-    }
-    
-    for endpoint in element.external_endpoint.all():
-        elem['external_endpoint'].append(
-            dict(name=endpoint.name,
-                 address=getattr(endpoint, 'address', None),
-                 dynamic=getattr(endpoint, 'dynamic', False),
-                 enabled=endpoint.enabled,
-                 nat_t=getattr(endpoint, 'nat_t', False),
-                 force_nat_t=getattr(endpoint, 'force_nat_t', False),
-                 balancing_mode=endpoint.balancing_mode,
-                 ike_phase1_id_value=getattr(endpoint, 'ike_phase1_id_value', None)))
-    
-    for site in element.vpn_site.all():
-        site_list = []
-        for sites in site.site_element:
-            site_list.append(
-                dict(name=sites.name,
-                     type=sites.typeof))
-        
-        elem['vpn_sites'].append(
-            dict(name=site.name, values=site_list))
-        
-    for tag in element.categories:
-        elem['tags'].append(tag.name)
-    
-    return elem
+    return format_element(external_gw)
+
+
+def expandable():
+    return ('vpn_site', 'gateway_profile')
 
 
 class ExternalGWFacts(StonesoftModuleBase):
     def __init__(self):
         
+        self.module_args = dict(
+            expand=dict(type='list')
+        )
         self.element = 'external_gateway'
         self.limit = None
         self.filter = None
+        self.expand = None
         self.exact_match = None
         self.case_sensitive = None
         
         self.results = dict(
             ansible_facts=dict(
-                vpn_gateway=[]
+                external_gateway=[]
             )
         )
-        super(ExternalGWFacts, self).__init__({}, is_fact=True)
+        super(ExternalGWFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.expand:
+            for specified in self.expand:
+                if specified not in expandable():
+                    self.fail(msg='Expandable attributes: {}, got: {}'.format(
+                        expandable(), specified))
+                    
         result = self.search_by_type(ExternalGateway)
         # Search by specific element type
         if self.filter:    
-            elements = [gw_dict_from_obj(element) for element in result]
+            elements = [to_dict(element, self.expand) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         
-        self.results['ansible_facts'] = {'vpn_gateway': elements}
+        self.results['ansible_facts']['external_gateway'] = elements
         return self.results
 
 def main():

@@ -40,6 +40,12 @@ options:
       - alias
       - expression
     type: str
+  expand:
+    description:
+      - Optionally expand element attributes that contain only href
+    type: list
+    choices:
+      - group
   
 extends_documentation_fragment:
   - stonesoft
@@ -68,6 +74,13 @@ EXAMPLES = '''
     limit: 10
     element: address_range
     filter: 1.1.1.1
+    
+- name: Find a specific group and expand all members
+  network_element_facts:
+    element: group
+    filter: mygroup
+    expand:
+      - group
 '''
 
 
@@ -86,7 +99,7 @@ elements:
     }]
 
 elements:
-    description: Return from all elements using filter of 10.
+    description: Return from all elements using filter of '10.'
     returned: always
     type: list    
     sample: [{
@@ -131,12 +144,13 @@ class NetworkElementFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            element=dict(type='str', choices=list(ELEMENT_TYPES.keys()))
+            element=dict(type='str', choices=list(ELEMENT_TYPES.keys())),
+            expand=dict(type='list')
         )
-    
         self.element = None
         self.limit = None
         self.filter = None
+        self.expand = None
         self.exact_match = None
         self.case_sensitive = None
         
@@ -151,6 +165,12 @@ class NetworkElementFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.expand:
+            for specified in self.expand:
+                if specified not in ('group',):
+                    self.fail(msg='Group is only supported element for expand, got: {}'
+                        .format(specified))
+        
         # Search by specific element type
         if self.element:
             result = self.search_by_type(ELEMENT_TYPES.get(self.element)['type'])
@@ -158,12 +178,12 @@ class NetworkElementFacts(StonesoftModuleBase):
             self.element = 'network_elements'
             result = self.search_by_context()
         
-        if self.filter:    
-            elements = [element_dict_from_obj(element,ELEMENT_TYPES) for element in result]
+        if self.filter:
+            elements = [element_dict_from_obj(element, ELEMENT_TYPES, self.expand) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         
-        self.results['ansible_facts'] = {'elements': elements}
+        self.results['ansible_facts']['elements'] = elements
         return self.results
 
 def main():

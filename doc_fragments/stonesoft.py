@@ -37,6 +37,22 @@ options:
       - Provide an alternate path location to read the credentials from. File is expected to
         be stored in ~.smcrc. If provided, url and api_key settings are not required and will be ignored.
     required: false
+  smc_logging:
+    description:
+      - Optionally enable SMC API logging to a file
+    required: false
+    type: dict
+    suboptions:
+      level:
+        description:
+          - Log level as specified by the standard python logging library, in int format. Default
+            setting is logging.DEBUG.
+        type: int
+      path:
+        description:
+          - Full path to the log file
+        type: str
+        required: true
   smc_extra_args:
     description: 
       - Extra arguments to pass to login constructor. These are generally only used if
@@ -49,4 +65,5 @@ options:
             to a client certificate to verify the SMC SSL certificate. You can also explicitly
             set this to False.
         default: true
+        type: bool
 '''

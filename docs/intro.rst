@@ -99,5 +99,5 @@ Lastly, if you want to override the location of the configuration file, you can 
       element: host
       filter: 1.1.1.1
       smc_alt_filepath: /path/to/my/file
-
+ 
 Once you have your credential strategy decided on, you are ready to run playbooks.

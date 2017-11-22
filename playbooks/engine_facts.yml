@@ -1,9 +1,26 @@
-- name: create or delete interfaces
+- name: Facts about all engines within SMC
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: add a layer 3 interface to a single fw
+  - name: Find all managed engines (IPS, Layer 2, L3FW)
+    engine_facts:
+  
+  - name: Find only Layer 3 FW's
     engine_facts:
       element: fw_clusters
-      filter: fw
+  
+  - name: Find only Layer 2 FW's
+    engine_facts:
+      element: layer2_clusters
+
+  - name: Find only IPS engines
+    engine_facts:
+      element: ips_clusters
+  
+  - name: Get engine details for 'myfirewall'
+    engine_facts:
+      filter: myfirewall
+    
+  
+    
   

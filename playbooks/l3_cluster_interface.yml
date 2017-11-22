@@ -2,9 +2,8 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: add a layer 3 interface to a single fw
+  - name: Add a layer 3 CVI (Cluster Virtual Interface)
     register: result
-    # Create a cluster interface
     l3fw_cluster_interface:
       name: mycluster
       cluster_vip: 3.3.3.1
@@ -18,6 +17,16 @@
         - address: 3.3.3.3
           network_value: 3.3.3.0/24
           nodeid: 2
+        - address: 3.3.3.4
+          network_value: 3.3.3.0/24
+          nodeid: 3
+  
+  - name: Delete a layer 3 cluster interface
+    register: result
+    l3fw_cluster_interface:
+      name: mycluster
+      cluster_nic_id: 3
+
   - name: dump test output
     debug:
       msg: '{{ result }}'

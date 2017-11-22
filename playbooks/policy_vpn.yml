@@ -1,20 +1,21 @@
-- name: Create or modify an existing Policy VPN
+- name: Policy Based VPN operations
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Create or add gateways to a policy VPN
+  - name: Create a new policy VPN with specified gateways
     policy_vpn:
       name: mynewvpn
       central_gw:
-        - name: fw33
+        - name: myfirewall
           type: internal_gateway
       satellite_gw:
-        - name: anothergw
+        - name: extgw
           type: external_gateway
           preshared_key: abc123
       gateway_tunnel:
-        - tunnel_side_a: anothergw
-          tunnel_side_b: fw33 - Primary
+        - tunnel_side_a: extgw
+          tunnel_side_b: myfirewall
           enabled: yes
+          preshared_key: mynewkey
       tags:
         - footag

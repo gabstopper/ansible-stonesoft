@@ -26,12 +26,21 @@ options:
     description:
       - The name of the external gateway
     required: true
-  sites:
+  vpn_site:
     description:
       - VPN sites defined the networks for this VPN. A site entry should be a network
         CIDR address. If the network does not exist, the element will be created.
-    type: str
-  endpoint:
+    type: list
+    suboptions:
+      name:
+        description:
+          - Name of VPN site
+        required: true
+      site_element:
+        description:
+          - Network CIDR for this site element
+        type: list
+  external_endpoint:
     description:
       - An endpoint represents an external VPN gateway and it's remote
         site settings such as IP address, remote site networks, etc.
@@ -114,9 +123,11 @@ EXAMPLES = '''
   - name: Create an external gateway
     external_gateway:
       name: myremotevpn
-      sites:
-        - 1.1.1.0/24
-      endpoint:
+      vpn_site:
+        - name: mysite
+          site_element:
+            - 1.1.1.0/24
+      external_endpoint:
         - name: endpoint1
           address: 33.33.33.40
           force_nat_t: no
@@ -127,32 +138,43 @@ EXAMPLES = '''
           balancing_mode: active
       tags: footag
 
-- name: Create an external gateway using dynamic IP
-  hosts: localhost
-  gather_facts: no
-  tasks:
-  - name: Create an external gateway
-    external_gateway:
-      name: dynamicendpoint
-      sites:
-        - 1.1.1.0/24
-      endpoint:
-        - name: mydynamicendpoint
-          dynamic: yes
-          ike_phase1_id_type: 1
-          ike_phasee1_id_value: a@a.com
-      tags: footag
+- name: Create an external gateway
+  external_gateway:
+    name: dynamicendpoint
+    vpn_site:
+      - name: site1
+        site_element:
+          - 1.1.1.0/24
+    external_endpoint:
+      - name: mydynamicendpoint
+        dynamic: yes
+        ike_phase1_id_type: 1
+        ike_phasee1_id_value: a@a.com
+    tags: footag
 
-- name: Modify an existing external endpoint
-  hosts: localhost
-  gather_facts: no
-  tasks:
-  - name: Change balancing mode from active to standby
+- name: Add a new site to existing external GW
+    external_gateway:
+      name: mydynamicgw
+      vpn_site:
+        - name: dynamicsite
+          site_element:
+            - 192.168.8.0/24
+
+- name: Delete a VPN site from an external gateway
     external_gateway:
       name: myremotevpn
-      endpoint:
-        - name: endpoint1
-          balancing_mode: standby
+      vpn_site:
+        - name: site-a
+          site_element:
+            - 2.2.2.0/24
+      state: absent
+
+- name: Change balancing mode from active to standby
+  external_gateway:
+    name: myremotevpn
+    external_endpoint:
+      - name: endpoint1
+        balancing_mode: standby
 
 - name: Delete an external gateway
   external_vpn_gw:
@@ -162,14 +184,63 @@ EXAMPLES = '''
 
 
 RETURN = '''
-changed:
-  description: Whether or not the change succeeded
+state:
+  description: Representation of the current state of the gateway
   returned: always
-  type: bool
+  type: dict
+  example: {
+        external_endpoint: [{
+            "address": "33.33.33.40", 
+            "balancing_mode": "active", 
+            "dynamic": false, 
+            "enabled": true, 
+            "force_nat_t": false, 
+            "ike_phase1_id_type": 3, 
+            "ipsec_vpn": true, 
+            "name": "endpoint1", 
+            "nat_t": true, 
+            "read_only": false, 
+            "system": false, 
+            "udp_encapsulation": false
+        }, 
+        {
+            "address": "33.33.33.35", 
+            "balancing_mode": "active", 
+            "dynamic": false, 
+            "enabled": true, 
+            "force_nat_t": true, 
+            "ike_phase1_id_type": 3, 
+            "ipsec_vpn": true, 
+            "name": "endpoint2", 
+            "nat_t": true, 
+            "read_only": false, 
+            "system": false, 
+            "udp_encapsulation": false
+        }
+    ], 
+    "gateway_profile": "http://1.1.1.1:8082/6.4/elements/gateway_profile/3", 
+    "name": "myremotevpn", 
+    "read_only": false, 
+    "system": false, 
+    "trust_all_cas": true, 
+    "trusted_certificate_authorities": [], 
+    "vpn_site": [
+    {
+        "gateway": "http://1.1.1.1:8082/6.4/elements/external_gateway/43", 
+        "name": "myremotevpn-site", 
+        "read_only": false, 
+        "site_element": [
+            "http://1.1.1.1:8082/6.4/elements/network/708"
+        ], 
+        "system": false
+    }]
+    }
 '''
 
 import traceback
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+from ansible.module_utils.stonesoft_util import (
+    StonesoftModuleBase,
+    format_element)
 
 try:
     from smc.vpn.elements import ExternalGateway
@@ -215,25 +286,34 @@ def _get_endpoint_obj(endpoint, current):
         if match.name.startswith(endpoint.get('name')):
             return match
 
+       
+def to_dict(external_gw):
+    external_gw.data.update(external_endpoint=
+        [format_element(ep) for ep in external_gw.external_endpoint])
+    external_gw.data.update(vpn_site=
+        [format_element(site) for site in external_gw.vpn_site])
+    return format_element(external_gw)
+
 
 class ExternalVPNGW(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
             name=dict(type='str', required=True),
-            endpoint=dict(type='list'),
-            sites=dict(type='list'),
+            external_endpoint=dict(type='list'),
+            vpn_site=dict(type='list'),
             tags=dict(type='list'),
             state=dict(default='present', choices=['present', 'absent'])
         )
         
         self.tags = None
         self.name = None
-        self.sites = None
-        self.endpoint = None
+        self.vpn_site = None
+        self.external_endpoint = None
         
         self.results = dict(
             changed=False,
+            state=dict()
         )
         super(ExternalVPNGW, self).__init__(self.module_args)
     
@@ -243,6 +323,11 @@ class ExternalVPNGW(StonesoftModuleBase):
             setattr(self, name, value)
         
         changed = False
+        if self.vpn_site:
+            for sites in self.vpn_site:
+                if 'name' not in sites:
+                    self.fail(msg='VPN site requires a name attribute')
+            
         ext_gw = self.fetch_element(ExternalGateway)
 
         try:        
@@ -251,10 +336,9 @@ class ExternalVPNGW(StonesoftModuleBase):
                     ext_gw = ExternalGateway.create(self.name)
                     changed = True
 
-                if self.endpoint:
-                    # Current endpoints
+                if self.external_endpoint:
                     current = [e for e in ext_gw.external_endpoint.all()]
-                    for endpoint in self.endpoint:
+                    for endpoint in self.external_endpoint:
                         # Does it already exist?
                         obj = _get_endpoint_obj(endpoint, current)
                         if obj:
@@ -308,33 +392,49 @@ class ExternalVPNGW(StonesoftModuleBase):
                             
                             ext_gw.external_endpoint.create(**spec)
                             changed = True
-                    
-                if self.sites:
-                    networks = []
-                    for address in self.sites:
-                        network = Network.get_or_create(
-                            filter_key={'ipv4_network': address},
-                            name='network-{}'.format(address),
-                            ipv4_network=address)
-                        networks.append(network)
-                        
-                    ext_gw.vpn_site.create(
-                        name='{}-site'.format(self.name),
-                        site_element=networks)
-        
+                
+                def get_network(address):
+                    network = Network.get_or_create(
+                        filter_key={'ipv4_network': address},
+                        name='network-{}'.format(address),
+                        ipv4_network=address)
+                    return network
+                
+                if self.vpn_site:
+                    sites = list(ext_gw.vpn_site)
+                    for site in self.vpn_site:
+                        vpn_site = [cur for cur in sites if cur.name == site['name']]
+                        specified = [get_network(net).href for net in site.get('site_element', [])]
+                        if vpn_site:  # Site exists        
+
+                            site_elements = vpn_site[0].data.get('site_element', [])
+                            
+                            new = [diff for diff in specified if specified not in site_elements]
+                            if new:
+                                vpn_site[0].add_site_element(new)
+                                changed = True
+                        else:
+                            ext_gw.vpn_site.create(
+                                name=site.get('name'),
+                                site_element=specified)
+                            changed = True
+                
                 if self.tags:
                     if self.add_tags(ext_gw, self.tags):
                         changed = True
-                            
+                
+                if changed:
+                    self.results['state'] = to_dict(ext_gw)
+            
             elif state == 'absent':
-                if not self.endpoint and not self.tags:
+                if not self.external_endpoint and not self.tags and not self.vpn_site:
                     if ext_gw:
                         ext_gw.delete()
                         changed = True
                 else:
                     if ext_gw:
-                        if self.endpoint:
-                            endpoint_names = [endpt for endpt in self.endpoint if 'name' in endpt]
+                        if self.external_endpoint:
+                            endpoint_names = [endpt for endpt in self.external_endpoint if 'name' in endpt]
                             if endpoint_names:
                                 current = [e for e in ext_gw.external_endpoint.all()]
                                 for endpoint in endpoint_names:
@@ -342,13 +442,37 @@ class ExternalVPNGW(StonesoftModuleBase):
                                     if obj:
                                         obj.delete()
                                         changed = True
+                        
+                        if self.vpn_site:
+                            # TODO: Only Network elements are supported!
+                            sites = list(ext_gw.vpn_site)
+                            for site in self.vpn_site:
+                                vpn_site = [cur for cur in sites if cur.name == site['name']]
+                                if vpn_site:  # Site exists        
+                                    site_elements = vpn_site[0].site_element
+                                    
+                                    networks_to_del = site.get('site_element', [])
+                                    
+                                    remove_elements = []
+                                    for existing in site_elements:
+                                        if getattr(existing, 'ipv4_network', None) in networks_to_del:
+                                            remove_elements.append(existing.href)
+                                    
+                                    if remove_elements:
+                                        vpn_site[0].update(site_element=[
+                                            e.href for e in site_elements if e.href not in remove_elements])
+                                        changed = True
+
                         if self.tags:
                             if self.remove_tags(ext_gw, self.tags):
                                 changed = True
                     
+                    if changed:
+                        self.results['state'] = to_dict(ext_gw)
+                
         except SMCException as err:
             self.fail(msg=str(err), exception=traceback.format_exc())
-
+                    
         self.results['changed'] = changed
         return self.results
     

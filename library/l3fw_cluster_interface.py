@@ -189,7 +189,7 @@ class StonesoftClusterInterface(StonesoftModuleBase):
                         nodes=self.cluster_nodes,
                         cvi_mode=self.cluster_mode,
                         zone_ref=self.zone_ref)
-                    self.fail(msg='Finish')
+            
                     changed = True
 
             elif state == 'absent':

@@ -1,0 +1,22 @@
+- name: Layer 3 Firewall Policy
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Add a layer 3 Firewall Policy with tag
+    register: result
+    l3fw_policy:
+      name: foopolicy
+      policy_template: Firewall Inspection Template
+      tags:
+        - remote_sites
+    
+  - name: Delete a layer 3 Firewall Policy
+    register: result
+    l3fw_policy:
+      name: foopolicy
+      state: absent
+  
+  - name: dump test output
+    debug:
+      msg: '{{ result }}'
+

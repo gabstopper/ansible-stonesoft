@@ -80,6 +80,18 @@ Options
     </tr>
 
     <tr>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>group</li></ul></td>
+	<td>
+        <p>Optionally expand element attributes that contain only href</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>*</td>
@@ -188,9 +200,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -237,6 +297,13 @@ Examples
         limit: 10
         element: address_range
         filter: 1.1.1.1
+        
+    - name: Find a specific group and expand all members
+      network_element_facts:
+        element: group
+        filter: mygroup
+        expand:
+          - group
 
 Return Values
 -------------
@@ -258,7 +325,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     <tr>
     <td>elements</td>
     <td>
-        <div>Return from all elements using filter of 10.</div>
+        <div>Return from all elements using filter of '10.'</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>

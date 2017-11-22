@@ -188,9 +188,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -226,7 +274,14 @@ Examples
       alias_facts:
         limit: 0
     
-    - name: Resolve any NAT aliases to firewall sg_vm
+    - name: resolve all NAT aliases for engine myfirewall
+      alias_facts:
+        limit: 0
+        engine: myfirewall
+        exact_match: no
+        case_sensitive: no
+    
+    - name: Resolve any aliases with keyword nat for engine sg_vm
       alias_facts:
         limit: 0
         filter: nat
@@ -258,7 +313,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': 'Default NAT Address depends on Routing View.', 'type': 'default_nat_address_alias', 'values': ['10.0.0.254'], 'name': '$$ Default NAT Address'}]</td>
+    <td align=center>[{'resolved_value': ['10.10.0.1'], 'type': 'interface_nic_x_ip_alias', 'name': '$$ Interface ID 0.ip'}, {'resolved_value': ['10.10.0.0/24'], 'type': 'interface_nic_x_net_alias', 'name': '$$ Interface ID 0.net'}]</td>
     </tr>
     </table>
     </br></br>

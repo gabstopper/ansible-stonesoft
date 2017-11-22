@@ -43,7 +43,7 @@ Options
     <th class="head">comments</th>
     </tr>
     <tr>
-    <td rowspan="2">endpoint<br/><div style="font-size: small;"></div></td>
+    <td rowspan="2">external_endpoint<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
@@ -54,7 +54,7 @@ Options
     <tr>
     <td colspan="5">
         <table border=1 cellpadding=4>
-        <caption><b>Dictionary object endpoint</b></caption>
+        <caption><b>Dictionary object external_endpoint</b></caption>
 
         <tr>
         <th class="head">parameter</th>
@@ -174,18 +174,6 @@ Options
     </tr>
 
     <tr>
-    <td>sites<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>VPN sites defined the networks for this VPN. A site entry should be a network CIDR address. If the network does not exist, the element will be created.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>smc_address<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -270,9 +258,57 @@ Options
         <td>verify<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td>True</td>
-        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
         <td>
             <div>Is the connection to SMC is HTTPS, you can set this to True, or provide a path to a client certificate to verify the SMC SSL certificate. You can also explicitly set this to False.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">smc_logging<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Optionally enable SMC API logging to a file</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object smc_logging</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>path<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Full path to the log file</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>level<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Log level as specified by the standard python logging library, in int format</div>
         </td>
         </tr>
 
@@ -318,6 +354,54 @@ Options
 	</tr>
     </td>
     </tr>
+    <tr>
+    <td rowspan="2">vpn_site<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>VPN sites defined the networks for this VPN. A site entry should be a network CIDR address. If the network does not exist, the element will be created.</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object vpn_site</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>site_element<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Network CIDR for this site element</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Name of VPN site</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
 
     </table>
     </br>
@@ -335,9 +419,11 @@ Examples
       - name: Create an external gateway
         external_gateway:
           name: myremotevpn
-          sites:
-            - 1.1.1.0/24
-          endpoint:
+          vpn_site:
+            - name: mysite
+              site_element:
+                - 1.1.1.0/24
+          external_endpoint:
             - name: endpoint1
               address: 33.33.33.40
               force_nat_t: no
@@ -348,32 +434,43 @@ Examples
               balancing_mode: active
           tags: footag
     
-    - name: Create an external gateway using dynamic IP
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Create an external gateway
-        external_gateway:
-          name: dynamicendpoint
-          sites:
-            - 1.1.1.0/24
-          endpoint:
-            - name: mydynamicendpoint
-              dynamic: yes
-              ike_phase1_id_type: 1
-              ike_phasee1_id_value: a@a.com
-          tags: footag
+    - name: Create an external gateway
+      external_gateway:
+        name: dynamicendpoint
+        vpn_site:
+          - name: site1
+            site_element:
+              - 1.1.1.0/24
+        external_endpoint:
+          - name: mydynamicendpoint
+            dynamic: yes
+            ike_phase1_id_type: 1
+            ike_phasee1_id_value: a@a.com
+        tags: footag
     
-    - name: Modify an existing external endpoint
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Change balancing mode from active to standby
+    - name: Add a new site to existing external GW
+        external_gateway:
+          name: mydynamicgw
+          vpn_site:
+            - name: dynamicsite
+              site_element:
+                - 192.168.8.0/24
+    
+    - name: Delete a VPN site from an external gateway
         external_gateway:
           name: myremotevpn
-          endpoint:
-            - name: endpoint1
-              balancing_mode: standby
+          vpn_site:
+            - name: site-a
+              site_element:
+                - 2.2.2.0/24
+          state: absent
+    
+    - name: Change balancing mode from active to standby
+      external_gateway:
+        name: myremotevpn
+        external_endpoint:
+          - name: endpoint1
+            balancing_mode: standby
     
     - name: Delete an external gateway
       external_vpn_gw:
@@ -398,12 +495,12 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>changed</td>
+    <td>state</td>
     <td>
-        <div>Whether or not the change succeeded</div>
+        <div>Representation of the current state of the gateway</div>
     </td>
     <td align=center>always</td>
-    <td align=center>bool</td>
+    <td align=center>dict</td>
     <td align=center></td>
     </tr>
     </table>

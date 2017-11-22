@@ -1,9 +1,0 @@
-- name: creating and deleting layer 3 firewalls
-  connection: local
-  hosts: localhost
-  gather_facts: no
-  tasks:
-  - name: layer 3 cluster with 3 members
-    l3fw_cluster:
-      name: mycluster
-      state: absent

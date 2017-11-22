@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Firewall rules can be added or removed from either a top level policy or a sub-policy. When creating the rule, if source/destination or service is not provided, the value will be set to 'none' and the rule will end up being skipped. In addition, after making a rule change, a policy refresh is required.
+* Firewall rules can be added or removed from either a top level policy or a sub-policy. Source/destination and service elements can optionally be created or provided individually or as a list. See examples for more info.
 
 
 

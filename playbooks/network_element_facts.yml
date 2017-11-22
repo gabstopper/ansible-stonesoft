@@ -1,0 +1,22 @@
+- name: Obtain facts about Network Elements
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all Group level objects, limit of 50
+    network_element_facts:
+      element: group
+      limit: 50
+
+  - name: Retrieve a specific group
+    network_element_facts:
+      element: group
+      filter: foogroup
+
+  - name: Retrieve a specific group and expand all members
+    network_element_facts:
+      element: group
+      filter: foogroup
+      expand:
+        - group
+  
+    

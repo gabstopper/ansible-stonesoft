@@ -44,7 +44,14 @@ EXAMPLES = '''
   alias_facts:
     limit: 0
 
-- name: Resolve any NAT aliases to firewall sg_vm
+- name: resolve all NAT aliases for engine myfirewall
+  alias_facts:
+    limit: 0
+    engine: myfirewall
+    exact_match: no
+    case_sensitive: no
+
+- name: Resolve any aliases with keyword nat for engine sg_vm
   alias_facts:
     limit: 0
     filter: nat
@@ -59,15 +66,22 @@ aliases:
     description: Resolve NAT alias to firewall engine sg_vm
     returned: always
     type: list
-    sample: [{
-        'comment': 'Default NAT Address depends on Routing View.', 
-        'name': '$$ Default NAT Address', 
-        'type': 'default_nat_address_alias', 
-        'values': [
-            '10.0.0.254'
-            ]
-}]
-
+    sample: [
+        {
+            "name": "$$ Interface ID 0.ip", 
+            "resolved_value": [
+                "10.10.0.1"
+            ], 
+            "type": "interface_nic_x_ip_alias"
+        }, 
+        {
+            "name": "$$ Interface ID 0.net", 
+            "resolved_value": [
+                "10.10.0.0/24"
+            ], 
+            "type": "interface_nic_x_net_alias"
+        }
+    ]
 '''
 
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
@@ -95,7 +109,7 @@ def alias_dict_from_obj(alias, engine):
         'comment': getattr(alias, 'comment', None)}
     
     if engine:
-        elem.update(values=alias.resolve(engine))
+        elem.update(resolved_value=alias.resolve(engine))
     return elem
     
 
@@ -117,7 +131,6 @@ class AliasFacts(StonesoftModuleBase):
                 aliases=[]
             )
         )
-        
         super(AliasFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):
@@ -127,18 +140,25 @@ class AliasFacts(StonesoftModuleBase):
         # Verify the engine specified
         if self.engine:
             try:
-                Engine.get(self.engine)
+                fw = Engine.get(self.engine)
             except ElementNotFound:
                 self.fail(
                     msg='Specified engine was not found: {}. Called from: {}'
                     .format(self.engine, self.__class__.__name__))
-                
-        result = self.search_by_type(Alias)
         
-        if self.filter:
-            aliases = [alias_dict_from_obj(alias, self.engine) for alias in result]
+        if self.engine and not self.filter:
+            result = list(fw.alias_resolving())
+            aliases = [{'name': alias.name, 'type': alias.typeof, 'resolved_value': alias.resolved_value}
+                       for alias in result]
+    
         else:
-            aliases = [{'name': alias.name, 'type': alias.typeof} for alias in result]
+                    
+            result = self.search_by_type(Alias)
+            
+            if self.filter:
+                aliases = [alias_dict_from_obj(alias, self.engine) for alias in result]
+            else:
+                aliases = [{'name': alias.name, 'type': alias.typeof} for alias in result]
         
         self.results['ansible_facts'] = {'aliases': aliases}
         return self.results

@@ -167,10 +167,8 @@ EXAMPLES = '''
 
 
 RETURN = '''
-changed:
-  description: Whether or not the change succeeded
-  returned: always
-  type: bool
+state:
+
 '''
 
 import traceback
@@ -344,8 +342,9 @@ class StonesoftPolicyVPN(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
+            state=dict()
         )
-        super(StonesoftPolicyVPN, self).__init__(self.module_args)
+        super(StonesoftPolicyVPN, self).__init__(self.module_args, supports_check_mode=True)
     
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
@@ -363,12 +362,6 @@ class StonesoftPolicyVPN(StonesoftModuleBase):
             if state == 'present':
 
                 lock = False # Used to flag whether policy needs to be locked
-                if not vpn:
-                    vpn = PolicyVPN.create(
-                        name=self.name,
-                        nat=self.apply_nat,
-                        vpn_profile=self.vpn_profile)
-                    changed = True
                 
                 if self.gateway_tunnel:
                     self._validate_tunnel(self.gateway_tunnel)
@@ -383,6 +376,13 @@ class StonesoftPolicyVPN(StonesoftModuleBase):
                     self._validate_external_gw(self.satellite_gw)
                     self.satellite_gw = resolve_gw(self.satellite_gw)
                     lock = True
+                
+                if not vpn:
+                    vpn = PolicyVPN.create(
+                        name=self.name,
+                        nat=self.apply_nat,
+                        vpn_profile=self.vpn_profile)
+                    changed = True
                 
                 # Update profile if provided and they are different
                 if self.vpn_profile:

@@ -50,25 +50,28 @@ author:
         
 
 EXAMPLES = '''
-- name: Find an engine named exactly 've-1' and display details
-  engine_facts:
-    filter: ve-1
-    exact_match: yes
+- name: Facts about all engines within SMC
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Find all managed engines (IPS, Layer 2, L3FW)
+    engine_facts:
+  
+  - name: Find only Layer 3 FW's
+    engine_facts:
+      element: fw_clusters
+  
+  - name: Find only Layer 2 FW's
+    engine_facts:
+      element: layer2_clusters
 
-- name: Find firewall disabling case sensitivity (exact_match=no)
-  engine_facts:
-    filter: MyFirewall
-    case_sensitive: no
-
-- name: Find firewalls starting with 've', limit to 5 results
-  engine_facts:
-    filter: ve
-    limit: 5
-    case_sensitive: no
-
-- name: Retrieve all layer 2 firewalls only
-  engine_facts:
-    element: ips_clusters
+  - name: Find only IPS engines
+    engine_facts:
+      element: ips_clusters
+  
+  - name: Get engine details for 'myfirewall'
+    engine_facts:
+      filter: myfirewall
 '''
 
 
@@ -136,6 +139,24 @@ except ImportError:
 
 ENGINE_TYPES = frozenset(['fw_clusters', 'engine_clusters', 'ips_clusters',
                           'layer2_clusters'])
+
+
+def to_dict(element):
+    links = ('link', 'key')
+    for node in element.data.get('nodes'):
+        for _, data in node.items():
+            for elem in links:
+                data.pop(elem, None)
+    for interface in element.data.get('physicalInterfaces'):
+        for _, data in interface.items():
+            for elem in links:
+                data.pop(elem, None)
+            for vlan in data.get('vlanInterfaces', []):
+                for elem in links:
+                    vlan.pop(elem, None)
+    for link in links:
+        element.data.pop(link, None)
+    return element.data
 
 
 def interface_spec():
@@ -299,11 +320,12 @@ class EngineFacts(StonesoftModuleBase):
         
         result = self.search_by_context()
         if self.filter:
-            engines = [engine_dict_from_obj(engine) for engine in result]
+            #engines = [engine_dict_from_obj(engine) for engine in result]
+            engines = [to_dict(engine) for engine in result]
         else:
             engines = [{'name': engine.name, 'type': engine.type} for engine in result]
         
-        self.results['ansible_facts'] = {'engines': engines}
+        self.results['ansible_facts']['engines'] = engines
         return self.results
 
 def main():
