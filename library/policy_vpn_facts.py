@@ -20,6 +20,16 @@ description:
     VPN configuration.
 
 version_added: '2.5'
+
+options:
+  expand:
+    description:
+      - Optionally expand element attributes that contain only href. You can also
+        specify the name of a central gateway or satellite gateway to have it's
+        contents expanded also.
+    type: list
+    choices:
+      - vpn_profile
   
 extends_documentation_fragment:
   - stonesoft
@@ -173,7 +183,7 @@ class PolicyVPNFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            expand=dict(type='list')
+            expand=dict(type='list', default=[])
         )
         self.element = 'vpn'
         self.limit = None
@@ -193,11 +203,10 @@ class PolicyVPNFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if self.expand:
-            for specified in self.expand:
-                if not isinstance(specified, string_types):
-                    self.fail(msg='Expandable attributes should be in string format, got: {}'.format(
-                        type(specified)))
+        for specified in self.expand:
+            if not isinstance(specified, string_types):
+                self.fail(msg='Expandable attributes should be in string format, got: {}'.format(
+                    type(specified)))
 
         result = self.search_by_type(PolicyVPN)
         # Search by specific element type

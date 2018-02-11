@@ -68,6 +68,18 @@ Options
     </tr>
 
     <tr>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>vpn_profile</li></ul></td>
+	<td>
+        <p>Optionally expand element attributes that contain only href. You can also specify the name of a central gateway or satellite gateway to have it's contents expanded also.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>*</td>

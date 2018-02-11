@@ -23,49 +23,62 @@ options:
     description:
       - The name of the firewall cluster to add or delete
     required: true
-  cluster_vip:
-    description:
-      - The cluster virtual (shared) IP address for all cluster members.
-        Required if I(state=present).
-    type: str
-  cluster_vip_mask:
-    description:
-      - The cluster netmask for the cluster_vip. Required if I(state=present)
-    type: str
-  cluster_macaddress:
-    description:
-      - The mac address to assign to the cluster virtual IP interface. This is
-        required if I(state=present)
-    type: str
-  cluster_nic_id:
-    description:
-      - The interface ID to use for the cluster vip
-    default: 0
   cluster_mode:
     description:
       - How to perform clustering, either balancing or standby
     choices: ['balancing', 'standby']
     default: balancing
-  cluster_nodes:
+  mgmt_interface:
     description:
-        - Define the address, network and node id for each cluster member.
-          Each cluster_node is a dictionary. Required if I(state=present)
+      - Identify the interface to be specified as management
+    type: int
+  interfaces:
+    description:
+        - Define the interface settings for this cluster interface, such as 
+          address, network and node id.
     suboptions:
-      address:
+      cluster_nic:
         description:
-          - The IP address for this cluster node member
-        type: str
-        required: true
-      network_value:
-        description:
-          - The netmask for this cluster node address
-        type: str
-        required: true
-      nodeid:
-        description:
-          - The node ID for the cluster node
+          - The cluster nic ID for this interface. Required.
         type: int
-        required: true
+      cluster_virtual:
+        description:
+          - The cluster virtual (shared) IP address for all cluster members. Not
+            required if only creating NDI's
+        type: str
+      cluster_mask:
+        description:
+          - The cluster netmask for the cluster_vip. Required if I(cluster_virtual)
+        type: str
+      cluster_macaddress:
+        description:
+          - The mac address to assign to the cluster virtual IP interface. This is
+            required if I(cluster_virtual)
+        type: str
+      zone_ref:
+        description:
+          - Optional zone name for this interface
+        type: str
+      nodes:
+        description:
+          - List of the nodes for this interface
+        type: list
+        suboptions:
+          address:
+            description:
+              - The IP address for this cluster node member. Required.
+            type: str
+            required: true
+          network_value:
+            description:
+              - The netmask for this cluster node address. Required.
+            type: str
+            required: true
+          nodeid:
+            description:
+              - The node ID for the cluster node. Required for each node in the cluster.
+            type: int
+            required: true
   default_nat:
     description:
       - Whether to enable default NAT on the FW. Default NAT will identify
@@ -111,43 +124,60 @@ author:
 '''
 
 EXAMPLES = '''
-# Create a new cluster
-- name: creating and deleting layer 3 firewalls
-  gather_facts: no
-  tasks:
-  - name: layer 3 cluster with 3 members
-    l3fw_cluster:
-      name: mycluster
-      cluster_vip: 1.1.1.1
-      cluster_vip_mask: 1.1.1.0/24
-      cluster_macaddress: 02:02:02:02:02:02
-      cluster_nic_id: 0
-      cluster_mode: standby
-      cluster_nodes:
-        - address: 1.1.1.2
-          network_value: 1.1.1.0/24
-          nodeid: 1
-        - address: 1.1.1.3
-          network_value: 1.1.1.0/24
-          nodeid: 2
-        - address: 1.1.1.4
-          network_value: 1.1.1.0/24
-          nodeid: 3
-      default_nat: yes
-      domain_server_address:
-          - 10.0.0.1
-          - 10.0.0.2
-      enable_antivirus: yes
-      enable_gti: yes
+- name: Create a layer 3 FW cluster with 3 members
+  l3fw_cluster:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    name: mycluster
+    cluster_mode: standby
+    mgmt_interface: 0
+    interfaces:
+      - cluster_nic: 0
+        cluster_virtual: 1.1.1.1
+        cluster_mask: 1.1.1.0/24
+        macaddress: 02:02:02:02:02:02
+        zone_ref: management
+        nodes:
+          - address: 1.1.1.2
+            network_value: 1.1.1.0/24
+            nodeid: 1
+          - address: 1.1.1.3
+            network_value: 1.1.1.0/24
+            nodeid: 2
+      - cluster_nic: 1
+        cluster_virtual: 2.2.2.1
+        cluster_mask: 2.2.2.0/24
+        macaddress: 02:02:02:02:02:03
+        nodes:
+          - address: 2.2.2.2
+            network_value: 2.2.2.0/24
+            nodeid: 1
+          - address: 2.2.2.3
+            network_value: 2.2.2.0/24
+            nodeid: 2
+      - cluster_nic: 2
+        nodes:
+          - address: 3.3.3.1
+            network_value: 3.3.3.0/24
+            nodeid: 1
+          - address: 3.3.3.2
+            network_value: 3.3.3.0/24
+            nodeid: 2
+    default_nat: yes
+    domain_server_address:
+      - 10.0.0.1
+      - 10.0.0.3
+    enable_antivirus: yes
+    enable_gti: yes
+    tags:
+      - footag
 
 # Delete a cluster
-- name: Deleting layer 3 firewalls
-  gather_facts: no
-  tasks:
-  - name: layer 3 cluster with 3 members
-    l3fw_cluster:
-      name: mycluster
-      state: absent
+- name: layer 3 cluster with 3 members
+  l3fw_cluster:
+    name: mycluster
+    state: absent
 '''
 
 RETURN = '''
@@ -163,7 +193,7 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
 try:
     from smc.core.engines import FirewallCluster
-    from smc.api.exceptions import SMCException
+    from smc.api.exceptions import SMCException, InterfaceNotFound
 except ImportError:
     # Caught in StonesoftModuleBase
     pass
@@ -174,14 +204,11 @@ class StonesoftCluster(StonesoftModuleBase):
         
         self.module_args = dict(
             name=dict(type='str', required=True),
-            cluster_vip=dict(type='str'),
-            cluster_vip_mask=dict(type='str'),
-            cluster_macaddress=dict(type='str'),
-            cluster_nic_id=dict(default=0, type='int'),
-            cluster_nodes=dict(type='list'),
-            cluster_mode=dict(type='str', default='balancing'),
+            cluster_mode=dict(type='str', default='standby'),
+            mgmt_interface=dict(type='int', default=0),
+            interfaces=dict(type='list'),
             domain_server_address=dict(default=[], type='list'),
-            zone_ref=dict(type='str'),
+            log_server=dict(type='str'),
             default_nat=dict(default=False, type='bool'),
             enable_antivirus=dict(default=False, type='bool'),
             enable_gti=dict(default=False, type='bool'),
@@ -189,31 +216,23 @@ class StonesoftCluster(StonesoftModuleBase):
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
         
-        self.tags = None
         self.name = None
-        self.cluster_vip = None
-        self.cluster_vip_mask = None
-        self.cluster_macaddress = None
-        self.cluster_nic_id = None
-        self.cluster_nodes = None
-        self.cluster_mode = None
-        self.log_server = None
+        self.cluster_mode=None
+        self.mgmt_interface = None
+        self.interfaces = None
         self.domain_server_address = None
-        self.zone_ref = None
-        self.default_nat = False
-        self.enable_antivirus = False
-        self.enable_gti = False
-        
-        required_if=([
-            ('state', 'present', ['name', 'cluster_vip', 'cluster_vip_mask',
-                                  'cluster_macaddress', 'cluster_nic_id',
-                                  'cluster_nodes'])
-        ])
+        self.log_server = None
+        self.default_nat = None
+        self.enable_antivirus = None
+        self.enable_gti = None
+        self.tags = None
         
         self.results = dict(
             changed=False,
+            state=dict()
         )
-        super(StonesoftCluster, self).__init__(self.module_args, required_if=required_if)
+            
+        super(StonesoftCluster, self).__init__(self.module_args, supports_check_mode=True)
     
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
@@ -226,43 +245,175 @@ class StonesoftCluster(StonesoftModuleBase):
         try:
             if state == 'present':        
                 if not engine:
-                    if not self.cluster_nodes:
-                        self.fail_json(msg='You must specify cluster nodes to create a cluster')  
+                    if not self.interfaces:
+                        self.fail(msg='You must provide at least one interface '
+                            'configuration to create a cluster')
                     
-                    required = ['address', 'network_value', 'nodeid']
-                    for node in self.cluster_nodes:
-                        if not all (k in node for k in required):
-                            self.fail(msg='Node syntax invalid.')
+                    req = ('cluster_nic', 'nodes')
+                    node_req = ('address', 'network_value', 'nodeid')
+                    mgmt_index = None
+                    for num, value in enumerate(self.interfaces):
+                        if not all(k in value for k in req):
+                            self.fail(msg='Missing interface field. Required fields '
+                                'are: %s' % list(req))
+                            
+                        # Validate nodes
+                        for node in value.get('nodes'):
+                            if not all(k in node for k in node_req):
+                                self.fail(msg='Node missing required field. Required '
+                                    'fields are: %s' % list(node_req))
+                        
+                        # Management interface
+                        if value.get('cluster_nic') == self.mgmt_interface:
+                            mgt = ('cluster_virtual', 'cluster_mask', 'macaddress')
+                            if not all(k in value for k in mgt):
+                                self.fail(msg='Management interface requires the following '
+                                    'fields: %s' % list(mgt))
+                            mgmt_index = num
                     
-                    engine = FirewallCluster.create(
+                    if mgmt_index is None:
+                        self.fail(msg='Management interface is not defined. Management was '
+                            'specified on interface: %s' % self.mgmt_interface)
+                    
+                    if self.check_mode:
+                        return self.results
+                    
+                    management = self.interfaces.pop(mgmt_index)
+                    management.update(
                         name=self.name,
-                        cluster_virtual=self.cluster_vip,
-                        cluster_mask=self.cluster_vip_mask,
-                        macaddress=self.cluster_macaddress,
-                        cluster_nic=self.cluster_nic_id,
-                        nodes=self.cluster_nodes,
                         cluster_mode=self.cluster_mode,
-                        log_server_ref=self.log_server,
+                        log_server=self.log_server,
                         domain_server_address=self.domain_server_address,
-                        zone_ref=self.zone_ref,
                         default_nat=self.default_nat,
                         enable_antivirus=self.enable_antivirus,
-                        enable_gti=self.enable_gti)
+                        enable_gti=self.enable_gti,
+                        interfaces=self.interfaces)
+                    
+                    engine = FirewallCluster.create(**management)
                     changed = True
+
+                    if self.tags:
+                        if self.add_tags(engine, self.tags):
+                            changed = True
+                    
+                else: # Engine exists, check for modifications
+                    # Start with engine properties..
+                    status = engine.default_nat.status
+                    if self.default_nat:
+                        if not status:
+                            engine.default_nat.enable()
+                            changed = True
+                    else: # False or None
+                        if status:
+                            engine.default_nat.disable()
+                            changed = True
+                    
+                    status = engine.antivirus.status
+                    if self.enable_antivirus:
+                        if not status:
+                            engine.antivirus.enable()
+                            changed = True
+                    else:
+                        if status:
+                            engine.antivirus.disable()
+                            changed = True
+                    
+                    dns = [d.value for d in engine.dns]
+                    missing = [entry for entry in self.domain_server_address
+                               if entry not in dns]
+                    # Remove unneeded
+                    unneeded = [entry for entry in dns
+                                if entry not in self.domain_server_address
+                                if entry is not None]
+                    if missing:
+                        engine.dns.add(missing)
+                        changed = True
+                    
+                    if unneeded:
+                        engine.dns.remove(unneeded)
+                        changed = True
+                    
+                    if self.check_mode:
+                        return self.results
+                    
+                    # Check management interface setting
+                    mgt_intf = engine.interface_options.primary_mgt
+                    if mgt_intf.interface_id != str(self.mgmt_interface):
+                        engine.interface_options.set_primary_mgt(str(self.mgmt_interface))
+                        changed = True
+                    
+                    # Check and change cluster mode
+                    if self.cluster_mode != engine.cluster_mode and \
+                        self.cluster_mode in ('standby', 'balancing'):
+                        engine.data.update(cluster_mode=self.cluster_mode)
+                        changed = True 
+                    
+                    # Verify interfaces. Validate that we have the settings that
+                    # we need along the way. If the intent is to add a CVI to an
+                    # interface that already exists but has NDIs only, you should
+                    # first delete the interface and recreate.
+                    
+                    # Track defined so we can delete undefined
+                    defined = []
+                    for interface in self.interfaces:
+                        cluster_nic = str(interface.pop('cluster_nic'))
+                        try:
+                            intf = engine.interface.get(cluster_nic)
+                            needs_update = False
+                            for sub in intf.interfaces:
+                                #if not needs_update:
+                                if sub.nodeid is None:
+                                    if sub.address != interface.get('cluster_virtual'):
+                                        needs_update = True
+                                        break
+                                else: # NDI
+                                    for node in interface.get('nodes'):
+                                        if node.get('nodeid') == sub.nodeid:
+                                            if sub.address != node.get('address'):
+                                                needs_update = True
+                                                break
+                            
+                            if needs_update:
+                                intf.change_cluster_ipaddress(
+                                    cvi=interface.get('cluster_virtual'),
+                                    cvi_network_value=interface.get('cluster_mask'),
+                                    nodes=interface.get('nodes'))
+                                changed = True
+
+                        except InterfaceNotFound:
+                            # Create the missing interface
+                            interface.update(interface_id=cluster_nic)
+                            engine.physical_interface.add_cluster_virtual_interface(
+                                **interface)
+                            changed = True
+                    
+                        defined.append(cluster_nic)
+                    
+                    for interface in engine.interface:
+                        if interface.interface_id not in defined:
+                            interface.delete()
+                            # Don't set local changed as delete will update
+                            # the engine already. Set this on the result so
+                            # it's reported property
+                            self.results['changed'] = True
                     
                     if self.tags:
                         if self.add_tags(engine, self.tags):
                             changed = True
-          
+                    else:
+                        if self.clear_tags(engine):
+                            changed = True
+                           
+                    if changed:
+                        engine.update()
+                        
+                self.results['state'] = engine.data
+                
             elif state == 'absent':
                 if engine:
-                    if not self.tags:
-                        engine.delete()
-                        changed = True
-                    else:
-                        if self.remove_tags(engine, self.tags):
-                            changed = True
-                    
+                    engine.delete()
+                    changed = True
+        
         except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
         

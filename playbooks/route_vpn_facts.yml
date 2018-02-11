@@ -1,0 +1,23 @@
+- name: Obtain facts about Route VPNs
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all Route VPNs
+    route_vpn_facts:
+      limit: 50
+
+  - name: Retrieve a specific VPN
+    route_vpn_facts:
+      filter: myrbvpn
+
+  - name: Retrieve a specific VPN and expand special members
+    route_vpn_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: myrbvpn
+      expand:
+        - rbvpn_tunnel_side_a
+        - rbvpn_tunnel_side_b
+        - vpn_profile_ref
+        - monitoring_group_ref

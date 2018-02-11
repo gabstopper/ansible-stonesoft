@@ -44,118 +44,12 @@ Options
     </tr>
 
     <tr>
-    <td>cluster_macaddress<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The mac address to assign to the cluster virtual IP interface. This is required if <em>state=present</em></p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>cluster_mode<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>balancing</td>
     <td><ul><li>balancing</li><li>standby</li></ul></td>
 	<td>
         <p>How to perform clustering, either balancing or standby</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>cluster_nic_id<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The interface ID to use for the cluster vip</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-    <tr>
-    <td rowspan="2">cluster_nodes<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-    <td>
-        <div>Define the address, network and node id for each cluster member. Each cluster_node is a dictionary. Required if <em>state=present</em></div>
-    </tr>
-
-    <tr>
-    <td colspan="5">
-        <table border=1 cellpadding=4>
-        <caption><b>Dictionary object cluster_nodes</b></caption>
-
-        <tr>
-        <th class="head">parameter</th>
-        <th class="head">required</th>
-        <th class="head">default</th>
-        <th class="head">choices</th>
-        <th class="head">comments</th>
-        </tr>
-
-        <tr>
-        <td>address<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The IP address for this cluster node member</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>nodeid<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The node ID for the cluster node</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>network_value<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The netmask for this cluster node address</div>
-        </td>
-        </tr>
-
-        </table>
-
-    </td>
-    </tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>cluster_vip<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The cluster virtual (shared) IP address for all cluster members. Required if <em>state=present</em>.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>cluster_vip_mask<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The cluster netmask for the cluster_vip. Required if <em>state=present</em></p>
 	</td>
 	</tr>
     </td>
@@ -204,6 +98,106 @@ Options
     <td><ul><li>yes</li><li>no</li></ul></td>
 	<td>
         <p>Enable file reputation</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">interfaces<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Define the interface settings for this cluster interface, such as address, network and node id.</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object interfaces</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>zone_ref<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Optional zone name for this interface</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>cluster_virtual<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster virtual (shared) IP address for all cluster members. Not required if only creating NDI's</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>nodes<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>List of the nodes for this interface</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>cluster_mask<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster netmask for the cluster_vip. Required if <em>cluster_virtual</em></div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>cluster_nic<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster nic ID for this interface. Required.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>cluster_macaddress<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The mac address to assign to the cluster virtual IP interface. This is required if <em>cluster_virtual</em></div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>mgmt_interface<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Identify the interface to be specified as management</p>
 	</td>
 	</tr>
     </td>
@@ -424,43 +418,60 @@ Examples
 .. code-block:: yaml
 
     
-    # Create a new cluster
-    - name: creating and deleting layer 3 firewalls
-      gather_facts: no
-      tasks:
-      - name: layer 3 cluster with 3 members
-        l3fw_cluster:
-          name: mycluster
-          cluster_vip: 1.1.1.1
-          cluster_vip_mask: 1.1.1.0/24
-          cluster_macaddress: 02:02:02:02:02:02
-          cluster_nic_id: 0
-          cluster_mode: standby
-          cluster_nodes:
-            - address: 1.1.1.2
-              network_value: 1.1.1.0/24
-              nodeid: 1
-            - address: 1.1.1.3
-              network_value: 1.1.1.0/24
-              nodeid: 2
-            - address: 1.1.1.4
-              network_value: 1.1.1.0/24
-              nodeid: 3
-          default_nat: yes
-          domain_server_address:
-              - 10.0.0.1
-              - 10.0.0.2
-          enable_antivirus: yes
-          enable_gti: yes
+    - name: Create a layer 3 FW cluster with 3 members
+      l3fw_cluster:
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        name: mycluster
+        cluster_mode: standby
+        mgmt_interface: 0
+        interfaces:
+          - cluster_nic: 0
+            cluster_virtual: 1.1.1.1
+            cluster_mask: 1.1.1.0/24
+            macaddress: 02:02:02:02:02:02
+            zone_ref: management
+            nodes:
+              - address: 1.1.1.2
+                network_value: 1.1.1.0/24
+                nodeid: 1
+              - address: 1.1.1.3
+                network_value: 1.1.1.0/24
+                nodeid: 2
+          - cluster_nic: 1
+            cluster_virtual: 2.2.2.1
+            cluster_mask: 2.2.2.0/24
+            macaddress: 02:02:02:02:02:03
+            nodes:
+              - address: 2.2.2.2
+                network_value: 2.2.2.0/24
+                nodeid: 1
+              - address: 2.2.2.3
+                network_value: 2.2.2.0/24
+                nodeid: 2
+          - cluster_nic: 2
+            nodes:
+              - address: 3.3.3.1
+                network_value: 3.3.3.0/24
+                nodeid: 1
+              - address: 3.3.3.2
+                network_value: 3.3.3.0/24
+                nodeid: 2
+        default_nat: yes
+        domain_server_address:
+          - 10.0.0.1
+          - 10.0.0.3
+        enable_antivirus: yes
+        enable_gti: yes
+        tags:
+          - footag
     
     # Delete a cluster
-    - name: Deleting layer 3 firewalls
-      gather_facts: no
-      tasks:
-      - name: layer 3 cluster with 3 members
-        l3fw_cluster:
-          name: mycluster
-          state: absent
+    - name: layer 3 cluster with 3 members
+      l3fw_cluster:
+        name: mycluster
+        state: absent
 
 Return Values
 -------------

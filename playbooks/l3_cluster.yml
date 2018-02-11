@@ -5,33 +5,55 @@
   tasks:
   - name: Create a layer 3 FW cluster with 3 members
     l3fw_cluster:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
       name: mycluster
-      cluster_vip: 1.1.1.1
-      cluster_vip_mask: 1.1.1.0/24
-      cluster_macaddress: 02:02:02:02:02:02
-      cluster_nic_id: 0
       cluster_mode: standby
-      cluster_nodes:
-        - address: 1.1.1.2
-          network_value: 1.1.1.0/24
-          nodeid: 1
-        - address: 1.1.1.3
-          network_value: 1.1.1.0/24
-          nodeid: 2
-        - address: 1.1.1.4
-          network_value: 1.1.1.0/24
-          nodeid: 3
+      mgmt_interface: 0
+      interfaces:
+        - cluster_nic: 0
+          cluster_virtual: 1.1.1.1
+          cluster_mask: 1.1.1.0/24
+          macaddress: 02:02:02:02:02:02
+          zone_ref: management
+          nodes:
+            - address: 1.1.1.2
+              network_value: 1.1.1.0/24
+              nodeid: 1
+            - address: 1.1.1.3
+              network_value: 1.1.1.0/24
+              nodeid: 2
+        - cluster_nic: 1
+          cluster_virtual: 2.2.2.1
+          cluster_mask: 2.2.2.0/24
+          macaddress: 02:02:02:02:02:03
+          nodes:
+            - address: 2.2.2.2
+              network_value: 2.2.2.0/24
+              nodeid: 1
+            - address: 2.2.2.3
+              network_value: 2.2.2.0/24
+              nodeid: 2
+        - cluster_nic: 2
+          nodes:
+            - address: 3.3.3.1
+              network_value: 3.3.3.0/24
+              nodeid: 1
+            - address: 3.3.3.2
+              network_value: 3.3.3.0/24
+              nodeid: 2
       default_nat: yes
       domain_server_address:
           - 10.0.0.1
-          - 10.0.0.2
+          - 10.0.0.3
       enable_antivirus: yes
       enable_gti: yes
       tags:
         - footag
 
-  - name: Delete a NGFW Cluster
-    l3fw_cluster:
-      name: mycluster
-      state: absent
+  #- name: Delete a NGFW Cluster
+  #  l3fw_cluster:
+  #    name: mycluster
+  #    state: absent
       

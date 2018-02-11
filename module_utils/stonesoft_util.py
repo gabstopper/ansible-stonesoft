@@ -210,7 +210,7 @@ def format_element(element):
     """
     Format a raw json element doc
     """
-    for key in ('link', 'key'):
+    for key in ('link', 'key', 'system_key'):
         element.data.pop(key, None)
     return element.data
 
@@ -315,8 +315,8 @@ class StonesoftModuleBase(object):
                 session.set_file_logger(
                     log_level=params['smc_logging'].get('level', 10),
                     path=params['smc_logging']['path'])
-                
-            if params.get('smc_address') and params.get('smc_api_key'):
+            
+            if 'smc_address' and 'smc_api_key' in params:    
                 extra_args = params.get('smc_extra_args')
                 # When connection parameters are defined, alt_filepath is ignored.
                 session.login(
@@ -326,7 +326,7 @@ class StonesoftModuleBase(object):
                     timeout=params.get('smc_timeout'),
                     domain=params.get('smc_domain'),
                     **(extra_args or {}))
-            elif params.get('smc_alt_filepath'):
+            elif 'smc_alt_filepath' in params:
                 # User specified to look in file
                 session.login(alt_filepath=params['smc_alt_filepath'])
             else:
@@ -441,6 +441,19 @@ class StonesoftModuleBase(object):
                 changed = True
         return changed
     
+    def clear_tags(self, element):
+        """
+        Clear all tags from the element
+        
+        :param Element element: the element for which to remove tags
+        :return: boolean success or fail
+        """
+        changed = False
+        for category in element.categories:
+            category.remove_element(element)
+            changed = True
+        return changed
+        
     def is_element_valid(self, element, type_dict, check_required=True):
         """
         Used by modules that want to create an element (network and service).

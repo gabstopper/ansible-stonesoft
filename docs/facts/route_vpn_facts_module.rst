@@ -1,8 +1,8 @@
-.. _l3fw_cluster_interface:
+.. _route_vpn_facts:
 
 
-l3fw_cluster_interface - Create or delete Stonesoft FW cluster interfaces
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+route_vpn_facts - Facts about route VPNs
+++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Add or remove cluster CVI's, NDI's or CVI and NDI interfaces to a cluster
+* Route VPN definitions in the SMC. Route VPN supports element expansion by providing the expand parameter with a valid choice. You can provide any or all of the supported expandable fields in any given run.
 
 
 
@@ -44,118 +44,72 @@ Options
     </tr>
 
     <tr>
-    <td>cluster_macaddress<br/><div style="font-size: small;"></div></td>
+    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td></td>
+    <td>True</td>
     <td></td>
 	<td>
-        <p>The mac address to assign to the cluster virtual IP interface. Required if <em>cluster_vip_mask</em> and <em>cluster_vip</em></p>
+        <p>Whether to do a case sensitive match on the filter specified</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>cluster_nic_id<br/><div style="font-size: small;"></div></td>
-    <td>yes</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The interface ID to use for the cluster vip</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-    <tr>
-    <td rowspan="2">cluster_nodes<br/><div style="font-size: small;"></div></td>
+    <td>element<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td></td>
-    <td></td>
-    <td>
-        <div>Define the address, network and node id for each cluster member. Each cluster_node is a dictionary. Required if creating NDIs</div>
-    </tr>
-
-    <tr>
-    <td colspan="5">
-        <table border=1 cellpadding=4>
-        <caption><b>Dictionary object cluster_nodes</b></caption>
-
-        <tr>
-        <th class="head">parameter</th>
-        <th class="head">required</th>
-        <th class="head">default</th>
-        <th class="head">choices</th>
-        <th class="head">comments</th>
-        </tr>
-
-        <tr>
-        <td>address<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The IP address for this cluster node member</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>nodeid<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The node ID for the cluster node</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>network_value<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The netmask for this cluster node address</div>
-        </td>
-        </tr>
-
-        </table>
-
-    </td>
-    </tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>cluster_vip<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
+    <td>*</td>
+    <td><ul><li>host</li><li>network</li><li>router</li><li>address_range</li><li>interface_zone</li><li>domain_name</li><li>group</li><li>ip_list</li><li>country</li><li>alias</li><li>expression</li></ul></td>
 	<td>
-        <p>The cluster virtual (shared) IP address for all cluster members. Required when creating a CVI</p>
+        <p>Type of network element to retrieve</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>cluster_vip_mask<br/><div style="font-size: small;"></div></td>
+    <td>exact_match<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
 	<td>
-        <p>The cluster netmask for the cluster_vip. Required if <em>cluster_vip</em></p>
+        <p>Whether to do an exact match on the filter specified</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>name<br/><div style="font-size: small;"></div></td>
-    <td>yes</td>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
     <td></td>
+    <td><ul><li>rbvpn_tunnel_side_a</li><li>rbvpn_tunnel_side_b</li><li>vpn_profile_ref</li><li>monitoring_group_ref</li></ul></td>
+	<td>
+        <p>Optionally expand element attributes that contain only href</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>*</td>
     <td></td>
 	<td>
-        <p>The name of the firewall cluster to modify</p>
+        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>limit<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>10</td>
+    <td></td>
+	<td>
+        <p>Limit the number of results. Set to 0 to remove limit.</p>
 	</td>
 	</tr>
     </td>
@@ -319,73 +273,10 @@ Options
     </td>
     </tr>
 
-    <tr>
-    <td>state<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>present</td>
-    <td><ul><li>present</li><li>absent</li></ul></td>
-	<td>
-        <p>Create or delete a firewall cluster</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>zone_ref<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>A zone name for the FW management interface.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
     </table>
     </br>
 
-Examples
---------
 
-.. code-block:: yaml
-
-    
-    - name: Add a cluster address with a CVI and NDIs to a 2 node cluster
-      l3fw_cluster_interface:
-        name: mycluster
-        cluster_vip: 3.3.3.1
-        cluster_vip_mask: 3.3.3.0/24
-        cluster_macaddress: 02:02:02:02:02:04
-        cluster_nic_id: 3
-        cluster_nodes:
-          - address: 3.3.3.2
-            network_value: 3.3.3.0/24
-            nodeid: 1
-          - address: 3.3.3.3
-            network_value: 3.3.3.0/24
-            nodeid: 2
-    
-    - name: Add only a CVI to a cluster
-      l3fw_cluster_interface:
-        name: mycluster
-        cluster_vip: 4.4.4.1
-        cluster_vip_mask: 4.4.4.0/24
-        cluster_macaddress: 02:02:02:02:02:06
-        cluster_nic_id: 4
-    
-    - name: Add only NDI's to a cluster FW
-      l3fw_cluster_interface:
-        name: mycluster
-        cluster_nic_id: 3
-        cluster_nodes:
-          - address: 3.3.3.2
-            network_value: 3.3.3.0/24
-            nodeid: 1
-          - address: 3.3.3.3
-            network_value: 3.3.3.0/24
-            nodeid: 2  
 
 Return Values
 -------------
@@ -405,16 +296,22 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>changed</td>
+    <td>ansible_facts</td>
     <td>
-        <div>Whether or not the change succeeded</div>
     </td>
-    <td align=center>always</td>
-    <td align=center>bool</td>
+    <td align=center></td>
+    <td align=center></td>
     <td align=center></td>
     </tr>
     </table>
     </br></br>
+
+
+Notes
+-----
+
+.. note::
+    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
 
 
 Author

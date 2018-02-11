@@ -1,14 +1,70 @@
-- name: Routing facts about an engine
+- name: Configure BGP on an engine
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Specify the engine name to get route table
+  - name: Run the BGP task on myfw
+    register: result
     bgp:
-      name: myfirewall
-      autonomous_system: myas
-      bgp_profile: foo
-      external_peer:
-        autonomous_system: peeras
-        neighbor_ip: 1.1.1.1
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      name: myfw
+      autonomous_system: 250
+      router_id: none
+      announced_networks:
+        network:
+          - 172.18.1.0/24
+          - 172.18.2.0/24
+          - 172.18.18.0/24
+        host:
+          - 1.1.1.1
+        group:
+          - mygroup
+      #bgp_profile: foo
+      bgp_peering:
+        name: mypeering
+        interface_id: 0
+        network: 1.1.1.0/24
+        neighbor_ip: 10.10.10.10
+        neighbor_as: 200
         neighbor_port: 179
+
+  - assert:
+      that:
+        - result.state.announced_ne_setting|length == 5
+        - result.state.enabled
+
+  #- name: Remove BGP from interface 0
+  #  register: result
+  #  bgp:
+  #    name: myfw
+  #    bgp_peering:
+  #      interface_id: 0
+  #    state: absent
+
+  #- name: Remove BGP name mypeering from all interfaces
+  #  register: result
+  #  bgp:
+  #    name: myfw
+  #    bgp_peering:
+  #      name: mypeering
+  #    state: absent
+  
+  #- name: Remove BGP name mypeering from all interfaces
+  #  register: result
+  #  bgp:
+  #    name: myfw
+  #    bgp_peering:
+  #      interface_id:
+  #    state: absent
+
+  #- name: Disable BGP on engine
+  #  register: result
+  #  bgp:
+  #    name: myfw
+  #    state: absent
+  
+  #- assert:
+  #    that:
+  #      - not result.state.enabled
       

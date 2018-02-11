@@ -12,8 +12,8 @@
       mgmt_interface: 10
       interfaces:
         - interface_id: 0
-          address: 1.1.1.1
-          network_value: 1.1.1.0/24
+          address: 1.1.1.2
+          network_value: 1.1.1.0/16
           zone_ref: management
         - interface_id: 10
           address: 10.10.10.1
@@ -36,15 +36,8 @@
       tags: 
         - footag
 
-  # - name: Delete an interface
-  #   l3fw:
-  #     name: myfw
-  #     interfaces:
-  #       - interface_id: 11
-  #     state: absent
-
-  # - name: Delete a NGFW
-  #   l3fw:
-  #     name: myfw
-  #     state: absent
+  #- name: Delete a NGFW
+  #  l3fw:
+  #    name: myfw
+  #    state: absent
 

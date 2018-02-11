@@ -1,8 +1,8 @@
-.. _l3fw:
+.. _route_vpn:
 
 
-l3fw - Create or delete a Stonesoft Layer 3 firewall
-++++++++++++++++++++++++++++++++++++++++++++++++++++
+route_vpn - Create a route based VPN
+++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Create or delete a Stonesoft Layer 3 Firewall on the Stonesoft Management Center.
+* Create a route based VPN. Route VPN's are typically created between a managed Stonesoft FW and a 3rd party device (AWS, Azure, etc). You must pre-create the internal FW prior to running this module. If doing an IPSEC wrapped VPN, you must also specify a tunnel interface for which to bind (must be pre-created) and specify an IP address/interface id to specify the ISAKMP listener.
 
 
 
@@ -42,91 +42,19 @@ Options
     <th class="head">choices</th>
     <th class="head">comments</th>
     </tr>
-
     <tr>
-    <td>default_nat<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Whether to enable default NAT on the FW. Default NAT will identify internal networks and use the external interface IP for outgoing traffic</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>domain_server_address<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>A list of IP addresses to use as DNS resolvers for the FW.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_antivirus<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable Anti-Virus engine on the FW</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_gti<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable file reputation</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_ospf<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable OSPF on the FW management interface</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_sidewinder_proxy<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable Sidewinder proxy capability on the FW</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-    <tr>
-    <td rowspan="2">interfaces<br/><div style="font-size: small;"></div></td>
+    <td rowspan="2">local_gw<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
     <td>
-        <div>List of interface definitions for this FW</div>
+        <div>Represents the locally managed Stonesoft FW gateway by name</div>
     </tr>
 
     <tr>
     <td colspan="5">
         <table border=1 cellpadding=4>
-        <caption><b>Dictionary object interfaces</b></caption>
+        <caption><b>Dictionary object local_gw</b></caption>
 
         <tr>
         <th class="head">parameter</th>
@@ -137,52 +65,32 @@ Options
         </tr>
 
         <tr>
-        <td>enable_vpn<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>tunnel_interface<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
         <td></td>
-        <td><ul><li>yes</li><li>no</li></ul></td>
+        <td></td>
         <td>
-            <div>Enable VPN on this interface</div>
+            <div>The ID for the tunnel interface</div>
         </td>
         </tr>
 
         <tr>
-        <td>zone_ref<br/><div style="font-size: small;"></div></td>
+        <td>interface_ip<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>Optional zone for this interface, by name. If zone doesn't exist, it will be created</div>
+            <div>An interface IP addresses to enable IPSEC. This is an alternative to using <em>interface_id</em> since you can specify an exact IP address, independent of the interface ID.</div>
         </td>
         </tr>
 
         <tr>
-        <td>network_value<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
-            <div>Network CIDR for the <code>address</code> specified</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>address<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>IP address for this interface</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>type<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td>physical_interface</td>
-        <td><ul><li>physical_interface</li><li>tunnel_interface</li></ul></td>
-        <td>
-            <div>Type of interface. Default type is physical_interface. If this is designated as an interface type other than physical, you must specify the type.</div>
+            <div>The name of the Stonesoft FW gateway</div>
         </td>
         </tr>
 
@@ -192,7 +100,7 @@ Options
         <td></td>
         <td></td>
         <td>
-            <div>Interface ID for this interface.</div>
+            <div>The interface ID to enable IPSEC. If multiple IP addresses exist on the interface, IPSEC will be enabled on all. Use <em>interface_ip</em> as an alternative.</div>
         </td>
         </tr>
 
@@ -204,50 +112,82 @@ Options
     </tr>
 
     <tr>
-    <td>location<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Location for this FW. Used for FW's that are behind NAT</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>log_server<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Specify a log server to use. This is useful if multiple log servers are available.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>mgmt_interface<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>The management interface id. In the intent is to create the fw, <code>interfaces</code> must also be specified with a matching interface_id</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>name<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
     <td></td>
 	<td>
-        <p>The name of the firewall to add or delete</p>
+        <p>The name for this route VPN.</p>
 	</td>
 	</tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">remote_gw<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module can pre-create the gateway based on the gateway settings provided.</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object remote_gw</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>preshared_key<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>If this is an External Gateway, you must provide a pre-shared key to be used between the gateways. If the gateway is another Stonesoft FW, a key will be auto-generated.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>address<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>IP address for the remote external gateway. Required if you want the gateway auto created.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The name of the External Gateway. If the gateway does not exist, it will be created if you provide the <em>address</em> and <em>networks</em> parameters.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>network<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Specify the networks for the External Gateway in cidr format. If the network elements already exist, they will be used. They will be auto-created using a syntax of 'network-1.1.1.0/24'. Required for External Gateways that are created.</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
     </td>
     </tr>
 
@@ -415,19 +355,19 @@ Options
     <td>present</td>
     <td><ul><li>present</li><li>absent</li></ul></td>
 	<td>
-        <p>Create or delete layer 3 FW</p>
+        <p>Specify a create or delete operation</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>tags<br/><div style="font-size: small;"></div></td>
+    <td>type<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td></td>
-    <td></td>
+    <td>ipsec</td>
+    <td><ul><li>ipsec</li><li>gre</li></ul></td>
 	<td>
-        <p>Provide an optional category tag to the engine. If the category does not exist, it will be created</p>
+        <p>The type of IPSEC vpn to create</p>
 	</td>
 	</tr>
     </td>
@@ -442,45 +382,43 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a single layer 3 firewall
-      register: result
-      l3fw:
-        smc_logging:
-          level: 10
-          path: /Users/davidlepage/Downloads/ansible-smc.log
-        name: myfw
-        mgmt_interface: 10
-        interfaces:
-          - interface_id: 0
-            address: 1.1.1.2
-            network_value: 1.1.1.0/16
-            zone_ref: management
-          - interface_id: 10
-            address: 10.10.10.1
-            network_value: 10.10.10.0/24
-            zone_ref: external
-            enable_vpn: yes
-          - interface_id: 11
-          - interface_id: 1000
-            address: 11.11.11.1
-            network_value: 11.11.11.0/24
-            zone_ref: awsvpn
-            type: tunnel_interface 
-        domain_server_address:
-          - 10.0.0.1
-          - 10.0.0.2
-        default_nat: yes
-        enable_antivirus: yes
-        enable_gti: yes
-        enable_sidewinder_proxy: yes
-        tags: 
-          - footag
+    - name: Create a new Route VPN with an external gateway
+        route_vpn:
+          smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
+          name: mynrbvpn
+          type: ipsec
+          local_gw:
+            name: myfw
+            tunnel_interface: 1000
+            interface_id: 1
+          remote_gw:
+            name: extgw3
+            type: external_gateway
+            address: 33.33.33.41
+            preshared_key: abc123
+            network:
+              - 172.18.1.0/24
+              - 172.18.2.0/24
+              - 172.18.15.0/24
     
-    # Delete a layer 3 firewall, using environment variables for credentials
-    - name: delete firewall by name
-      l3fw:
-        name: myfirewall
-        state: 'absent'
+    - name: Create a new Route VPN between two Stonesoft Fws
+        route_vpn:
+          smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
+          name: mynrbvpn
+          type: ipsec
+          local_gw:
+            name: myfw
+            tunnel_interface: 1000
+            interface_id: 1
+            interface_ip: 10.10.10.10
+          remote_gw:
+            name: dingo
+            tunnel_interface: 1000
+            interface_ip: 36.35.35.37
 
 Return Values
 -------------

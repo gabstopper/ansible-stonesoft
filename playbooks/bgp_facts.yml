@@ -4,6 +4,9 @@
   tasks:
   - name: Specify the engine name to get route table
     bgp_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
       element: autonomous_system
-      filter: as100
+      filter: as299
       
