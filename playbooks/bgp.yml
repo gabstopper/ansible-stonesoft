@@ -8,8 +8,8 @@
       smc_logging:
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
-      name: myfw
-      autonomous_system: 250
+      name: newcluster
+      autonomous_system: '200.600'
       router_id: none
       announced_networks:
         network:

@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Firewall clusters can be created with up to 16 nodes per cluster. For each cluster_node specified, this will define a unique cluster member.
+* Firewall clusters can be created with up to 16 nodes per cluster. For each cluster_node specified, this will define a unique cluster member. Modifications can be made to existing interfaces, interfaces can be added, VLANs can be added and removed. By default if the interface is not defined in the YAML, it will be deleted. VLANs can be removed or added however if a vlan ID needs to change, you must delete the old and recreate the new VLAN definition. In addition, it is not possible to modify interfaces that have multiple IP addresses defined.
 
 
 
@@ -44,7 +44,7 @@ Options
     </tr>
 
     <tr>
-    <td>cluster_mode<br/><div style="font-size: small;"></div></td>
+    <td>cvi_mode<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>balancing</td>
     <td><ul><li>balancing</li><li>standby</li></ul></td>
@@ -104,7 +104,7 @@ Options
     </tr>
     <tr>
     <td rowspan="2">interfaces<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
+    <td>yes</td>
     <td></td>
     <td></td>
     <td>
@@ -125,12 +125,32 @@ Options
         </tr>
 
         <tr>
+        <td>macaddress<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The mac address to assign to the cluster virtual IP interface. This is required if <em>cluster_virtual</em></div>
+        </td>
+        </tr>
+
+        <tr>
         <td>zone_ref<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
             <div>Optional zone name for this interface</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>network_value<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster netmask for the cluster_vip. Required if <em>cluster_virtual</em></div>
         </td>
         </tr>
 
@@ -146,7 +166,7 @@ Options
 
         <tr>
         <td>nodes<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
@@ -155,32 +175,12 @@ Options
         </tr>
 
         <tr>
-        <td>cluster_mask<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The cluster netmask for the cluster_vip. Required if <em>cluster_virtual</em></div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>cluster_nic<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>interface_id<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
             <div>The cluster nic ID for this interface. Required.</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>cluster_macaddress<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The mac address to assign to the cluster virtual IP interface. This is required if <em>cluster_virtual</em></div>
         </td>
         </tr>
 
@@ -192,24 +192,24 @@ Options
     </tr>
 
     <tr>
-    <td>mgmt_interface<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Identify the interface to be specified as management</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>name<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
     <td></td>
 	<td>
         <p>The name of the firewall cluster to add or delete</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>primary_mgt<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Identify the interface to be specified as management</p>
 	</td>
 	</tr>
     </td>
@@ -336,7 +336,7 @@ Options
 
         <tr>
         <td>path<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
@@ -350,7 +350,7 @@ Options
         <td></td>
         <td></td>
         <td>
-            <div>Log level as specified by the standard python logging library, in int format</div>
+            <div>Log level as specified by the standard python logging library, in int format. Default setting is logging.DEBUG.</div>
         </td>
         </tr>
 
@@ -397,18 +397,6 @@ Options
     </td>
     </tr>
 
-    <tr>
-    <td>zone_ref<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>A zone name for the FW management interface.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
     </table>
     </br>
 
@@ -418,54 +406,69 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a layer 3 FW cluster with 3 members
-      l3fw_cluster:
-        smc_logging:
-          level: 10
-          path: /Users/davidlepage/Downloads/ansible-smc.log
-        name: mycluster
-        cluster_mode: standby
-        mgmt_interface: 0
-        interfaces:
-          - cluster_nic: 0
-            cluster_virtual: 1.1.1.1
-            cluster_mask: 1.1.1.0/24
-            macaddress: 02:02:02:02:02:02
-            zone_ref: management
-            nodes:
-              - address: 1.1.1.2
-                network_value: 1.1.1.0/24
-                nodeid: 1
-              - address: 1.1.1.3
-                network_value: 1.1.1.0/24
-                nodeid: 2
-          - cluster_nic: 1
-            cluster_virtual: 2.2.2.1
-            cluster_mask: 2.2.2.0/24
-            macaddress: 02:02:02:02:02:03
-            nodes:
-              - address: 2.2.2.2
-                network_value: 2.2.2.0/24
-                nodeid: 1
-              - address: 2.2.2.3
-                network_value: 2.2.2.0/24
-                nodeid: 2
-          - cluster_nic: 2
-            nodes:
-              - address: 3.3.3.1
-                network_value: 3.3.3.0/24
-                nodeid: 1
-              - address: 3.3.3.2
-                network_value: 3.3.3.0/24
-                nodeid: 2
-        default_nat: yes
-        domain_server_address:
-          - 10.0.0.1
-          - 10.0.0.3
-        enable_antivirus: yes
-        enable_gti: yes
-        tags:
-          - footag
+    l3fw_cluster:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      name: newcluster
+      cvi_mode: standby
+      primary_mgt: 0
+      interfaces:
+        - interface_id: 0
+          cluster_virtual: 1.1.1.1
+          network_value: 1.1.1.0/24
+          macaddress: 02:02:02:02:02:02
+          nodes:
+            - address: 1.1.1.2
+              network_value: 1.1.1.0/24
+              nodeid: 1
+            - address: 1.1.1.3
+              network_value: 1.1.1.0/24
+              nodeid: 2
+            - address: 1.1.1.4
+              network_value: 1.1.1.0/24
+              nodeid: 3
+        - interface_id: 1
+          cluster_virtual: 2.2.2.1
+          network_value: 2.2.2.0/24
+          macaddress: 02:02:02:02:02:04
+          nodes:
+            - address: 2.2.2.2
+              network_value: 2.2.2.0/24
+              nodeid: 1
+            - address: 2.2.2.3
+              network_value: 2.2.2.0/24
+              nodeid: 2
+            - address: 2.2.2.4
+              network_value: 2.2.2.0/24
+              nodeid: 3
+        - interface_id: 2
+          nodes:
+            - address: 3.3.3.2
+              network_value: 3.3.3.0/24
+              nodeid: 1
+            - address: 3.3.3.3
+              network_value: 3.3.3.0/24
+              nodeid: 2
+            - address: 3.3.3.4
+              network_value: 3.3.3.0/24
+              nodeid: 3
+          vlan_id: 3
+        - interface_id: 2
+          nodes:
+            - address: 4.4.4.2
+              network_value: 4.4.4.0/24
+              nodeid: 1
+            - address: 4.4.4.3
+              network_value: 4.4.4.0/24
+              nodeid: 2
+            - address: 4.4.4.4
+              network_value: 4.4.4.0/24
+              nodeid: 3
+          vlan_id: 4
+        - interface_id: 3
+      tags:
+        - footag
     
     # Delete a cluster
     - name: layer 3 cluster with 3 members
@@ -488,6 +491,16 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     <th class="head">returned</th>
     <th class="head">type</th>
     <th class="head">sample</th>
+    </tr>
+
+    <tr>
+    <td>state</td>
+    <td>
+        <div>Full json definition of NGFW</div>
+    </td>
+    <td align=center>always</td>
+    <td align=center>dict</td>
+    <td align=center></td>
     </tr>
 
     <tr>

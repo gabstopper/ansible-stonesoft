@@ -262,7 +262,8 @@ def fact_argument_spec():
         filter=dict(type='str'),
         limit=dict(default=0, type='int'),
         exact_match=dict(default=False, type='bool'),
-        case_sensitive=dict(default=True, type='bool')
+        case_sensitive=dict(default=True, type='bool'),
+        as_yaml=dict(default=False, type='bool')
     )
 
 

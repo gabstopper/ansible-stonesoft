@@ -284,7 +284,7 @@ Options
 
         <tr>
         <td>path<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
@@ -298,7 +298,7 @@ Options
         <td></td>
         <td></td>
         <td>
-            <div>Log level as specified by the standard python logging library, in int format</div>
+            <div>Log level as specified by the standard python logging library, in int format. Default setting is logging.DEBUG.</div>
         </td>
         </tr>
 

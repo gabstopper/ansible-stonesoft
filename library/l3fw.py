@@ -28,24 +28,28 @@ options:
       - The management interface id. In the intent is to create the fw, C(interfaces) must also
         be specified with a matching interface_id
     default: 0
+    required: true
   interfaces:
     description:
       - List of interface definitions for this FW
     type: list
+    required: true
     suboptions:
       address:
         description:
           - IP address for this interface
         type: str
+        required: true
       network_value:
         description:
           - Network CIDR for the C(address) specified
         type: str
+        required: true
       interface_id:
         description:
           - Interface ID for this interface. 
-        required: true
         type: str
+        required: true
       zone_ref: 
         description:
           - Optional zone for this interface, by name. If zone doesn't exist, it will be created

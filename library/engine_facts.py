@@ -126,174 +126,217 @@ engines:
         'tags': ['footag']
 }]
 '''
-        
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
-
-
-try:
-    from smc.api.exceptions import UnsupportedEngineFeature
-    from smc.core.interfaces import InterfaceModifier
-except ImportError:
-    pass
 
 
 ENGINE_TYPES = frozenset(['fw_clusters', 'engine_clusters', 'ips_clusters',
                           'layer2_clusters'])
 
 
-def to_dict(element):
-    links = ('link', 'key')
-    for node in element.data.get('nodes'):
-        for _, data in node.items():
-            for elem in links:
-                data.pop(elem, None)
-    for interface in element.data.get('physicalInterfaces'):
-        for _, data in interface.items():
-            for elem in links:
-                data.pop(elem, None)
-            for vlan in data.get('vlanInterfaces', []):
-                for elem in links:
-                    vlan.pop(elem, None)
-    for link in links:
-        element.data.pop(link, None)
-    return element.data
+try:
+    from smc.elements.network import Zone
+    from smc.core.sub_interfaces import ClusterVirtualInterface
+except ImportError:
+    pass
 
 
-def interface_spec():
-    return dict(
-        interface_id=None,
-        name=None,
-        type=None,
-        interfaces=[],
-        vlans=[]
-    )
-
-   
-def address_spec():
-    return dict(
-        address=None,
-        network_value=None,
-        type=None,
-        nodeid=None
-    )
+def zone_finder(zones, zone):
+    for z in zones:
+        if z.href == zone:
+            return z.name
 
 
-def interface_map(engine):
-    """
-    Return an interface dict for specified engine.
-    
-    :param engine: :class:`smc.core.engine.Engine`
-    :rtype: dict
-    """
-    nodes = InterfaceModifier.byEngine(engine)
+def yaml_firewall(engine):
+        
+    # Prefetch all zones to reduce queries
+    zone_cache = list(Zone.objects.all())
+    yaml_engine = {'name': engine.name}
     interfaces = []
-    for node in nodes:
-        spec = interface_spec()
-        spec.update(interface_id=node.interface_id,
-                    name=node.name,
-                    type=node.typeof)
+    
+    for interface in engine.interface:
+        itf = {}
+        itf.update(interface_id=interface.interface_id)
+        if 'physical_interface' not in interface.typeof:
+            itf.update(type=interface.typeof)
+        if interface.has_interfaces:
+            for sub_interface in interface.all_interfaces:
+                node = {}
+            
+                if isinstance(sub_interface, ClusterVirtualInterface):
+                    itf.update(
+                        cluster_virtual=sub_interface.address,
+                        macaddress=interface.macaddress,
+                        network_value=sub_interface.network_value)
+                    # Skip remaining to get nodes
+                    continue
+                else: # NDI
+                    if sub_interface.dynamic:
+                        node.update(dynamic=True)
+                    else:
+                        node.update(
+                            address=sub_interface.address,
+                            network_value=sub_interface.network_value,
+                            nodeid=sub_interface.nodeid)
+                        
+                        if sub_interface.primary_mgt:
+                            yaml_engine.update(primary_mgt='{}'.format(
+                                interface.interface_id))
         
-        # IF a node has a VLAN, there should not be interfaces, with the
-        # exception that an inline interface still stores a single ref
-        if node.has_vlan:
-            vlan_interfaces = node.vlan_interfaces()
-            # A VLAN is a type of PhysicalInterface
-            for vlan in vlan_interfaces:
-                sub_interfaces = vlan.sub_interfaces()
+                if interface.zone_ref:
+                    itf.update(zone_ref=
+                        zone_finder(zone_cache, interface.zone_ref))
                 
-                # VLANs can't have VLANs
-                for sub_if in sub_interfaces:
-                    address = address_spec()
-                    address.update(
-                        address=getattr(sub_if, 'address', None),
-                        network_value=getattr(sub_if, 'network_value', None),
-                        type=sub_if.typeof,
-                        nodeid=getattr(sub_if, 'nodeid', None),
-                        vlan_id=getattr(sub_if, 'vlan_id', None))
+                itf.setdefault('nodes', []).append(node)
+
+            interfaces.append(itf)
+        
+        elif interface.has_vlan:
+            for vlan in interface.vlan_interface:
+                itf = {}
+                itf.update(interface_id=interface.interface_id,
+                           vlan_id=vlan.vlan_id)
+                if vlan.has_interfaces:
+                    for sub_vlan in vlan.all_interfaces:
+                        node = {}
+
+                        if isinstance(sub_vlan, ClusterVirtualInterface):
+                            itf.update(
+                                cluster_virtual=sub_vlan.address,
+                                macaddress=interface.macaddress,
+                                network_value=sub_vlan.network_value)
+                            continue
+                        else: # NDI
+                            node.update(
+                                address=sub_vlan.address,
+                                network_value=sub_vlan.network_value,
+                                nodeid=sub_vlan.nodeid)
+
+                            if sub_vlan.primary_mgt:
+                                node.update(primary_mgt=True)
+                                yaml_engine.update(primary_mgt='{}.{}'.format(
+                                    interface.interface_id, sub_vlan.vlan_id))
+            
+                        if vlan.zone_ref:
+                            itf.update(zone_ref=zone_finder(
+                                zone_cache, vlan.zone_ref))
+                        
+                        itf.setdefault('nodes', []).append(node)
+                        
+                    interfaces.append(itf)
+                else:
+                    interfaces.append(itf)
+        
+        else: # Single interface, no addresses
+            if getattr(interface, 'macaddress', None) is not None:
+                itf.update(macaddress=interface.macaddress)
+            interfaces.append(itf)
+
+    yaml_engine.update(
+        interfaces=interfaces,
+        default_nat=engine.default_nat.status,
+        enable_antivirus=engine.antivirus.status,
+        enable_gti=engine.file_reputation.status,
+        enable_sidewinder_proxy=engine.sidewinder_proxy.status,
+        domain_server_address=[dns.value for dns in engine.dns
+                               if dns.element is None])
+    return yaml_engine
+
+''' 
+def yaml_firewall(engine):
+        
+    # Reduce number of zone query lookup cache
+    zone_cache = list(Zone.objects.all())
+    yaml_engine = {'name': engine.name}
+    interfaces = []
+    
+    for interface in engine.interface:
+        itf = {}
+        itf.update(interface_id=interface.interface_id)
+        if 'physical_interface' not in interface.typeof:
+            itf.update(type=interface.typeof)
+        if interface.has_interfaces:
+            for sub_interface in interface.all_interfaces:
+                if isinstance(sub_interface, ClusterVirtualInterface):
+                    itf.update(
+                        cluster_virtual=sub_interface.address,
+                        macaddress=interface.macaddress,
+                        address=sub_interface.address,
+                        network_value=sub_interface.network_value)
+                else: # NDI
+                    if sub_interface.dynamic:
+                        itf.update(dynamic=True)
+                    else:
+                        ndi = {'address': sub_interface.address,
+                               'network_value': sub_interface.network_value,
+                               'nodeid': sub_interface.nodeid}
+                        if sub_interface.primary_mgt:
+                            ndi.update(primary_mgt=True)
+                        itf.setdefault('nodes', []).append(ndi)
+        
+                if interface.zone_ref:
+                    itf.update(zone_ref=zone_finder(
+                        zone_cache, interface.zone_ref))
+            
+            interfaces.append(itf)
+        
+        elif interface.has_vlan:
+            vlan_interfaces = []
+            for vlan in interface.vlan_interface:
+                vlan_def = {}
+                if vlan.has_interfaces:
+                    for sub_vlan in vlan.all_interfaces:
+                        vlan_def.update(vlan_id=sub_vlan.vlan_id)
+                        if isinstance(sub_vlan, ClusterVirtualInterface):
+                            itf.update(
+                                cluster_virtual=sub_vlan.address,
+                                macaddress=interface.macaddress,
+                                address=sub_vlan.address,
+                                network_value=sub_vlan.network_value)
+                        else: # NDI
+                            ndi = {'address': sub_vlan.address,
+                                   'network_value': sub_vlan.network_value,
+                                   'nodeid': sub_vlan.nodeid}
+                            if sub_vlan.primary_mgt:
+                                ndi.update(primary_mgt=True)
+                            vlan_def.setdefault('nodes', []).append(ndi)
                     
-                spec['vlans'].append(address)
+                        if vlan.zone_ref:
+                            vlan_def.update(zone_ref=zone_finder(
+                                zone_cache, vlan.zone_ref))
+                
+                else:
+                    vlan_def.update({'vlan_id': vlan.vlan_id})
+                
+                vlan_interfaces.append(vlan_def)
+                itf.update(vlan_interfaces=vlan_interfaces)
         
-        elif node.has_interfaces:
-            sub_interfaces = node.sub_interfaces()
-            for sub_if in sub_interfaces:
-                address = address_spec()
-                address.update(
-                    address=getattr(sub_if, 'address', None),
-                    network_value=getattr(sub_if, 'network_value', None),
-                    type=sub_if.typeof,
-                    nodeid=getattr(sub_if, 'nodeid', None))
-                spec['interfaces'].append(address)
-
-        interfaces.append(spec)
-    return interfaces
-
-
-def _unsupported_exc(engine, prop):
-    # Some features can not be enabled based on the
-    # engine type.
-    try:
-        return getattr(engine, prop)
-    except UnsupportedEngineFeature:
-        return False
-
-
-def engine_dict_from_obj(engine):
-    engine_dict = dict(
-        name=engine.name,
-        type=engine.type,
-        engine_version=engine.data.get('engine_version'),
-        cluster_mode=engine.data.get('cluster_mode'),
-        interfaces=interface_map(engine),
-        antivirus=_unsupported_exc(engine, 'is_antivirus_enabled'),
-        gti=_unsupported_exc(engine, 'is_gti_enabled'),
-        sidewinder_proxy=_unsupported_exc(engine, 'is_sidewinder_proxy_enabled'),
-        default_nat=_unsupported_exc(engine, 'is_default_nat_enabled'),
-        tags=[]
-    )
-    for tag in engine.categories:
-        engine_dict['tags'].append(tag.name)
-    
-    try:
-        engine_dict['pending_changes'] = engine.pending_changes.has_changes
-    except UnsupportedEngineFeature:
-        engine_dict['pending_changes'] = False
-    
-    if _unsupported_exc(engine, 'ospf'):
-        ospf = engine.ospf
-        if ospf.is_enabled:
-            ospf_dict = dict(
-                enabled=True,
-                profile=ospf.profile.name,
-                router_id=ospf.router_id)
-            engine_dict['ospf'] = ospf_dict
-        else:
-            engine_dict['ospf'] = {'enabled': False} 
-    
-    if _unsupported_exc(engine, 'bgp'):
-        bgp = engine.bgp
-        if bgp.is_enabled:
-            as_element = bgp.autonomous_system
-            bgp_dict = dict(
-                enabled=True,
-                router_id=getattr(bgp, 'router_id'),
-                autonomous_system=as_element.name,
-                as_number=as_element.as_number,
-                profile=bgp.profile.name,
-                advertisements=[])
+            interfaces.append(itf)
         
-            advertisements = getattr(bgp, 'advertisements', None)
-            if advertisements:
-                for ads in advertisements:
-                    net, routemap = ads
-                    bgp_dict['advertisements'].append({
-                        net.typeof: net.name, 'route_map': routemap.name if routemap else None})
-            engine_dict['bgp'] = bgp_dict
-        else:
-            engine_dict['bgp'] = {'enabled': False}
+        else: # Single interface, no addresses
+            if getattr(interface, 'macaddress', None) is not None:
+                itf.update(macaddress=interface.macaddress)
+            interfaces.append(itf)
 
-    return engine_dict
+    yaml_engine.update(
+        interfaces=interfaces,
+        default_nat=engine.default_nat.status,
+        enable_antivirus=engine.antivirus.status,
+        enable_gti=engine.file_reputation.status,
+        enable_sidewinder_proxy=engine.sidewinder_proxy.status,
+        domain_server_address=[dns.value for dns in engine.dns
+                               if dns.element is None])
+    return yaml_engine
+'''    
+    
 
-              
+def to_yaml(engine):
+    if 'single_fw' in engine.type or 'cluster' in engine.type:
+        return yaml_firewall(engine)
+    else:
+        raise ValueError('Only single FW and cluster FW types are '
+            'currently supported.')
+
+     
 class EngineFacts(StonesoftModuleBase):
     def __init__(self):
         
@@ -304,6 +347,7 @@ class EngineFacts(StonesoftModuleBase):
         self.element = None
         self.limit = None
         self.filter = None
+        self.as_yaml = None
         self.exact_match = None
         self.case_sensitive = None
         
@@ -318,10 +362,18 @@ class EngineFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.as_yaml and not self.filter:
+            self.fail(msg='You must provide a filter to use the as_yaml '
+                'parameter')
+        
         result = self.search_by_context()
         if self.filter:
-            #engines = [engine_dict_from_obj(engine) for engine in result]
-            engines = [to_dict(engine) for engine in result]
+            if self.as_yaml:
+                for engine in result:
+                    engines = [to_yaml(engine)]
+                    self.results['engine_type'] = engine.type
+            else:
+                engines = [engine.data for engine in result]
         else:
             engines = [{'name': engine.name, 'type': engine.type} for engine in result]
         
