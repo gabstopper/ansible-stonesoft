@@ -1,0 +1,5 @@
+{% if results.ansible_facts.engines %}
+{% for engine in results.ansible_facts.engines %}
+  {{- engine | to_nice_json }}
+{% endfor %}
+{% endif %}

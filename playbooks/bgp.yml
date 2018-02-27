@@ -9,7 +9,7 @@
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
       name: newcluster
-      autonomous_system: '200.600'
+      autonomous_system: '65026.65013'
       router_id: none
       announced_networks:
         network:

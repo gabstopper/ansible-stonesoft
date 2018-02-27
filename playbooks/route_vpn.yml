@@ -10,7 +10,7 @@
       name: myrbvpn
       type: ipsec
       local_gw:
-        name: myfw
+        name: mycluster
         tunnel_interface: 1000
         interface_id: 0
         #interface_ip: 10.10.10.10

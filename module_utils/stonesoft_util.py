@@ -23,7 +23,7 @@ try:
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
-
+                
 
 def element_type_dict():
     """ 

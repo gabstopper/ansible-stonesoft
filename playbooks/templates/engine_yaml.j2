@@ -1,3 +1,4 @@
+{% if results.ansible_facts.engines %}
 - name: Firewall Template
   hosts: localhost
   gather_facts: no
@@ -14,3 +15,4 @@
 {% for engine in results.ansible_facts.engines %}
   {{- engine | to_nice_yaml | indent(6, True) }}
 {% endfor %}
+{% endif %}

@@ -147,9 +147,9 @@ def zone_finder(zones, zone):
 
 
 def yaml_firewall(engine):
-        
     # Prefetch all zones to reduce queries
     zone_cache = list(Zone.objects.all())
+    management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat')
     yaml_engine = {'name': engine.name}
     interfaces = []
     
@@ -161,12 +161,12 @@ def yaml_firewall(engine):
         if interface.has_interfaces:
             for sub_interface in interface.all_interfaces:
                 node = {}
-            
                 if isinstance(sub_interface, ClusterVirtualInterface):
                     itf.update(
                         cluster_virtual=sub_interface.address,
-                        macaddress=interface.macaddress,
                         network_value=sub_interface.network_value)
+                    if not 'type' in itf: # It's a physical interface
+                        itf.update(macaddress=interface.macaddress)
                     # Skip remaining to get nodes
                     continue
                 else: # NDI
@@ -178,9 +178,9 @@ def yaml_firewall(engine):
                             network_value=sub_interface.network_value,
                             nodeid=sub_interface.nodeid)
                         
-                        if sub_interface.primary_mgt:
-                            yaml_engine.update(primary_mgt='{}'.format(
-                                interface.interface_id))
+                        for role in management:
+                            if getattr(sub_interface, role, None):
+                                yaml_engine[role] = getattr(sub_interface, 'nicid')    
         
                 if interface.zone_ref:
                     itf.update(zone_ref=
@@ -211,10 +211,9 @@ def yaml_firewall(engine):
                                 network_value=sub_vlan.network_value,
                                 nodeid=sub_vlan.nodeid)
 
-                            if sub_vlan.primary_mgt:
-                                node.update(primary_mgt=True)
-                                yaml_engine.update(primary_mgt='{}.{}'.format(
-                                    interface.interface_id, sub_vlan.vlan_id))
+                            for role in management:
+                                if getattr(sub_vlan, role, None):
+                                    yaml_engine[role] = getattr(sub_vlan, 'nicid')
             
                         if vlan.zone_ref:
                             itf.update(zone_ref=zone_finder(
@@ -224,110 +223,58 @@ def yaml_firewall(engine):
                         
                     interfaces.append(itf)
                 else:
+                    # Empty VLAN, check for zone
+                    if vlan.zone_ref:
+                        itf.update(zone_ref=zone_finder(
+                            zone_cache, vlan.zone_ref))
                     interfaces.append(itf)
         
         else: # Single interface, no addresses
             if getattr(interface, 'macaddress', None) is not None:
                 itf.update(macaddress=interface.macaddress)
+            if interface.zone_ref:
+                itf.update(zone_ref=zone_finder(
+                    zone_cache, interface.zone_ref))
             interfaces.append(itf)
-
+    
+    #sorted_id = sorted(interfaces, key=itemgetter('interface_id'))
     yaml_engine.update(
         interfaces=interfaces,
         default_nat=engine.default_nat.status,
         enable_antivirus=engine.antivirus.status,
-        enable_gti=engine.file_reputation.status,
+        enable_file_reputation=engine.file_reputation.status,
         enable_sidewinder_proxy=engine.sidewinder_proxy.status,
         domain_server_address=[dns.value for dns in engine.dns
                                if dns.element is None])
+    if engine.comment:
+        yaml_engine.update(comment=engine.comment)
+
+    # Only return the location if it is not the default (Not set) location
+    location = engine.location
+    if location:
+        yaml_engine.update(location=location.name)
+
+    # Show SNMP data if SNMP is enabled
+    if engine.snmp.status:
+        snmp = engine.snmp
+        data = dict(snmp_agent=snmp.agent.name)
+        if snmp.location:
+            data.update(snmp_location=snmp.location)
+        interfaces = snmp.interface
+        if interfaces:
+            data.update(snmp_interface=[itf.interface_id for itf in interfaces])
+        yaml_engine.update(snmp=data)
+    
+    if getattr(engine, 'cluster_mode', None):
+        yaml_engine.update(cluster_mode=engine.cluster_mode)
+    
+    # Lastly, get tags
+    tags = [tag.name for tag in engine.categories]
+    if tags:
+        yaml_engine.update(tags=tags)
+                
     return yaml_engine
 
-''' 
-def yaml_firewall(engine):
-        
-    # Reduce number of zone query lookup cache
-    zone_cache = list(Zone.objects.all())
-    yaml_engine = {'name': engine.name}
-    interfaces = []
-    
-    for interface in engine.interface:
-        itf = {}
-        itf.update(interface_id=interface.interface_id)
-        if 'physical_interface' not in interface.typeof:
-            itf.update(type=interface.typeof)
-        if interface.has_interfaces:
-            for sub_interface in interface.all_interfaces:
-                if isinstance(sub_interface, ClusterVirtualInterface):
-                    itf.update(
-                        cluster_virtual=sub_interface.address,
-                        macaddress=interface.macaddress,
-                        address=sub_interface.address,
-                        network_value=sub_interface.network_value)
-                else: # NDI
-                    if sub_interface.dynamic:
-                        itf.update(dynamic=True)
-                    else:
-                        ndi = {'address': sub_interface.address,
-                               'network_value': sub_interface.network_value,
-                               'nodeid': sub_interface.nodeid}
-                        if sub_interface.primary_mgt:
-                            ndi.update(primary_mgt=True)
-                        itf.setdefault('nodes', []).append(ndi)
-        
-                if interface.zone_ref:
-                    itf.update(zone_ref=zone_finder(
-                        zone_cache, interface.zone_ref))
-            
-            interfaces.append(itf)
-        
-        elif interface.has_vlan:
-            vlan_interfaces = []
-            for vlan in interface.vlan_interface:
-                vlan_def = {}
-                if vlan.has_interfaces:
-                    for sub_vlan in vlan.all_interfaces:
-                        vlan_def.update(vlan_id=sub_vlan.vlan_id)
-                        if isinstance(sub_vlan, ClusterVirtualInterface):
-                            itf.update(
-                                cluster_virtual=sub_vlan.address,
-                                macaddress=interface.macaddress,
-                                address=sub_vlan.address,
-                                network_value=sub_vlan.network_value)
-                        else: # NDI
-                            ndi = {'address': sub_vlan.address,
-                                   'network_value': sub_vlan.network_value,
-                                   'nodeid': sub_vlan.nodeid}
-                            if sub_vlan.primary_mgt:
-                                ndi.update(primary_mgt=True)
-                            vlan_def.setdefault('nodes', []).append(ndi)
-                    
-                        if vlan.zone_ref:
-                            vlan_def.update(zone_ref=zone_finder(
-                                zone_cache, vlan.zone_ref))
-                
-                else:
-                    vlan_def.update({'vlan_id': vlan.vlan_id})
-                
-                vlan_interfaces.append(vlan_def)
-                itf.update(vlan_interfaces=vlan_interfaces)
-        
-            interfaces.append(itf)
-        
-        else: # Single interface, no addresses
-            if getattr(interface, 'macaddress', None) is not None:
-                itf.update(macaddress=interface.macaddress)
-            interfaces.append(itf)
-
-    yaml_engine.update(
-        interfaces=interfaces,
-        default_nat=engine.default_nat.status,
-        enable_antivirus=engine.antivirus.status,
-        enable_gti=engine.file_reputation.status,
-        enable_sidewinder_proxy=engine.sidewinder_proxy.status,
-        domain_server_address=[dns.value for dns in engine.dns
-                               if dns.element is None])
-    return yaml_engine
-'''    
-    
 
 def to_yaml(engine):
     if 'single_fw' in engine.type or 'cluster' in engine.type:
@@ -369,8 +316,9 @@ class EngineFacts(StonesoftModuleBase):
         result = self.search_by_context()
         if self.filter:
             if self.as_yaml:
-                for engine in result:
-                    engines = [to_yaml(engine)]
+                engines = [to_yaml(engine) for engine in result
+                           if engine.name == self.filter]
+                if engines:
                     self.results['engine_type'] = engine.type
             else:
                 engines = [engine.data for engine in result]
