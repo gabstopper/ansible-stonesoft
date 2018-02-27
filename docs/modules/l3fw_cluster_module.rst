@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Firewall clusters can be created with up to 16 nodes per cluster. For each cluster_node specified, this will define a unique cluster member. Modifications can be made to existing interfaces, interfaces can be added, VLANs can be added and removed. By default if the interface is not defined in the YAML, it will be deleted. VLANs can be removed or added however if a vlan ID needs to change, you must delete the old and recreate the new VLAN definition. In addition, it is not possible to modify interfaces that have multiple IP addresses defined.
+* Firewall clusters can be created with up to 16 nodes per cluster. Each cluster_node specified will define a unique cluster member and dictate the number of cluster nodes. You can fetch an existing engine using engine_facts and optionally save this as YAML to identify differences between runs. Interfaces and VLANs can be added, modified or removed. By default if the interface is not defined in the YAML, but exists on the engine, it will be deleted. To change an interface ID or VLAN id, you must delete the old and recreate the new interface definition. In addition, it is not possible to modify interfaces that have multiple IP addresses defined (they will be skipped).
 
 
 
@@ -44,12 +44,36 @@ Options
     </tr>
 
     <tr>
-    <td>cvi_mode<br/><div style="font-size: small;"></div></td>
+    <td>backup_mgt<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>balancing</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Specify an interface by ID that will be the backup management. If the interface is a VLAN, specify in '2.4' format (interface 2, vlan 4).</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>cluster_mode<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>standby</td>
     <td><ul><li>balancing</li><li>standby</li></ul></td>
 	<td>
         <p>How to perform clustering, either balancing or standby</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>comment<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Optional comment tag for the engine</p>
 	</td>
 	</tr>
     </td>
@@ -73,7 +97,7 @@ Options
     <td></td>
     <td></td>
 	<td>
-        <p>A list of IP addresses to use as DNS resolvers for the FW.</p>
+        <p>A list of IP addresses to use as DNS resolvers for the FW. Required to enable Antivirus, GTI and URL Filtering on the NGFW.</p>
 	</td>
 	</tr>
     </td>
@@ -92,12 +116,24 @@ Options
     </tr>
 
     <tr>
-    <td>enable_gti<br/><div style="font-size: small;"></div></td>
+    <td>enable_file_reputation<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td><ul><li>yes</li><li>no</li></ul></td>
 	<td>
         <p>Enable file reputation</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>enable_sidewinder_proxy<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Enable Sidewinder proxy capabilities</p>
 	</td>
 	</tr>
     </td>
@@ -192,12 +228,36 @@ Options
     </tr>
 
     <tr>
+    <td>location<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Location identifier for the engine. Used when engine is behind NAT</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>name<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
     <td></td>
 	<td>
         <p>The name of the firewall cluster to add or delete</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>primary_heartbeat<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Specify an interface for the primary heartbeat interface. This will default to the same interface as primary_mgt if not specified.</p>
 	</td>
 	</tr>
     </td>
@@ -372,6 +432,64 @@ Options
 	</tr>
     </td>
     </tr>
+    <tr>
+    <td rowspan="2">snmp<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>SNMP settings for the engine</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object snmp</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>snmp_agent<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The name of the SNMP agent from within the SMC</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>snmp_interface<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>A list of interface IDs to enable SNMP. If enabling on a VLAN, use '2.3' syntax</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>snmp_location<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Optional SNMP location string to add the SNMP configuration</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
 
     <tr>
     <td>state<br/><div style="font-size: small;"></div></td>
@@ -406,69 +524,98 @@ Examples
 .. code-block:: yaml
 
     
-    l3fw_cluster:
-      smc_logging:
-        level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
-      name: newcluster
-      cvi_mode: standby
-      primary_mgt: 0
-      interfaces:
-        - interface_id: 0
-          cluster_virtual: 1.1.1.1
-          network_value: 1.1.1.0/24
-          macaddress: 02:02:02:02:02:02
-          nodes:
-            - address: 1.1.1.2
-              network_value: 1.1.1.0/24
-              nodeid: 1
-            - address: 1.1.1.3
-              network_value: 1.1.1.0/24
-              nodeid: 2
-            - address: 1.1.1.4
-              network_value: 1.1.1.0/24
-              nodeid: 3
-        - interface_id: 1
-          cluster_virtual: 2.2.2.1
-          network_value: 2.2.2.0/24
-          macaddress: 02:02:02:02:02:04
-          nodes:
-            - address: 2.2.2.2
+    - name: Firewall Template
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Create a layer 3 FW cluster, 2 nodes
+        l3fw_cluster:
+          smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
+          cluster_mode: balancing
+          comment: my new firewall
+          default_nat: false
+          domain_server_address: []
+          enable_antivirus: false
+          enable_gti: false
+          enable_sidewinder_proxy: false
+          interfaces:
+          -   interface_id: '1000'
+              nodes:
+              -   address: 100.100.100.1
+                  network_value: 100.100.100.0/24
+                  nodeid: 1
+              -   address: 100.100.100.2
+                  network_value: 100.100.100.0/24
+                  nodeid: 2
+              type: tunnel_interface
+              zone_ref: AWSTunnel
+          -   interface_id: '4'
+              nodes:
+              -   address: 5.5.5.3
+                  network_value: 5.5.5.0/24
+                  nodeid: 2
+              -   address: 5.5.5.2
+                  network_value: 5.5.5.0/24
+                  nodeid: 1
+              zone_ref: heartbeat
+          -   interface_id: '3'
+          -   interface_id: '2'
+              nodes:
+              -   address: 3.3.3.2
+                  network_value: 3.3.3.0/24
+                  nodeid: 1
+              -   address: 3.3.3.3
+                  network_value: 3.3.3.0/24
+                  nodeid: 2
+              vlan_id: '3'
+          -   interface_id: '2'
+              nodes:
+              -   address: 4.4.4.2
+                  network_value: 4.4.4.0/24
+                  nodeid: 1
+              -   address: 4.4.4.3
+                  network_value: 4.4.4.0/24
+                  nodeid: 2
+              vlan_id: '4'
+              zone_ref: somevlan
+          -   cluster_virtual: 2.2.2.1
+              interface_id: '1'
+              macaddress: 02:02:02:02:02:04
               network_value: 2.2.2.0/24
-              nodeid: 1
-            - address: 2.2.2.3
-              network_value: 2.2.2.0/24
-              nodeid: 2
-            - address: 2.2.2.4
-              network_value: 2.2.2.0/24
-              nodeid: 3
-        - interface_id: 2
-          nodes:
-            - address: 3.3.3.2
-              network_value: 3.3.3.0/24
-              nodeid: 1
-            - address: 3.3.3.3
-              network_value: 3.3.3.0/24
-              nodeid: 2
-            - address: 3.3.3.4
-              network_value: 3.3.3.0/24
-              nodeid: 3
-          vlan_id: 3
-        - interface_id: 2
-          nodes:
-            - address: 4.4.4.2
-              network_value: 4.4.4.0/24
-              nodeid: 1
-            - address: 4.4.4.3
-              network_value: 4.4.4.0/24
-              nodeid: 2
-            - address: 4.4.4.4
-              network_value: 4.4.4.0/24
-              nodeid: 3
-          vlan_id: 4
-        - interface_id: 3
-      tags:
-        - footag
+              nodes:
+              -   address: 2.2.2.2
+                  network_value: 2.2.2.0/24
+                  nodeid: 1
+              -   address: 2.2.2.3
+                  network_value: 2.2.2.0/24
+                  nodeid: 2
+              zone_ref: internal
+          -   cluster_virtual: 1.1.1.1
+              interface_id: '0'
+              macaddress: 02:02:02:02:02:02
+              network_value: 1.1.1.0/24
+              nodes:
+              -   address: 1.1.1.2
+                  network_value: 1.1.1.0/24
+                  nodeid: 1
+              -   address: 1.1.1.3
+                  network_value: 1.1.1.0/24
+                  nodeid: 2
+          location: mylocation
+          name: newcluster
+          primary_heartbeat: '4'
+          primary_mgt: '0'
+          backup_mgt: '2.3'
+          snmp:
+              snmp_agent: myagent
+              snmp_interface:
+              - '1'
+              - '2.4'
+              snmp_location: newcluster
+          tags:
+          - footag
     
     # Delete a cluster
     - name: layer 3 cluster with 3 members

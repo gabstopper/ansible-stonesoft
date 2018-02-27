@@ -128,7 +128,7 @@ Options
     <td></td>
     <td></td>
     <td>
-        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module can pre-create the gateway based on the gateway settings provided.</div>
+        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module will create the gateway based on the gateway settings provided if it doesn't already exist.</div>
     </tr>
 
     <tr>
@@ -382,43 +382,50 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a new Route VPN with an external gateway
-        route_vpn:
-          smc_logging:
-            level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
-          name: mynrbvpn
-          type: ipsec
-          local_gw:
-            name: myfw
-            tunnel_interface: 1000
-            interface_id: 1
-          remote_gw:
-            name: extgw3
-            type: external_gateway
-            address: 33.33.33.41
-            preshared_key: abc123
-            network:
-              - 172.18.1.0/24
-              - 172.18.2.0/24
-              - 172.18.15.0/24
+    - name: Create a new Route VPN with specified gateways
+      route_vpn:
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        name: myrbvpn
+        type: ipsec
+        local_gw:
+          name: mycluster
+          tunnel_interface: 1000
+          interface_id: 0
+          #interface_ip: 10.10.10.10
+        #remote_gw:
+        #  name: dingo
+        #  tunnel_interface: 1000
+        #  interface_ip: 36.35.35.37
+        remote_gw:
+          name: extgw3
+          type: external_gateway
+          address: 33.33.33.41
+          preshared_key: abc123
+          network:
+            - 172.18.1.0/24
+            - 172.18.2.0/24
+            - 172.18.15.0/24
+        tags:
+          - footag
     
     - name: Create a new Route VPN between two Stonesoft Fws
-        route_vpn:
-          smc_logging:
-            level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
-          name: mynrbvpn
-          type: ipsec
-          local_gw:
-            name: myfw
-            tunnel_interface: 1000
-            interface_id: 1
-            interface_ip: 10.10.10.10
-          remote_gw:
-            name: dingo
-            tunnel_interface: 1000
-            interface_ip: 36.35.35.37
+      route_vpn:
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        name: mynrbvpn
+        type: ipsec
+        local_gw:
+          name: myfw
+          tunnel_interface: 1000
+          interface_id: 1
+          interface_ip: 10.10.10.10
+        remote_gw:
+          name: dingo
+          tunnel_interface: 1000
+          interface_ip: 36.35.35.37
 
 Return Values
 -------------
