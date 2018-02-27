@@ -1,0 +1,93 @@
+- name: Firewall Template
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Create a single layer 3 firewall
+    l3fw_cluster:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      backup_mgt: '2.3'
+      cluster_mode: standby
+      comment: my new firewall
+      default_nat: false
+      domain_server_address:
+      - 8.8.8.8
+      enable_antivirus: false
+      enable_file_reputation: false
+      enable_sidewinder_proxy: false
+      interfaces:
+      -   interface_id: '1000'
+          nodes:
+          -   address: 100.100.100.1
+              network_value: 100.100.100.0/24
+              nodeid: 1
+          -   address: 100.100.100.2
+              network_value: 100.100.100.0/24
+              nodeid: 2
+          type: tunnel_interface
+          zone_ref: AWSTunnel
+      -   interface_id: '4'
+          nodes:
+          -   address: 5.5.5.3
+              network_value: 5.5.5.0/24
+              nodeid: 2
+          -   address: 5.5.5.2
+              network_value: 5.5.5.0/24
+              nodeid: 1
+          zone_ref: heartbeat
+      -   interface_id: '3'
+      -   interface_id: '2'
+          nodes:
+          -   address: 3.3.3.2
+              network_value: 3.3.3.0/24
+              nodeid: 1
+          -   address: 3.3.3.3
+              network_value: 3.3.3.0/24
+              nodeid: 2
+          vlan_id: '3'
+      -   interface_id: '2'
+          nodes:
+          -   address: 4.4.4.2
+              network_value: 4.4.4.0/24
+              nodeid: 1
+          -   address: 4.4.4.3
+              network_value: 4.4.4.0/24
+              nodeid: 2
+          vlan_id: '4'
+          zone_ref: somevlan
+      -   cluster_virtual: 2.2.2.1
+          interface_id: '1'
+          macaddress: 02:02:02:02:02:04
+          network_value: 2.2.2.0/24
+          nodes:
+          -   address: 2.2.2.2
+              network_value: 2.2.2.0/24
+              nodeid: 1
+          -   address: 2.2.2.3
+              network_value: 2.2.2.0/24
+              nodeid: 2
+          zone_ref: internal
+      -   cluster_virtual: 1.1.1.1
+          interface_id: '0'
+          macaddress: 02:02:02:02:02:02
+          network_value: 1.1.1.0/24
+          nodes:
+          -   address: 1.1.1.2
+              network_value: 1.1.1.0/24
+              nodeid: 1
+          -   address: 1.1.1.3
+              network_value: 1.1.1.0/24
+              nodeid: 2
+      location: mylocation3
+      name: newcluster
+      primary_heartbeat: '4'
+      primary_mgt: '0'
+      snmp:
+          snmp_agent: myagent
+          snmp_interface:
+          - '1'
+          - '2.4'
+          snmp_location: newcluster
+      tags:
+      - footag
