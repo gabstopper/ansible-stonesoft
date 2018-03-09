@@ -44,6 +44,18 @@ Options
     </tr>
 
     <tr>
+    <td>antivirus<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Enable Anti-Virus engine on the FW</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>backup_mgt<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -52,6 +64,94 @@ Options
         <p>Specify an interface by ID that will be the backup management. If the interface is a VLAN, specify in '2.4' format (interface 2, vlan 4).</p>
 	</td>
 	</tr>
+    </td>
+    </tr>
+    <tr>
+    <td rowspan="2">bgp<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>If enabling BGP on the engine, provide BGP related settings</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object bgp</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>router_id<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Optional router ID to identify this BGP peer</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>bgp_peerings<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>BGP Peerings to add to specified interfaces.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>announced_network<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
+        <td>
+            <div>Announced networks identify the network and optional route map for internal networks announced over BGP. The list should be a dict with the key identifying the announced network type from SMC. The key should have a dict with name and route_map (optional) if the element should have an associated route_map.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>antispoofing_network<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
+        <td>
+            <div>Antispoofing networks are automatically added to the route antispoofing configuration. The dict should have a key specifying the element type from SMC. The dict key value should be a list of the element types by name.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>enabled<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
+        <td>
+            <div>Set to true or false to specify whether to configure BGP</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>autonomous_system<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The autonomous system for this engine. Provide additional arguments to allow for get or create logic</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
     </td>
     </tr>
 
@@ -104,36 +204,12 @@ Options
     </tr>
 
     <tr>
-    <td>enable_antivirus<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable Anti-Virus engine on the FW</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_file_reputation<br/><div style="font-size: small;"></div></td>
+    <td>file_reputation<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td><ul><li>yes</li><li>no</li></ul></td>
 	<td>
         <p>Enable file reputation</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>enable_sidewinder_proxy<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td><ul><li>yes</li><li>no</li></ul></td>
-	<td>
-        <p>Enable Sidewinder proxy capabilities</p>
 	</td>
 	</tr>
     </td>
@@ -270,6 +346,18 @@ Options
     <td></td>
 	<td>
         <p>Identify the interface to be specified as management</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>skip_interfaces<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Optionally skip the analysis of interface changes. This is only relevant when running the playbook against an already created engine.</p>
 	</td>
 	</tr>
     </td>
@@ -465,12 +553,22 @@ Options
         </tr>
 
         <tr>
+        <td>enabled<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td><ul><li>yes</li><li>no</li></ul></td>
+        <td>
+            <div>Set this to False if enabled on the engine and wanting to remove the configuration.</div>
+        </td>
+        </tr>
+
+        <tr>
         <td>snmp_interface<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>A list of interface IDs to enable SNMP. If enabling on a VLAN, use '2.3' syntax</div>
+            <div>A list of interface IDs to enable SNMP. If enabling on a VLAN, use '2.3' syntax. If omitted, snmp is enabled on all interfaces</div>
         </td>
         </tr>
 
@@ -528,47 +626,59 @@ Examples
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Create a layer 3 FW cluster, 2 nodes
+      - name: Create a single layer 3 firewall
         l3fw_cluster:
           smc_logging:
             level: 10
             path: /Users/davidlepage/Downloads/ansible-smc.log
-          cluster_mode: balancing
+          backup_mgt: '2.3'
+          cluster_mode: standby
           comment: my new firewall
           default_nat: false
-          domain_server_address: []
-          enable_antivirus: false
-          enable_gti: false
-          enable_sidewinder_proxy: false
+          domain_server_address:
+          - 8.8.8.8
+          antivirus: false
+          file_reputation: false
           interfaces:
-          -   interface_id: '1000'
+          -   interface_id: '1002'
               nodes:
-              -   address: 100.100.100.1
-                  network_value: 100.100.100.0/24
+              -   address: 25.25.25.25
+                  network_value: 25.25.25.25/32
                   nodeid: 1
-              -   address: 100.100.100.2
-                  network_value: 100.100.100.0/24
+              -   address: 25.25.25.26
+                  network_value: 25.25.25.25/32
                   nodeid: 2
               type: tunnel_interface
-              zone_ref: AWSTunnel
+          -   cluster_virtual: 24.24.24.24
+              interface_id: '1001'
+              network_value: 24.24.24.0/24
+              nodes:
+              -   address: 24.24.24.25
+                  network_value: 24.24.24.0/24
+                  nodeid: 1
+              -   address: 24.24.24.26
+                  network_value: 24.24.24.0/24
+                  nodeid: 2
+              type: tunnel_interface
+          -   interface_id: '5'
           -   interface_id: '4'
               nodes:
-              -   address: 5.5.5.3
-                  network_value: 5.5.5.0/24
-                  nodeid: 2
               -   address: 5.5.5.2
                   network_value: 5.5.5.0/24
                   nodeid: 1
+              -   address: 5.5.5.3
+                  network_value: 5.5.5.0/24
+                  nodeid: 2
               zone_ref: heartbeat
           -   interface_id: '3'
           -   interface_id: '2'
               nodes:
-              -   address: 3.3.3.2
-                  network_value: 3.3.3.0/24
-                  nodeid: 1
               -   address: 3.3.3.3
                   network_value: 3.3.3.0/24
                   nodeid: 2
+              -   address: 3.3.3.2
+                  network_value: 3.3.3.0/24
+                  nodeid: 1
               vlan_id: '3'
           -   interface_id: '2'
               nodes:
@@ -585,30 +695,54 @@ Examples
               macaddress: 02:02:02:02:02:04
               network_value: 2.2.2.0/24
               nodes:
-              -   address: 2.2.2.2
-                  network_value: 2.2.2.0/24
-                  nodeid: 1
               -   address: 2.2.2.3
                   network_value: 2.2.2.0/24
                   nodeid: 2
-              zone_ref: internal
-          -   cluster_virtual: 1.1.1.1
-              interface_id: '0'
-              macaddress: 02:02:02:02:02:02
-              network_value: 1.1.1.0/24
-              nodes:
-              -   address: 1.1.1.2
-                  network_value: 1.1.1.0/24
+              -   address: 2.2.2.2
+                  network_value: 2.2.2.0/24
                   nodeid: 1
-              -   address: 1.1.1.3
-                  network_value: 1.1.1.0/24
-                  nodeid: 2
-          location: mylocation
+              zone_ref: internal
+          location: somelocation
           name: newcluster
           primary_heartbeat: '4'
-          primary_mgt: '0'
-          backup_mgt: '2.3'
+          primary_mgt: '1'
+          bgp:
+            enabled: true
+            announced_network:
+                - network:
+                    name: foo
+                    route_map: newroutemap
+                - host:
+                    name: hostb
+                - group:
+                    name: group1
+                    route_map: myroutemap
+            antispoofing_network:
+                network:
+                    - network-1.1.1.0/24
+                    - network-172.18.1.0/24
+                host:
+                    - hostb
+            autonomous_system:
+                name: mynew
+                as_number: '123.123'
+                comment: foo
+            router_id: 1.1.1.1
+            bgp_peerings:
+                - name: bgppeering
+                  external_bgp_peer: bgppeer
+                  interfaces:
+                    - interface_id: 1
+                      network: 2.2.2.0/24
+                    - interface_id: 1001
+                    - interface_id: '2.3'
+                - name: bgppeering2
+                  engine: myfw
+                  interfaces:
+                    - interface_id: 1002
+            #bgp_profile: Use default if not provided
           snmp:
+              enabled: true
               snmp_agent: myagent
               snmp_interface:
               - '1'
@@ -616,6 +750,8 @@ Examples
               snmp_location: newcluster
           tags:
           - footag
+          #skip_interfaces: true
+          state: absent
     
     # Delete a cluster
     - name: layer 3 cluster with 3 members
@@ -626,7 +762,7 @@ Examples
 Return Values
 -------------
 
-Common return values are documented `Return Values <http://docs.ansible.com/ansible/latest/common_return_values.html>`_, the following are the fields unique to this module:
+Common return values are documented :ref:`here <common_return_values>`, the following are the fields unique to this {{plugin_type}}:
 
 .. raw:: html
 
@@ -677,3 +813,6 @@ Status
 This module is flagged as **preview** which means that it is not guaranteed to have a backwards compatible interface.
 
 
+
+For help in developing, should you be so inclined, please read :doc:`../../community`,
+:doc:`../../dev_guide/testing` and :doc:`../../dev_guide/developing_modules`.

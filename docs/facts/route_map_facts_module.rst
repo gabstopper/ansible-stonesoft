@@ -1,8 +1,8 @@
-.. _routing_facts:
+.. _route_map_facts:
 
 
-routing_facts - Facts about specific routes installed on an engine
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+route_map_facts - Facts about Route Map policies in SMC
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Show the current routing table for the given engine. This will show references to the dst_if for the route along with the gateway and route network. Use engine_facts to resolve interface ID's returned by this module.
+* Route Maps can be applied to dynamic routing configurations to provide granularity for filtering based on specific networks and parameters. This module provides the ability to view available route map configurations as well as dump a route map configuration into a dict or YAML for easy modification.
 
 
 
@@ -50,18 +50,6 @@ Options
     <td></td>
 	<td>
         <p>Whether to do a case sensitive match on the filter specified</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
-    <td>yes</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Specify the name of the engine in order to find the routing table</p>
 	</td>
 	</tr>
     </td>
@@ -264,36 +252,27 @@ Options
     </table>
     </br>
 
+Examples
+--------
 
+.. code-block:: yaml
 
-Return Values
--------------
+    
+    - name: Return all categories
+        route_map:
+    
+    - name: Return all route map and references containing 'my' in the name
+        route_map:
+          limit: 5
+          filter: my
+    
+    - name: Return detailed information on route map named myroutemap
+        category_facts:
+          limit: 1
+          filter: myroutemap
+          exact_match: yes
+          case_sensitive: yes
 
-Common return values are documented :ref:`here <common_return_values>`, the following are the fields unique to this {{plugin_type}}:
-
-.. raw:: html
-
-    <table border=1 cellpadding=4>
-
-    <tr>
-    <th class="head">name</th>
-    <th class="head">description</th>
-    <th class="head">returned</th>
-    <th class="head">type</th>
-    <th class="head">sample</th>
-    </tr>
-
-    <tr>
-    <td>routes</td>
-    <td>
-        <div>Return all policy VPNs</div>
-    </td>
-    <td align=center>always</td>
-    <td align=center>list</td>
-    <td align=center>[{'route_network': '0.0.0.0', 'route_gateway': '10.0.0.1', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 1}, {'route_network': '0.0.0.0', 'route_gateway': '172.18.1.240', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 0}]</td>
-    </tr>
-    </table>
-    </br></br>
 
 
 Notes

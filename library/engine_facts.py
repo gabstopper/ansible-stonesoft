@@ -3,9 +3,6 @@
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import absolute_import, division, print_function
-__metaclass__ = type
-
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -43,7 +40,7 @@ extends_documentation_fragment:
   - stonesoft_facts
 
 requirements:
-  - smc-python >= 0.5.7
+  - smc-python >= 0.6.0
 author:
   - David LePage (@gabstopper)
 '''
@@ -57,9 +54,10 @@ EXAMPLES = '''
   - name: Find all managed engines (IPS, Layer 2, L3FW)
     engine_facts:
   
-  - name: Find only Layer 3 FW's
+  - name: Find a cluster FW named mycluster
     engine_facts:
       element: fw_clusters
+      filter: mycluster
   
   - name: Find only Layer 2 FW's
     engine_facts:
@@ -72,59 +70,69 @@ EXAMPLES = '''
   - name: Get engine details for 'myfirewall'
     engine_facts:
       filter: myfirewall
+
+  - name: Get engine details for 'myfw' and save in editable YAML format
+    register: results
+    engine_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: newcluster
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
 '''
 
 
 RETURN = '''
-engines:
-    description: List of engines from match query
+engines: 
+    description: When filtering by element, only top level meta is returned
     returned: always
     type: list
-    sample: [{
-        'antivirus': false,
-        'cluster_mode': null,
-        'default_nat': false,
-        'engine_version': 'version 6.3 #19032',
-        'gti': false,
-        'interfaces': [{
-            'interface_id': '2',
-            'interfaces': [{
-                'address': '10.29.248.49',
-                'network_value': '10.29.248.49/30',
-                'nodeid': 1,
-                'type': 'single_node_interface',
-                }],
-            'name': 'Interface 2',
-            'type': 'virtual_physical_interface',
-            'vlans': [],
-            }, {
-            'interface_id': '0',
-            'interfaces': [{
-                'address': '10.29.248.53',
-                'network_value': '10.29.248.53/30',
-                'nodeid': 1,
-                'type': 'single_node_interface',
-                }],
-            'name': 'Interface 0',
-            'type': 'virtual_physical_interface',
-            'vlans': [],
-            }, {
-            'interface_id': '1',
-            'interfaces': [{
-                'address': '10.29.248.57',
-                'network_value': '10.29.248.57/30',
-                'nodeid': 1,
-                'type': 'single_node_interface',
-                }],
-            'name': 'Interface 1',
-            'type': 'virtual_physical_interface',
-            'vlans': [],
-            }],
-        'name': 've-5',
-        'ospf': false,
-        'sidewinder_proxy': false,
-        'tags': ['footag']
-}]
+    sample: [
+        {
+            "name": "newcluster2", 
+            "type": "fw_cluster"
+        }, 
+        {
+            "name": "myips", 
+            "type": "single_ips"
+        }, 
+        {
+            "name": "jackson", 
+            "type": "fw_cluster"
+        }, 
+        {
+            "name": "newcluster", 
+            "type": "fw_cluster"
+        }, 
+        {
+            "name": "myfw", 
+            "type": "single_fw"
+        }]
+
+engines:
+    description: When using a filter match, full engine json is returned
+    returned: always
+    type: list
+    sample: [
+        {
+        "alias_value": [], 
+        "allow_email_upn_lookup": false, 
+        "antivirus": {
+            "antivirus_enabled": false, 
+            "antivirus_http_proxy_enabled": false, 
+            "antivirus_proxy_password": "*****", 
+            "antivirus_proxy_port": 0, 
+            "antivirus_update": "never", 
+            "antivirus_update_day": "mo", 
+            "antivirus_update_time": 0, 
+            "virus_log_level": "undefined"
+        }, 
+        "auto_reboot_timeout": 10,
+        ...
+    }]
 '''
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
@@ -268,6 +276,32 @@ def yaml_firewall(engine):
     if getattr(engine, 'cluster_mode', None):
         yaml_engine.update(cluster_mode=engine.cluster_mode)
     
+    # BGP Data
+    bgp = engine.bgp
+    data = dict(announced_network=[],
+                autonomous_system=bgp.autonomous_system.name,
+                bgp_profile=bgp.profile.name,
+                enabled=bgp.status,
+                router_id=bgp.router_id)
+    
+    antispoofing_map = {}
+    for net in bgp.antispoofing_networks:
+        antispoofing_map.setdefault(net.typeof, []).append(
+            net.name)
+    antispoofing_network = [antispoofing_map] if antispoofing_map else []
+    data.update(antispoofing_network=antispoofing_network)
+        
+    announced_network = []
+    for announced in bgp.advertisements:
+        element, route_map = announced
+        d = {element.typeof: {'name': element.name}}
+        if route_map:
+            d[element.typeof].update(route_map=route_map.name)
+        announced_network.append(d)
+    data.update(announced_network=announced_network)
+        
+    yaml_engine.update(bgp=data)
+        
     # Lastly, get tags
     tags = [tag.name for tag in engine.categories]
     if tags:

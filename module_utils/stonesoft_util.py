@@ -23,9 +23,67 @@ try:
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
-                
+    
 
-def element_type_dict():
+class Cache(object):
+    """
+    Convenience cache object to reduce number of queries for a
+    given playbook and store unfound elements in `missing`. This
+    is not intended to have a `get_or_create` logic, therefore when
+    validating the existence of elements, you should check missing
+    before continuing the playbook run.
+    """
+    cache = {}
+    
+    def __init__(self):
+        self.missing = []
+
+    def add_many(self, list_of_entries):
+        """
+        Add many elements into cache. Format should be:
+    
+            element = [{'network': [network1,network2]},
+                       {'host': [host1, host2]}
+                       ...]
+        Where the key is a valid 'typeof' (SMC entry point)
+        and value is a list of names to search
+        """
+        for elements in list_of_entries:
+            for typeof, values in elements.items():
+                for name in values:
+                    self._add_entry(typeof, name)
+                
+    def add(self, dict_of_entries):
+        """
+        Add entry as dict of list, format:
+        
+            element = {'network': [network1,network2]}
+        """
+        for typeof, values in dict_of_entries.items():
+            for name in values:
+                self._add_entry(typeof, name)
+        
+    def _add_entry(self, typeof, name):
+        # Add entry if it doesn't already exist
+        if self.get(typeof, name):
+            return
+        result = Search.objects.entry_point(typeof)\
+            .filter(name, exact_match=True).first()
+        if result:
+            self.cache.setdefault(typeof, []).append(
+                result)
+        else:
+            self.missing.append(
+                dict(msg='Cannot find specified element',
+                     name=name,type=typeof))
+    
+    def get(self, typeof, name):
+        for value in self.cache.get(typeof, []):
+            if value.name == name:
+                return value
+
+
+def element_type_dict(map_only=False):
     """ 
     Type dict constructed with valid `create` constructor arguments.
     This is used in modules that support get_or_create operations
@@ -41,6 +99,9 @@ def element_type_dict():
         interface_zone=dict(type=network.Zone),
         domain_name=dict(type=network.DomainName))
     
+    if map_only:
+        return types
+    
     for t in types.keys():
         clazz = types.get(t)['type']
         types[t]['attr'] = inspect.getargspec(clazz.create).args[1:]
@@ -48,7 +109,7 @@ def element_type_dict():
     return types
 
 
-def ro_element_type_dict():
+def ro_element_type_dict(map_only=False):
     """
     Type dict of read-only network elements. These elements can be
     fetched but not created
@@ -59,6 +120,9 @@ def ro_element_type_dict():
         expression=dict(type=network.Expression),
         engine=dict(type=Engine))
 
+    if map_only:
+        return types
+    
     for t in types.keys():
         clazz = types.get(t)['type']
         types[t]['attr'] = inspect.getargspec(clazz.__init__).args[1:]
@@ -66,7 +130,7 @@ def ro_element_type_dict():
     return types
 
 
-def service_type_dict():
+def service_type_dict(map_only=False):
     """
     Type dict for serviec elements and groups.
     """
@@ -82,6 +146,9 @@ def service_type_dict():
         udp_service_group=dict(type=group.UDPServiceGroup),
         ip_service_group=dict(type=group.IPServiceGroup),
         icmp_service_group=dict(type=group.ICMPServiceGroup))
+    
+    if map_only:
+        return types
     
     for t in types.keys():
         clazz = types.get(t)['type']

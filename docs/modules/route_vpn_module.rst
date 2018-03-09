@@ -430,7 +430,7 @@ Examples
 Return Values
 -------------
 
-Common return values are documented `Return Values <http://docs.ansible.com/ansible/latest/common_return_values.html>`_, the following are the fields unique to this module:
+Common return values are documented :ref:`here <common_return_values>`, the following are the fields unique to this {{plugin_type}}:
 
 .. raw:: html
 
@@ -488,3 +488,6 @@ Status
 This module is flagged as **preview** which means that it is not guaranteed to have a backwards compatible interface.
 
 
+
+For help in developing, should you be so inclined, please read :doc:`../../community`,
+:doc:`../../dev_guide/testing` and :doc:`../../dev_guide/developing_modules`.
