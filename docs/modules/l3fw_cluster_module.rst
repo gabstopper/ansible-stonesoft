@@ -99,7 +99,7 @@ Options
         </tr>
 
         <tr>
-        <td>bgp_peerings<br/><div style="font-size: small;"></div></td>
+        <td>bgp_peering<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
@@ -631,13 +631,45 @@ Examples
           smc_logging:
             level: 10
             path: /Users/davidlepage/Downloads/ansible-smc.log
+          antivirus: false
           backup_mgt: '2.3'
+          bgp:
+              announced_network:
+              -   network:
+                      name: foo
+                      route_map: newroutemap
+              -   host:
+                      name: hostb
+              -   group:
+                      name: group1
+                      route_map: myroutemap
+              antispoofing_network:
+                  host:
+                  - hostb
+                  network:
+                  - network-1.1.1.0/24
+                  - network-172.18.1.0/24
+              autonomous_system:
+                  as_number: 8061051
+                  comment: foo
+                  name: mynew
+              bgp_peering:
+              -   external_bgp_peer: bgppeer
+                  interface_id: '1'
+                  name: bgppeering
+                  network: 2.2.2.0/24
+              -   engine: myfw
+                  interface_id: '2.3'
+                  name: bgppeering2
+                  network: 3.3.3.0/24
+              bgp_profile: Default BGP Profile
+              enabled: true
+              router_id: 1.1.1.1
           cluster_mode: standby
           comment: my new firewall
           default_nat: false
           domain_server_address:
           - 8.8.8.8
-          antivirus: false
           file_reputation: false
           interfaces:
           -   interface_id: '1002'
@@ -649,16 +681,14 @@ Examples
                   network_value: 25.25.25.25/32
                   nodeid: 2
               type: tunnel_interface
-          -   cluster_virtual: 24.24.24.24
-              interface_id: '1001'
-              network_value: 24.24.24.0/24
+          -   interface_id: '1001'
               nodes:
-              -   address: 24.24.24.25
-                  network_value: 24.24.24.0/24
-                  nodeid: 1
               -   address: 24.24.24.26
                   network_value: 24.24.24.0/24
                   nodeid: 2
+              -   address: 24.24.24.25
+                  network_value: 24.24.24.0/24
+                  nodeid: 1
               type: tunnel_interface
           -   interface_id: '5'
           -   interface_id: '4'
@@ -706,43 +736,7 @@ Examples
           name: newcluster
           primary_heartbeat: '4'
           primary_mgt: '1'
-          bgp:
-            enabled: true
-            announced_network:
-                - network:
-                    name: foo
-                    route_map: newroutemap
-                - host:
-                    name: hostb
-                - group:
-                    name: group1
-                    route_map: myroutemap
-            antispoofing_network:
-                network:
-                    - network-1.1.1.0/24
-                    - network-172.18.1.0/24
-                host:
-                    - hostb
-            autonomous_system:
-                name: mynew
-                as_number: '123.123'
-                comment: foo
-            router_id: 1.1.1.1
-            bgp_peerings:
-                - name: bgppeering
-                  external_bgp_peer: bgppeer
-                  interfaces:
-                    - interface_id: 1
-                      network: 2.2.2.0/24
-                    - interface_id: 1001
-                    - interface_id: '2.3'
-                - name: bgppeering2
-                  engine: myfw
-                  interfaces:
-                    - interface_id: 1002
-            #bgp_profile: Use default if not provided
           snmp:
-              enabled: true
               snmp_agent: myagent
               snmp_interface:
               - '1'
@@ -750,8 +744,8 @@ Examples
               snmp_location: newcluster
           tags:
           - footag
-          #skip_interfaces: true
-          state: absent
+          #skip_interfaces: false
+          #state: absent
     
     # Delete a cluster
     - name: layer 3 cluster with 3 members
@@ -762,7 +756,7 @@ Examples
 Return Values
 -------------
 
-Common return values are documented :ref:`here <common_return_values>`, the following are the fields unique to this {{plugin_type}}:
+Common return values are documented `Return Values <http://docs.ansible.com/ansible/latest/common_return_values.html>`_, the following are the fields unique to this module:
 
 .. raw:: html
 
@@ -813,6 +807,3 @@ Status
 This module is flagged as **preview** which means that it is not guaranteed to have a backwards compatible interface.
 
 
-
-For help in developing, should you be so inclined, please read :doc:`../../community`,
-:doc:`../../dev_guide/testing` and :doc:`../../dev_guide/developing_modules`.

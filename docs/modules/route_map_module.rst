@@ -29,6 +29,3 @@ Author
     * UNKNOWN
 
 
-
-For help in developing, should you be so inclined, please read :doc:`../../community`,
-:doc:`../../dev_guide/testing` and :doc:`../../dev_guide/developing_modules`.

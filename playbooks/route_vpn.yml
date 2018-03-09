@@ -10,9 +10,9 @@
       name: myrbvpn
       type: ipsec
       local_gw:
-        name: mycluster
-        tunnel_interface: 1000
-        interface_id: 0
+        name: newcluster
+        tunnel_interface: 1001
+        interface_id: 1
         #interface_ip: 10.10.10.10
       #remote_gw:
       #  name: dingo

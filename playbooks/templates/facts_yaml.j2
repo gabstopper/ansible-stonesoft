@@ -1,0 +1,15 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Task output
+    register: result
+    {{ playbook }}:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+{% for k, v in results.ansible_facts.items() %}
+{% for field in v %}
+  {{- field | to_nice_yaml | indent(6, True) }}
+{% endfor %}
+{% endfor %}

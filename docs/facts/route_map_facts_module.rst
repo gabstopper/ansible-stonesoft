@@ -296,6 +296,3 @@ Status
 This module is flagged as **preview** which means that it is not guaranteed to have a backwards compatible interface.
 
 
-
-For help in developing, should you be so inclined, please read :doc:`../../community`,
-:doc:`../../dev_guide/testing` and :doc:`../../dev_guide/developing_modules`.

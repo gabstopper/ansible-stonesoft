@@ -245,6 +245,181 @@ def yaml_firewall(engine):
                     zone_cache, interface.zone_ref))
             interfaces.append(itf)
     
+    yaml_engine.update(
+        interfaces=interfaces,
+        default_nat=engine.default_nat.status,
+        antivirus=engine.antivirus.status,
+        file_reputation=engine.file_reputation.status,
+        domain_server_address=[dns.value for dns in engine.dns
+                               if dns.element is None])
+    if engine.comment:
+        yaml_engine.update(comment=engine.comment)
+
+    # Only return the location if it is not the default (Not set) location
+    location = engine.location
+    if location:
+        yaml_engine.update(location=location.name)
+    # Show SNMP data if SNMP is enabled
+    if engine.snmp.status:
+        snmp = engine.snmp
+        data = dict(snmp_agent=snmp.agent.name)
+        if snmp.location:
+            data.update(snmp_location=snmp.location)
+        interfaces = snmp.interface
+        if interfaces:
+            data.update(snmp_interface=[itf.interface_id for itf in interfaces])
+        yaml_engine.update(snmp=data)
+    
+    if getattr(engine, 'cluster_mode', None):
+        yaml_engine.update(cluster_mode=engine.cluster_mode)
+    
+    # BGP Data
+    bgp = engine.bgp
+    data = dict(announced_network=[],
+                    enabled=bgp.status,
+                    router_id=bgp.router_id)
+        
+    as_element = bgp.autonomous_system
+    autonomous_system=dict(name=as_element.name,
+                           as_number=as_element.as_number,
+                           comment=as_element.comment)
+    data.update(autonomous_system=autonomous_system)
+    
+    if bgp.profile:
+        data.update(bgp_profile=bgp.profile.name)
+    
+    antispoofing_map = {}
+    for net in bgp.antispoofing_networks:
+        antispoofing_map.setdefault(net.typeof, []).append(
+            net.name)
+    antispoofing_network = antispoofing_map if antispoofing_map else {}
+    data.update(antispoofing_network=antispoofing_network)
+        
+    announced_network = []
+    for announced in bgp.advertisements:
+        element, route_map = announced
+        d = {element.typeof: {'name': element.name}}
+        if route_map:
+            d[element.typeof].update(route_map=route_map.name)
+        announced_network.append(d)
+    data.update(announced_network=announced_network)
+        
+    yaml_engine.update(bgp=data)
+    bgp_peering = []
+    for interface, network, peering in engine.routing.bgp_peerings:
+        peer_data = {}
+        peer_data.update(interface_id=interface.nicid,
+                         name=peering.name)
+        if network:
+            peer_data.update(network=network.ip)
+        for gateway in peering:
+            if gateway.related_element_type == 'external_bgp_peer':
+                peer_data.update(external_bgp_peer=gateway.name)
+            else:
+                peer_data.update(engine=gateway.name)
+        bgp_peering.append(peer_data)
+    if bgp_peering:
+        data.update(bgp_peering=bgp_peering)
+    
+    # Lastly, get tags
+    tags = [tag.name for tag in engine.categories]
+    if tags:
+        yaml_engine.update(tags=tags)
+    return yaml_engine        
+
+    
+    
+'''
+    # Prefetch all zones to reduce queries
+    zone_cache = list(Zone.objects.all())
+    management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat')
+    yaml_engine = {'name': engine.name}
+    interfaces = []
+    
+    for interface in engine.interface:
+        itf = {}
+        itf.update(interface_id=interface.interface_id)
+        if 'physical_interface' not in interface.typeof:
+            itf.update(type=interface.typeof)
+        if interface.has_interfaces:
+            for sub_interface in interface.all_interfaces:
+                node = {}
+                if isinstance(sub_interface, ClusterVirtualInterface):
+                    itf.update(
+                        cluster_virtual=sub_interface.address,
+                        network_value=sub_interface.network_value)
+                    if not 'type' in itf: # It's a physical interface
+                        itf.update(macaddress=interface.macaddress)
+                    # Skip remaining to get nodes
+                    continue
+                else: # NDI
+                    if sub_interface.dynamic:
+                        node.update(dynamic=True)
+                    else:
+                        node.update(
+                            address=sub_interface.address,
+                            network_value=sub_interface.network_value,
+                            nodeid=sub_interface.nodeid)
+                        
+                        for role in management:
+                            if getattr(sub_interface, role, None):
+                                yaml_engine[role] = getattr(sub_interface, 'nicid')    
+        
+                if interface.zone_ref:
+                    itf.update(zone_ref=
+                        zone_finder(zone_cache, interface.zone_ref))
+                
+                itf.setdefault('nodes', []).append(node)
+
+            interfaces.append(itf)
+        
+        elif interface.has_vlan:
+            for vlan in interface.vlan_interface:
+                itf = {}
+                itf.update(interface_id=interface.interface_id,
+                           vlan_id=vlan.vlan_id)
+                if vlan.has_interfaces:
+                    for sub_vlan in vlan.all_interfaces:
+                        node = {}
+
+                        if isinstance(sub_vlan, ClusterVirtualInterface):
+                            itf.update(
+                                cluster_virtual=sub_vlan.address,
+                                macaddress=interface.macaddress,
+                                network_value=sub_vlan.network_value)
+                            continue
+                        else: # NDI
+                            node.update(
+                                address=sub_vlan.address,
+                                network_value=sub_vlan.network_value,
+                                nodeid=sub_vlan.nodeid)
+
+                            for role in management:
+                                if getattr(sub_vlan, role, None):
+                                    yaml_engine[role] = getattr(sub_vlan, 'nicid')
+            
+                        if vlan.zone_ref:
+                            itf.update(zone_ref=zone_finder(
+                                zone_cache, vlan.zone_ref))
+                        
+                        itf.setdefault('nodes', []).append(node)
+                        
+                    interfaces.append(itf)
+                else:
+                    # Empty VLAN, check for zone
+                    if vlan.zone_ref:
+                        itf.update(zone_ref=zone_finder(
+                            zone_cache, vlan.zone_ref))
+                    interfaces.append(itf)
+        
+        else: # Single interface, no addresses
+            if getattr(interface, 'macaddress', None) is not None:
+                itf.update(macaddress=interface.macaddress)
+            if interface.zone_ref:
+                itf.update(zone_ref=zone_finder(
+                    zone_cache, interface.zone_ref))
+            interfaces.append(itf)
+    
     #sorted_id = sorted(interfaces, key=itemgetter('interface_id'))
     yaml_engine.update(
         interfaces=interfaces,
@@ -308,7 +483,7 @@ def yaml_firewall(engine):
         yaml_engine.update(tags=tags)
                 
     return yaml_engine
-
+'''
 
 def to_yaml(engine):
     if 'single_fw' in engine.type or 'cluster' in engine.type:

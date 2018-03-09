@@ -195,7 +195,7 @@ options:
             - network
             - group
             - host
-      bgp_peerings:
+      bgp_peering:
         description:
           - BGP Peerings to add to specified interfaces.
         type: list
@@ -214,23 +214,18 @@ options:
               - If the external BGP peer next hop is an engine SMC element, use this
                 identifier. Otherwise use external_bgp_peer if an unmanaged endpoint.
             type: str
-          interfaces:
+          interface_id:
             description:
               - List of dict with two possible valid keys interface_id and network.
                 Provide interface_id to specify the interfaces where the BGP Peering
                 should be placed. Optionally provide the network key value if the
                 interface has multiple addresses and you want to bind to only one.
-            type: list
-            suboptions:
-              interface_id:
-                description:
-                  - Interface ID value to bind the BGP Peering. Can be a VLAN also if
-                    specifying in format '2.3' (interface 2, VLAN 3).
-                type: str
-              network:
-                description:
-                  - Optional network to bind the BGP Peering to on the specified interface
-                type: str
+            type: str
+          network:
+            description:
+              - Optional network to bind to on the specified interface. Use if multiple
+                IP addresses exist and you want to bind to only one.
+            type: str
   domain_server_address:
     description:
       - A list of IP addresses to use as DNS resolvers for the FW. Required to enable
@@ -286,13 +281,45 @@ EXAMPLES = '''
       smc_logging:
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
+      antivirus: false
       backup_mgt: '2.3'
+      bgp:
+          announced_network:
+          -   network:
+                  name: foo
+                  route_map: newroutemap
+          -   host:
+                  name: hostb
+          -   group:
+                  name: group1
+                  route_map: myroutemap
+          antispoofing_network:
+              host:
+              - hostb
+              network:
+              - network-1.1.1.0/24
+              - network-172.18.1.0/24
+          autonomous_system:
+              as_number: 8061051
+              comment: foo
+              name: mynew
+          bgp_peering:
+          -   external_bgp_peer: bgppeer
+              interface_id: '1'
+              name: bgppeering
+              network: 2.2.2.0/24
+          -   engine: myfw
+              interface_id: '2.3'
+              name: bgppeering2
+              network: 3.3.3.0/24
+          bgp_profile: Default BGP Profile
+          enabled: true
+          router_id: 1.1.1.1
       cluster_mode: standby
       comment: my new firewall
       default_nat: false
       domain_server_address:
       - 8.8.8.8
-      antivirus: false
       file_reputation: false
       interfaces:
       -   interface_id: '1002'
@@ -304,16 +331,14 @@ EXAMPLES = '''
               network_value: 25.25.25.25/32
               nodeid: 2
           type: tunnel_interface
-      -   cluster_virtual: 24.24.24.24
-          interface_id: '1001'
-          network_value: 24.24.24.0/24
+      -   interface_id: '1001'
           nodes:
-          -   address: 24.24.24.25
-              network_value: 24.24.24.0/24
-              nodeid: 1
           -   address: 24.24.24.26
               network_value: 24.24.24.0/24
               nodeid: 2
+          -   address: 24.24.24.25
+              network_value: 24.24.24.0/24
+              nodeid: 1
           type: tunnel_interface
       -   interface_id: '5'
       -   interface_id: '4'
@@ -361,43 +386,7 @@ EXAMPLES = '''
       name: newcluster
       primary_heartbeat: '4'
       primary_mgt: '1'
-      bgp:
-        enabled: true
-        announced_network:
-            - network:
-                name: foo
-                route_map: newroutemap
-            - host:
-                name: hostb
-            - group:
-                name: group1
-                route_map: myroutemap
-        antispoofing_network:
-            network:
-                - network-1.1.1.0/24
-                - network-172.18.1.0/24
-            host:
-                - hostb
-        autonomous_system:
-            name: mynew
-            as_number: '123.123'
-            comment: foo
-        router_id: 1.1.1.1
-        bgp_peerings:
-            - name: bgppeering
-              external_bgp_peer: bgppeer
-              interfaces:
-                - interface_id: 1
-                  network: 2.2.2.0/24
-                - interface_id: 1001
-                - interface_id: '2.3'
-            - name: bgppeering2
-              engine: myfw
-              interfaces:
-                - interface_id: 1002
-        #bgp_profile: Use default if not provided
       snmp:
-          enabled: true
           snmp_agent: myagent
           snmp_interface:
           - '1'
@@ -405,8 +394,8 @@ EXAMPLES = '''
           snmp_location: newcluster
       tags:
       - footag
-      #skip_interfaces: true
-      state: absent
+      #skip_interfaces: false
+      #state: absent
 
 # Delete a cluster
 - name: layer 3 cluster with 3 members
@@ -754,11 +743,15 @@ class StonesoftCluster(StonesoftModuleBase):
                         'as_number value.')
             
                 # Get external bgp peers, can be type 'engine' or 'external_bgp_peer'
-                peerings = self.bgp.get('bgp_peerings', [])
+                # Can also be empty if you don't want to attach a peer.
+                peerings = self.bgp.get('bgp_peering', [])
                 for peer in peerings:
                     if 'name' not in peer:
                         self.fail(msg='BGP Peering requires a name field to identify the '
                             'BGP Peering element')
+                    if 'external_bgp_peer' not in peer and 'engine' not in peer:
+                        self.fail(msg='Missing the external_bgp_peer or engine parameter '
+                            'which defines the next hop for the BGP Peering')
                     if 'external_bgp_peer' in peer:
                         cache._add_entry('external_bgp_peer', peer['external_bgp_peer'])
                     elif 'engine' in peer:
@@ -888,7 +881,7 @@ class StonesoftCluster(StonesoftModuleBase):
                         # BGP Peering is last since the BGP configuration may be placed
                         # on interfaces that might have been modified or added. It is
                         # possible that this could fail 
-                        peerings = self.bgp.get('bgp_peerings', None)
+                        peerings = self.bgp.get('bgp_peering', None)
                         if peerings:
                             for peer in peerings:
                                 peering, created = get_or_create_bgp_peering(
@@ -1214,7 +1207,7 @@ class StonesoftCluster(StonesoftModuleBase):
             return True
         
         bgp_profile = self.bgp.get('bgp_profile', None)
-        if bgp_profile is not None and bgp_profile != bgp.profile:
+        if bgp_profile is not None and bgp_profile != bgp.profile.name:
             return True
         
         if set(bgp.data.get('antispoofing_ne_ref', [])) ^ \
@@ -1250,27 +1243,27 @@ class StonesoftCluster(StonesoftModuleBase):
             extpeer = self.cache.get('single_fw,fw_cluster', peering_dict.get('engine'))
         
         changed = False
-        for interface in peering_dict.get('interfaces', []):
-            routing = engine.routing.get(interface.get('interface_id'))
-            network = interface.get('network')
+        interface_id = peering_dict.get('interface_id')
+        network = peering_dict.get('network')
+        routing = engine.routing.get(interface_id)
             
-            interface_peerings = list(routing.bgp_peerings)
-            needs_update = False
-            if interface_peerings:
-                for _, net, peering in interface_peerings:
-                    if network and net.ip == network:
-                        if peering.name != bgp_peering.name:
-                            needs_update = True
-                    else:
-                        if bgp_peering.name != peering.name:
-                            needs_update = True
-            else:
-                needs_update = True
-            
-            if needs_update:
-                routing.add_bgp_peering(
-                    bgp_peering, extpeer, network)
-                changed = True
+        interface_peerings = list(routing.bgp_peerings)
+        needs_update = False
+        if interface_peerings:
+            for _, net, peering in interface_peerings:
+                if network and net.ip == network:
+                    if peering.name != bgp_peering.name:
+                        needs_update = True
+                else:
+                    if bgp_peering.name != peering.name:
+                        needs_update = True
+        else:
+            needs_update = True
+        
+        if needs_update:
+            routing.add_bgp_peering(
+                bgp_peering, extpeer, network)
+            changed = True
        
         return changed
         
@@ -1278,7 +1271,11 @@ class StonesoftCluster(StonesoftModuleBase):
         """
         Validate the input antispoofing format:
         
-            {'network': [net1, net2]}
+        Expected format for antispoofing networks:
+            {'network': [net1, net2],
+             'host': [hosta, hostb}]}
+        
+        :return: None
         """
         valid = ('network', 'group', 'host')
         for typeof, values in s.items():
