@@ -793,10 +793,6 @@ class StonesoftCluster(StonesoftModuleBase):
                 
                     engine = FirewallCluster.create(**cluster)
                     changed = True
-
-#                     if self.tags:
-#                         if self.add_tags(engine, self.tags):
-#                             changed = True
                     
                 else: # Engine exists, check for modifications
                     

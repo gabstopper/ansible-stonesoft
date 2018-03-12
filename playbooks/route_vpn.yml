@@ -13,19 +13,30 @@
         name: newcluster
         tunnel_interface: 1001
         interface_id: 1
-        #interface_ip: 10.10.10.10
-      #remote_gw:
-      #  name: dingo
-      #  tunnel_interface: 1000
-      #  interface_ip: 36.35.35.37
+        #address: 2.2.2.2
+      # remote_gw:
+      #   name: myfw
+      #   tunnel_interface: 1000
+      #   interface_id: 0
       remote_gw:
         name: extgw3
-        type: external_gateway
-        address: 33.33.33.41
         preshared_key: abc123
-        network:
-          - 172.18.1.0/24
-          - 172.18.2.0/24
-          - 172.18.15.0/24
+        type: external_gateway
+        vpn_site:
+          name: site12
+          network:
+            - network-172.18.1.0/24
+            - network-172.18.2.0/24
+          host:
+            - hosta
+        external_endpoint:
+          - name: endpoint1
+            address: 33.33.33.41
+            enabled: true
+          - name: endpoint2
+            address: 34.34.34.34
+            force_nat_t: true
+            enabled: true
       tags:
         - footag
+      #state: absent

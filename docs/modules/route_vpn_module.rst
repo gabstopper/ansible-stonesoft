@@ -48,7 +48,7 @@ Options
     <td></td>
     <td></td>
     <td>
-        <div>Represents the locally managed Stonesoft FW gateway by name</div>
+        <div>Represents the locally managed Stonesoft FW gateway. If the remote_gw is also a Stonesoft managed device, use the same parameters to define</div>
     </tr>
 
     <tr>
@@ -75,12 +75,12 @@ Options
         </tr>
 
         <tr>
-        <td>interface_ip<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
+        <td>interface_id<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
         <td></td>
         <td></td>
         <td>
-            <div>An interface IP addresses to enable IPSEC. This is an alternative to using <em>interface_id</em> since you can specify an exact IP address, independent of the interface ID.</div>
+            <div>The interface ID to enable IPSEC. If multiple IP addresses exist on the interface, IPSEC will be enabled on all. Use <em>interface_ip</em> as an alternative.</div>
         </td>
         </tr>
 
@@ -95,12 +95,12 @@ Options
         </tr>
 
         <tr>
-        <td>interface_id<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
+        <td>address<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>The interface ID to enable IPSEC. If multiple IP addresses exist on the interface, IPSEC will be enabled on all. Use <em>interface_ip</em> as an alternative.</div>
+            <div>An interface IP addresses to enable IPSEC. If there are multiple IP addresses on a single interface specified with <em>interface_id</em> and you want to bind to only that address</div>
         </td>
         </tr>
 
@@ -128,7 +128,7 @@ Options
     <td></td>
     <td></td>
     <td>
-        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module will create the gateway based on the gateway settings provided if it doesn't already exist.</div>
+        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module will create the gateway based on the gateway settings provided if it doesn't already exist. This documents an External Gateway configuration</div>
     </tr>
 
     <tr>
@@ -155,12 +155,32 @@ Options
         </tr>
 
         <tr>
-        <td>address<br/><div style="font-size: small;"></div></td>
+        <td>external_endpoint<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The external endpoint gateways where the RBVPN will terminate. Any options that are supported by the smcpython ExternalEndpoint.create constructor are supported values for this definition</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>type<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>IP address for the remote external gateway. Required if you want the gateway auto created.</div>
+            <div>Set to external_gateway if this is an external gateway element type</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>vpn_site<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Defines the VPN site for the protected networks on other end of external gateway</div>
         </td>
         </tr>
 
@@ -171,16 +191,6 @@ Options
         <td></td>
         <td>
             <div>The name of the External Gateway. If the gateway does not exist, it will be created if you provide the <em>address</em> and <em>networks</em> parameters.</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>network<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>Specify the networks for the External Gateway in cidr format. If the network elements already exist, they will be used. They will be auto-created using a syntax of 'network-1.1.1.0/24'. Required for External Gateways that are created.</div>
         </td>
         </tr>
 
@@ -362,6 +372,18 @@ Options
     </tr>
 
     <tr>
+    <td>tags<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide an optional category tag to the engine. If the category does not exist, it will be created</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>type<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>ipsec</td>
@@ -382,7 +404,7 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a new Route VPN with specified gateways
+    - name: Create a new Route VPN with an external gateway
       route_vpn:
         smc_logging:
           level: 10
@@ -390,42 +412,50 @@ Examples
         name: myrbvpn
         type: ipsec
         local_gw:
-          name: mycluster
-          tunnel_interface: 1000
-          interface_id: 0
-          #interface_ip: 10.10.10.10
-        #remote_gw:
-        #  name: dingo
-        #  tunnel_interface: 1000
-        #  interface_ip: 36.35.35.37
+          name: newcluster
+          tunnel_interface: 1001
+          interface_id: 1
+          #address: 2.2.2.2
         remote_gw:
           name: extgw3
-          type: external_gateway
-          address: 33.33.33.41
           preshared_key: abc123
-          network:
-            - 172.18.1.0/24
-            - 172.18.2.0/24
-            - 172.18.15.0/24
+          type: external_gateway
+          vpn_site:
+            name: site12
+            network:
+              - network-172.18.1.0/24
+              - network-172.18.2.0/24
+            host:
+              - hosta
+          external_endpoint:
+            - name: endpoint1
+              address: 33.33.33.41
+              enabled: true
+            - name: endpoint2
+              address: 34.34.34.34
+              force_nat_t: true
+              enabled: true
         tags:
           - footag
     
-    - name: Create a new Route VPN between two Stonesoft Fws
+    - name: Create a new Route VPN with internal gateways
       route_vpn:
         smc_logging:
           level: 10
           path: /Users/davidlepage/Downloads/ansible-smc.log
-        name: mynrbvpn
+        name: myrbvpn
         type: ipsec
         local_gw:
+          name: newcluster
+          tunnel_interface: 1001
+          interface_id: 1
+          #address: 2.2.2.2
+        remote_gw:
           name: myfw
           tunnel_interface: 1000
-          interface_id: 1
-          interface_ip: 10.10.10.10
-        remote_gw:
-          name: dingo
-          tunnel_interface: 1000
-          interface_ip: 36.35.35.37
+          interface_id: 0  
+      tags:
+        - footag     
 
 Return Values
 -------------

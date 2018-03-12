@@ -36,7 +36,8 @@ options:
     default: ipsec
   local_gw:
     description:
-      - Represents the locally managed Stonesoft FW gateway by name
+      - Represents the locally managed Stonesoft FW gateway. If the remote_gw is also
+        a Stonesoft managed device, use the same parameters to define
     type: str
     suboptions:
       name:
@@ -56,11 +57,11 @@ options:
             an alternative.
         type: str
         required: true
-      interface_ip:
+      address:
         description:
-          - An interface IP addresses to enable IPSEC. This is an alternative to using
-            I(interface_id) since you can specify an exact IP address, independent of the
-            interface ID.
+          - An interface IP addresses to enable IPSEC. If there are multiple IP addresses
+            on a single interface specified with I(interface_id) and you want to bind to
+            only that address
         type: str
         required: false
   remote_gw:
@@ -68,7 +69,7 @@ options:
       - The name of the remote GW. If the remote gateway is an Stonesoft FW, it must
         pre-exist. Use the local_gw documentation for settings. If it is an External Gateway,
         this module will create the gateway based on the gateway settings provided if it
-        doesn't already exist. 
+        doesn't already exist. This documents an External Gateway configuration
     type: str
     suboptions:
       name:
@@ -77,22 +78,57 @@ options:
             if you provide the I(address) and I(networks) parameters.
         type: str
         required: true
-      address:
-        description:
-          - IP address for the remote external gateway. Required if you want the gateway auto
-            created.
-        type: str
       preshared_key:
         description:
           - If this is an External Gateway, you must provide a pre-shared key to be used between
             the gateways. If the gateway is another Stonesoft FW, a key will be auto-generated.
         type: str
-      network:
+      type:
         description:
-          - Specify the networks for the External Gateway in cidr format. If the network elements
-            already exist, they will be used. They will be auto-created using a syntax of
-            'network-1.1.1.0/24'. Required for External Gateways that are created.
+          - Set to external_gateway if this is an external gateway element type
+        type: str
+      vpn_site:
+        description:
+          - Defines the VPN site for the protected networks on other end of external gateway
+        type: dict
+        suboptions:
+          name:
+            description:
+              - Name of VPN site
+            type: str
+            required: true
+          network:
+            description:
+              - A valid element type from SMC. Typically this is network or host. List elements
+                should be valid names of the specified element
+            type: list
+      external_endpoint:
+        description:
+          - The external endpoint gateways where the RBVPN will terminate. Any options that are
+            supported by the smcpython ExternalEndpoint.create constructor are supported values
+            for this definition
         type: list
+        required: true
+        suboptions:
+          name:
+            description: 
+              - Name of the external endpoint
+            type: str
+            required: True
+          address:
+            description:
+              - A valid IP address of the external gateway
+            type: str
+            required: true
+          enabled:
+            description:
+              - Whether to enable the gateway. 
+            type: bool
+  tags:
+    description:
+      - Provide an optional category tag to the engine. If the category does not
+        exist, it will be created
+    type: list  
   state:
     description:
       - Specify a create or delete operation
@@ -119,7 +155,7 @@ author:
 '''  
 
 EXAMPLES = '''
-- name: Create a new Route VPN with specified gateways
+- name: Create a new Route VPN with an external gateway
   route_vpn:
     smc_logging:
       level: 10
@@ -127,42 +163,50 @@ EXAMPLES = '''
     name: myrbvpn
     type: ipsec
     local_gw:
-      name: mycluster
-      tunnel_interface: 1000
-      interface_id: 0
-      #interface_ip: 10.10.10.10
-    #remote_gw:
-    #  name: dingo
-    #  tunnel_interface: 1000
-    #  interface_ip: 36.35.35.37
+      name: newcluster
+      tunnel_interface: 1001
+      interface_id: 1
+      #address: 2.2.2.2
     remote_gw:
       name: extgw3
-      type: external_gateway
-      address: 33.33.33.41
       preshared_key: abc123
-      network:
-        - 172.18.1.0/24
-        - 172.18.2.0/24
-        - 172.18.15.0/24
+      type: external_gateway
+      vpn_site:
+        name: site12
+        network:
+          - network-172.18.1.0/24
+          - network-172.18.2.0/24
+        host:
+          - hosta
+      external_endpoint:
+        - name: endpoint1
+          address: 33.33.33.41
+          enabled: true
+        - name: endpoint2
+          address: 34.34.34.34
+          force_nat_t: true
+          enabled: true
     tags:
       - footag
 
-- name: Create a new Route VPN between two Stonesoft Fws
+- name: Create a new Route VPN with internal gateways
   route_vpn:
     smc_logging:
       level: 10
       path: /Users/davidlepage/Downloads/ansible-smc.log
-    name: mynrbvpn
+    name: myrbvpn
     type: ipsec
     local_gw:
+      name: newcluster
+      tunnel_interface: 1001
+      interface_id: 1
+      #address: 2.2.2.2
+    remote_gw:
       name: myfw
       tunnel_interface: 1000
-      interface_id: 1
-      interface_ip: 10.10.10.10
-    remote_gw:
-      name: dingo
-      tunnel_interface: 1000
-      interface_ip: 36.35.35.37
+      interface_id: 0  
+  tags:
+    - footag     
 '''
 
 RETURN = '''
@@ -179,11 +223,7 @@ state:
 
 import traceback
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase,
-    get_or_create,
-    ro_element_type_dict,
-    element_type_dict,
-    format_element)
+    StonesoftModuleBase, Cache)  # @UnresolvedImport
 
 
 try:
@@ -194,15 +234,6 @@ try:
 except ImportError:
     pass
 
-    
-def vpn_element_type_dict():
-    types = dict(
-        external_gateway=dict(type=ExternalGateway))
-    
-    for t in types.keys():
-        types[t]['attr'] = ['name']
-    return types
-
 
 class StonesoftRouteVPN(StonesoftModuleBase):
     def __init__(self):
@@ -210,8 +241,8 @@ class StonesoftRouteVPN(StonesoftModuleBase):
         self.module_args = dict(
             name=dict(type='str', required=True),
             type=dict(default='ipsec', type='str', choices=['ipsec', 'gre']),
-            local_gw=dict(type='dict'),
-            remote_gw=dict(type='dict'),
+            local_gw=dict(type='dict', required=True),
+            remote_gw=dict(type='dict', required=True),
             tags=dict(type='list'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
@@ -234,136 +265,197 @@ class StonesoftRouteVPN(StonesoftModuleBase):
             setattr(self, name, value)
         
         rbvpn = self.fetch_element(RouteVPN)
+        changed = False
+        
+        if state == 'present':
+        
+            local_engine = self.get_managed_gateway(self.local_gw)
+            local_tunnel_interface = self.get_tunnel_interface(
+                local_engine, self.local_gw.get('tunnel_interface'))
+            local_internal_endpoint = self.get_ipsec_endpoint(
+                local_engine, self.local_gw.get('interface_id'),
+                address=self.local_gw.get('address'))
+            
+            if self.remote_gw.get('type', None) != 'external_gateway':
+                remote_engine = self.get_managed_gateway(self.remote_gw)
+                remote_tunnel_interface = self.get_tunnel_interface(
+                    remote_engine, self.remote_gw.get('tunnel_interface'))
+                remote_internal_endpoint = self.get_ipsec_endpoint(
+                    remote_engine, self.remote_gw.get('interface_id'),
+                    address=self.remote_gw.get('address'))
+            else:
+                # External Gateway
+                req = ('name', 'preshared_key', 'external_endpoint')
+                for required in req:
+                    if required not in self.remote_gw:
+                        self.fail(msg='Missing required field for the external endpoint '
+                            'configuration: %s' % required)
+                
+                external_gateway = dict(name=self.remote_gw['name'])
+                # External Endpoints are defined in the External Gateway.
+                # Build the data structures for a call to ExternalGateway.update_or_create
+                external_endpoint = []
+                for endpoint in self.remote_gw['external_endpoint']:
+                    if 'name' not in endpoint or 'address' not in endpoint:
+                        self.fail(msg='An external endpoint must have at least a '
+                            'name and an address definition.')
+                    external_endpoint.append(endpoint)
+                external_gateway.update(external_endpoint=external_endpoint)
+                
+                # Verify specified VPN Sites exist before continuing
+                if 'vpn_site' in self.remote_gw:
+                    site_name = self.remote_gw.get('vpn_site', {}).pop('name', None)
+                    if not site_name:
+                        self.fail(msg='A VPN site requires a name to continue')
+                    
+                    # Get the elements
+                    cache = Cache()
+                    cache.add(self.remote_gw.get('vpn_site', {}))
+                    if cache.missing:
+                        self.fail(msg='Could not find the specified elements for the '
+                            'VPN site configuration: %s' % cache.missing)
+                    site_element = [value.href for _, values in cache.cache.items()
+                        for value in values]
+                    external_gateway.update(
+                        vpn_site=[dict(name=site_name, site_element=site_element)])
 
         try:
             if state == 'present':
                 
-                self._fail_on_invalid_gw(self.local_gw)
-    
-                if self.type == 'ipsec':
-                    if ('interface_id' or 'interface_ip') not in self.local_gw:
-                        self.fail(msg='You must provide interface_id or interface_address '
-                            'to enable IPSEC on an interface.')
-                
-                local_name = self.local_gw.get('name')
-                local_gw = self.get_engine(local_name)
-                    
-                # A remote gateway can be an internal NGFW from within the
-                # same SMC, or can be an ExternalGateway.    
-                if 'type' in self.remote_gw:
-                    if 'preshared_key' not in self.remote_gw:
-                        self.fail(msg='You must provide a preshared_key for a 3rd '
-                            'party gateway.')
-
-                    if not self.remote_gw.get('network', []):
-                        self.fail(msg='You must provide networks to identify the '
-                            'remote site protected address space.')
-                    
-                    if 'address' not in self.remote_gw:
-                        self.fail(msg='You must provide an address for the remote '
-                            'gateway to configure a RBVPN.')
-                
-                    # Fails if external gateway does not exist
-                    remote_gw = get_or_create(
-                        dict(external_gateway={'name': self.remote_gw.get('name')}),
-                        vpn_element_type_dict(), check_mode=self.check_mode)
-                    
-                    networks = []
-                    for network in self.remote_gw['network']:
-                        networks.append(get_or_create(
-                            dict(network={'name': 'network-{}'.format(network),
-                                          'ipv4_network': network}),
-                            element_type_dict(), hint=network, check_mode=self.check_mode))
-                    
-                    if self.check_mode:
-                        if remote_gw is not None:
-                            self.results['state'].append(remote_gw)
-                        for network in networks:
-                            if network:
-                                self.results['state'].append(network)
-
-                else: # Remote gateway claims to be an internal engine
-                    self._fail_on_invalid_gw(self.remote_gw)
-                    
-                    remote_name = self.remote_gw.get('name')
-                    remote_gw = self.get_engine(remote_name)
-                
                 if self.check_mode:
                     return self.results
-                
-                # Build out the RBVPN components if we haven't failed here
-                local_tunnel_if = local_gw.tunnel_interface.get(
-                    self.local_gw.get('tunnel_interface'))
-                
-                self.enable_vpn_endpoint(local_gw, self.local_gw)
-                
-                if isinstance(remote_gw, Engine):
-                    self.enable_vpn_endpoint(remote_gw, self.remote_gw)
-                    tunnel_if = remote_gw.tunnel_interface.get(
-                        self.remote_gw.get('tunnel_interface'))
-        
-                    remote_gateway = TunnelEndpoint.create_ipsec_endpoint(
-                        remote_gw.vpn.internal_gateway, tunnel_if)
-                else:
-                    # An ExternalGateway defines the remote side as a 3rd party gateway
-                    # Add the address of the remote gateway and the network element created
-                    # that defines the remote network/s.
-                    remote_name = self.remote_gw.get('name')
-                    remote_address = self.remote_gw.get('address')
-                    if not remote_gw.external_endpoint.get_contains(remote_address):
-                        remote_gw.external_endpoint.create(
-                            name=remote_name, address=self.remote_gw.get('address'))
-                        self.results['changed'] = True
-                    if not remote_gw.vpn_site.get_exact('{}-site'.format(remote_name)):
-                        remote_gw.vpn_site.create(name='{}-site'.format(remote_name), site_element=networks)
-                        self.results['changed'] = True
-                    remote_gateway = TunnelEndpoint.create_ipsec_endpoint(remote_gw)
-                
+ 
                 # Create the tunnel endpoints
                 if not rbvpn:
                     local_gateway = TunnelEndpoint.create_ipsec_endpoint(
-                        local_gw.vpn.internal_gateway, local_tunnel_if)
+                        local_engine.vpn.internal_gateway, local_tunnel_interface)
                     
-                    vpn = RouteVPN.create_ipsec_tunnel(
+                    # Enable the IPSEC listener on specified interface/s
+                    if self.update_ipsec_listener(local_internal_endpoint):
+                        changed = True
+                    
+                    is_external = self.remote_gw.get('type', None) == 'external_gateway'
+                    if not is_external:
+                        remote_gateway = TunnelEndpoint.create_ipsec_endpoint(
+                            remote_engine.vpn.internal_gateway, remote_tunnel_interface)
+                        
+                        if self.update_ipsec_listener(remote_internal_endpoint):
+                            changed = True
+                        
+                    else: # Update or Create
+                        gw, created = ExternalGateway.update_or_create(with_status=True, **external_gateway)
+                        remote_gateway = TunnelEndpoint.create_ipsec_endpoint(gw) 
+                        if created:
+                            changed = True
+                    
+                    vpn = dict(
                         name=self.name,
-                        preshared_key=self.remote_gw.get('preshared_key'),
-                        local_endpoint=local_gateway, 
+                        local_endpoint=local_gateway,
                         remote_endpoint=remote_gateway)
-
-                    self.results['changed'] = True
-                    self.results['state'] = format_element(vpn)
-                
+                    
+                    if is_external:
+                        vpn.update(preshared_key=self.remote_gw['preshared_key'])
+                    
+                    routevpn = RouteVPN.create_ipsec_tunnel(**vpn)
+                    changed = True
+                    
+                    self.results['state'] = routevpn.data.data
+                    self.results['changed'] = changed
+        
             elif state == 'absent':
-
                 if rbvpn:
                     rbvpn.delete()
+                    changed = True
                 
         except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
 
+        self.results['changed'] = changed        
         return self.results
     
-    def get_engine(self, name):
+    def get_ipsec_endpoint(self, engine, interface_id, address=None):
         """
-        Get the engine. If in check_mode, just set the results.
-        Otherwise return the engine or raise the error.
+        Get the internal endpoint for which to enable IPSEC on for the
+        internal FW. This is required for IPSEC based RBVPN.
         
-        :param str name: name of engine to fetch
-        :raises SMCException: engine not found 
-        :rtype: Engine
+        :param engine Engine: engine reference, already obtained
+        :param str interface_id: interface ID specified for IPSEC listener
+        :rtype: list(InternalEndpoint)
         """
         try:
-            engine = Engine.get(name)
-            return engine
-        except SMCException:
-            if self.check_mode:
-                self.results['state'].append(
-                    dict(name=name,
-                         type='engine',
-                         msg='Specified element does not exist'))
-                return
-            raise
-
+            interface = engine.interface.get(interface_id)
+        except SMCException as e:
+            self.fail(msg='Fetch IPSEC interface for endpoint failed: %s' % str(e))
+        
+        internal_endpoint = engine.vpn.internal_endpoint # Collection
+        endpoints = []
+        if address:
+            ep = internal_endpoint.get_exact(address)
+            if ep:
+                endpoints.append(ep)
+        else: # Get all endpoints for the interface
+            for addr, network, nicid in interface.addresses:  # @UnusedVariable
+                if internal_endpoint.get_exact(addr):
+                    endpoints.append(
+                        internal_endpoint.get_exact(addr))
+        if not endpoints:
+            self.fail(msg='No IPSEC endpoint interfaces found. The specified '
+                'interface ID was: %s and address: %s' % (interface_id, address))
+        return endpoints
+    
+    def update_ipsec_listener(self, internal_endpoints):
+        """
+        Update the internal endpoint to enable the IPSEC listener on
+        the specified interface/s.
+        
+        :param list(InternalEndpoint) internal_endpoints: internal endpoints
+        :rtype: bool
+        """
+        changed = False
+        for endpoint in internal_endpoints:
+            if not endpoint.enabled:
+                endpoint.update(enabled=True)
+                changed = True
+        return changed
+                        
+    def get_tunnel_interface(self, engine, interface_id):
+        """
+        Get the specified Tunnel Interface for the gateway.
+        
+        :param engine Engine: engine ref
+        :param str interface_id: pulled from gateway yaml
+        :rtype: TunnelInterface
+        """
+        tunnel_interface = None
+        for interface in engine.tunnel_interface:
+            if interface.interface_id == str(interface_id):
+                tunnel_interface = interface
+                break
+        
+        if not tunnel_interface:
+            self.fail(msg='Cannot tunnel interface: %s for specified gateway '
+                '%s' % (interface_id, engine.name))
+        return tunnel_interface
+                
+    def get_managed_gateway(self, gw):
+        """
+        If the gateway is a locally managed SMC gateway, tunnel interface and
+        an IPSEC interface is required.
+        
+        :param dict local_gw,remote_gw: yaml definition
+        :rtype: Engine
+        """
+        for req in ('name', 'tunnel_interface', 'interface_id'):
+            if req not in gw:
+                self.fail(msg='Managed gateway requires name, interface_id and '
+                    'tunnel_interface fields')
+        
+        managed_gw = Engine.get(gw.get('name'), raise_exc=False)
+        if not managed_gw:
+            self.fail(msg='The specified managed gateway specified does not '
+                'exist: %s' % gw.get('name'))
+        return managed_gw
+    
     def enable_vpn_endpoint(self, engine, gateway):
         """
         Enable the IPSEC VPN endpoint on all addresses of an
@@ -373,38 +465,8 @@ class StonesoftRouteVPN(StonesoftModuleBase):
         :param dict gateway: the gateway dict
         :return: None
         """
-        endpoints = engine.vpn.internal_endpoint
-        if 'interface_id' in gateway:
-            # Raises if interface does not exist
-            intf = engine.interface.get(gateway['interface_id'])
-            for addr, _, _ in intf.addresses:
-                endpoint = endpoints.get_contains(addr)
-                # Endpoint can be None if this is a cluster. On a cluster,
-                # only the interfaces with a CVI are eligible to be an
-                if endpoint and not endpoint.enabled:
-                    endpoint.update(enabled=True)
-                    self.results['changed'] = True
-        else: # Enable on the specific address specified
-            vpn_endpoint = endpoints.get_exact(gateway['interface_ip'])
-            if not vpn_endpoint:
-                self.fail(msg='Interface IP: {} is not found on this engine '
-                    .format(gateway.get('interface_ip')))
-            if not vpn_endpoint.enabled:
-                vpn_endpoint.update(enabled=True)
-                self.results['changed'] = True
+        pass
        
-    def _fail_on_invalid_gw(self, gw):
-        """
-        An internal GW needs to have at minimum a name which identifies the
-        engine name. If this is an external gateway, it also needs a name
-        for creation or modification.
-        """
-        required = ('name', 'tunnel_interface')
-        for req in required:
-            if req not in gw:
-                self.fail(msg='Missing required field/s for gateway. Fields '
-                    'needed: {}'.format(list(required)))
-
 def main():
     StonesoftRouteVPN()
     

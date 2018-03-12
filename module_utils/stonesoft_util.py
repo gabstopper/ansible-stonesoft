@@ -279,7 +279,7 @@ def format_element(element):
     """
     for key in ('link', 'key', 'system_key'):
         element.data.pop(key, None)
-    return element.data
+    return element.data.data
 
 
 def element_dict_from_obj(element, type_dict, expand=None):
