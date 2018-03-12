@@ -455,17 +455,7 @@ class StonesoftRouteVPN(StonesoftModuleBase):
             self.fail(msg='The specified managed gateway specified does not '
                 'exist: %s' % gw.get('name'))
         return managed_gw
-    
-    def enable_vpn_endpoint(self, engine, gateway):
-        """
-        Enable the IPSEC VPN endpoint on all addresses of an
-        interface ID or a specific address
-        
-        :param Engine engine: the engine reference
-        :param dict gateway: the gateway dict
-        :return: None
-        """
-        pass
+
        
 def main():
     StonesoftRouteVPN()

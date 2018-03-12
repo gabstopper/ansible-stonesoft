@@ -895,7 +895,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     if self.clear_tags(engine):
                         changed = True
 
-                self.results['state'] = engine.data
+                self.results['state'] = engine.data.data
                 
             elif state == 'absent':
                 if engine:

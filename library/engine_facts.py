@@ -373,7 +373,7 @@ class EngineFacts(StonesoftModuleBase):
                 if engines:
                     self.results['engine_type'] = engine.type
             else:
-                engines = [engine.data for engine in result]
+                engines = [engine.data.data for engine in result]
         else:
             engines = [{'name': engine.name, 'type': engine.type} for engine in result]
         
