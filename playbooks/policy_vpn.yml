@@ -6,14 +6,14 @@
     policy_vpn:
       name: mynewvpn
       central_gw:
-        - name: myfirewall
+        - name: myfw
           type: internal_gateway
       satellite_gw:
-        - name: extgw
+        - name: extgw3
           type: external_gateway
           preshared_key: abc123
       gateway_tunnel:
-        - tunnel_side_a: extgw
+        - tunnel_side_a: extgw3
           tunnel_side_b: myfirewall
           enabled: yes
           preshared_key: mynewkey

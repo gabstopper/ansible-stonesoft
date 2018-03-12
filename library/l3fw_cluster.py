@@ -518,7 +518,6 @@ def delete_vlan_interface(self):
     interface definition directly.
     
     :param self PhysicalVlanInterface
-    :param str vlan_id: vlan ID
     :return: tuple(was_changed, delete_network)
     """
     changes = False, False
@@ -526,9 +525,9 @@ def delete_vlan_interface(self):
     if self.addresses:
         changes = True, True
     else:
-        vlan_str = self.interface_id
         changes = True, False
     
+    vlan_str = self.interface_id
     self._parent.data['vlanInterfaces'] = [
         vlan for vlan in self._parent.data['vlanInterfaces']
         if vlan.get('interface_id') != vlan_str]

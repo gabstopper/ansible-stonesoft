@@ -14,10 +14,10 @@
   - name: Show all resolved aliases for engine 'myfirewall'
     alias_facts:
       limit: 0
-      engine: myfirewall
+      engine: newcluster
   
   - name: Show only resolved alias with 'interface' in the name for engine 'myfirewall'
     alias_facts:
-      engine: myfirewall
+      engine: newcluster
       filter: interface
       case_sensitive: no

@@ -10,12 +10,12 @@
   - name: Retrieve a specific group
     network_element_facts:
       element: group
-      filter: foogroup
+      filter: hostgroup
 
   - name: Retrieve a specific group and expand all members
     network_element_facts:
       element: group
-      filter: foogroup
+      filter: hostgroup
       expand:
         - group
   

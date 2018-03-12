@@ -11,7 +11,7 @@
   
   - name: Get a specific external GW, and expand supported attributes
     external_gateway_facts:
-      filter: myremotevpn
+      filter: extgw3
       expand:
         - gateway_profile
         - vpn_site

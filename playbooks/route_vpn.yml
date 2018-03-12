@@ -29,6 +29,8 @@
             - network-172.18.2.0/24
           host:
             - hosta
+          group:
+            - hostgroup
         external_endpoint:
           - name: endpoint1
             address: 33.33.33.41

@@ -8,7 +8,6 @@
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
       antivirus: false
-      backup_mgt: '2.3'
       bgp:
           announced_network:
           -   network:
@@ -20,6 +19,8 @@
                   name: group1
                   route_map: myroutemap
           antispoofing_network:
+              group:
+              - hostgroup
               host:
               - hostb
               network:
@@ -33,11 +34,7 @@
           -   external_bgp_peer: bgppeer
               interface_id: '1'
               name: bgppeering
-              #network: 2.2.2.0/24
-          -   engine: myfw
-              interface_id: '2.3'
-              name: bgppeering2
-              #network: 3.3.3.0/24
+              network: 2.2.2.0/24
           bgp_profile: Default BGP Profile
           enabled: true
           router_id: 1.1.1.1
@@ -48,35 +45,16 @@
       - 8.8.8.8
       file_reputation: false
       interfaces:
-      -   interface_id: '4'
-          nodes:
-          -   address: 5.5.5.2
-              network_value: 5.5.5.0/24
-              nodeid: 1
-          -   address: 5.5.5.3
-              network_value: 5.5.5.0/24
-              nodeid: 2
-          zone_ref: heartbeat
       -   interface_id: '3'
       -   interface_id: '2'
           nodes:
-          -   address: 3.3.3.3
-              network_value: 3.3.3.0/24
-              nodeid: 2
-          -   address: 3.3.3.2
-              network_value: 3.3.3.0/24
+          -   address: 32.32.32.1
+              network_value: 32.32.32.0/24
               nodeid: 1
+          -   address: 32.32.32.2
+              network_value: 32.32.32.0/24
+              nodeid: 2
           vlan_id: '3'
-      -   interface_id: '2'
-          nodes:
-          -   address: 4.4.4.2
-              network_value: 4.4.4.0/24
-              nodeid: 1
-          -   address: 4.4.4.3
-              network_value: 4.4.4.0/24
-              nodeid: 2
-          vlan_id: '4'
-          zone_ref: somevlan
       -   cluster_virtual: 2.2.2.1
           interface_id: '1'
           macaddress: 02:02:02:02:02:04
@@ -108,11 +86,21 @@
               nodeid: 1
           type: tunnel_interface
       -   interface_id: '5'
+      -   interface_id: '4'
+          nodes:
+          -   address: 5.5.5.2
+              network_value: 5.5.5.0/24
+              nodeid: 1
+          -   address: 5.5.5.3
+              network_value: 5.5.5.0/24
+              nodeid: 2
+          zone_ref: heartbeat
       location: somelocation
       name: newcluster
       primary_heartbeat: '4'
       primary_mgt: '1'
       snmp:
+          enabled: false
           snmp_agent: myagent
           snmp_interface:
           - '1'

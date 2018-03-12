@@ -7,7 +7,7 @@
   
   - name: Find details of a specific FW Policy
     l3fw_policy_facts:
-      filter: fwpolicy
+      filter: master
 
   - name: dump test output
     debug:
@@ -15,4 +15,4 @@
   
   - fail: msg="Policy was invalid"
     when:
-      - policies[0].name != "fwpolicy"
+      - policies[0].name != "master"
