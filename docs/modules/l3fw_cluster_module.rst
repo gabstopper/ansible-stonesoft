@@ -192,6 +192,18 @@ Options
     </tr>
 
     <tr>
+    <td>delete_undefined_interfaces<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Delete interfaces from engine cluster that are not defined in the YAML file. This can be used as a strategy to remove interfaces. One option is to retrieve the full engine json using engine_facts as yaml, then remove the interfaces from the yaml and set this to True.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>domain_server_address<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -309,7 +321,7 @@ Options
     <td></td>
     <td></td>
 	<td>
-        <p>Location identifier for the engine. Used when engine is behind NAT</p>
+        <p>Location identifier for the engine. Used when engine is behind NAT. If a location is set on the engine and you want to reset to unspecified, then use the keyword None.</p>
 	</td>
 	</tr>
     </td>
@@ -345,7 +357,7 @@ Options
     <td></td>
     <td></td>
 	<td>
-        <p>Identify the interface to be specified as management</p>
+        <p>Identify the interface to be specified as management. When creating a new cluster, the primary mgt must be a non-VLAN interface. You can move it to a VLAN interface after creation.</p>
 	</td>
 	</tr>
     </td>
@@ -357,7 +369,7 @@ Options
     <td></td>
     <td><ul><li>yes</li><li>no</li></ul></td>
 	<td>
-        <p>Optionally skip the analysis of interface changes. This is only relevant when running the playbook against an already created engine.</p>
+        <p>Optionally skip the analysis of interface changes. This is only relevant when running the playbook against an already created engine. This must be false if attempting to add interfaces.</p>
 	</td>
 	</tr>
     </td>
@@ -745,6 +757,7 @@ Examples
           tags:
           - footag
           #skip_interfaces: false
+          #delete_undefined_interfaces: false
           #state: absent
     
     # Delete a cluster

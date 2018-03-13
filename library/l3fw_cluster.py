@@ -40,8 +40,10 @@ options:
     default: standby
   primary_mgt:
     description:
-      - Identify the interface to be specified as management
-    type: int
+      - Identify the interface to be specified as management. When creating a new
+        cluster, the primary mgt must be a non-VLAN interface. You can move it to
+        a VLAN interface after creation.
+    type: str
     required: true
   backup_mgt:
     description:
@@ -55,7 +57,9 @@ options:
     type: str
   location:
     description:
-      - Location identifier for the engine. Used when engine is behind NAT
+      - Location identifier for the engine. Used when engine is behind NAT. If
+        a location is set on the engine and you want to reset to unspecified,
+        then use the keyword None.
     type: str
   interfaces:
     description:
@@ -251,7 +255,16 @@ options:
   skip_interfaces:
     description:
       - Optionally skip the analysis of interface changes. This is only relevant when
-        running the playbook against an already created engine.
+        running the playbook against an already created engine. This must be false if
+        attempting to add interfaces.
+    type: bool
+    default: false
+  delete_undefined_interfaces:
+    description:
+      - Delete interfaces from engine cluster that are not defined in the YAML file. This can
+        be used as a strategy to remove interfaces. One option is to retrieve the full engine
+        json using engine_facts as yaml, then remove the interfaces from the yaml and set this
+        to True.
     type: bool
     default: false
   state:
@@ -395,6 +408,7 @@ EXAMPLES = '''
       tags:
       - footag
       #skip_interfaces: false
+      #delete_undefined_interfaces: false
       #state: absent
 
 # Delete a cluster
@@ -643,7 +657,7 @@ class StonesoftCluster(StonesoftModuleBase):
         
         self.module_args = dict(
             name=dict(type='str', required=True),
-            cluster_mode=dict(type='str', default='standby', choices=['standby', 'balancing']),
+            cluster_mode=dict(type='str', choices=['standby', 'balancing']),
             interfaces=dict(type='list', default=[]),
             domain_server_address=dict(default=[], type='list'),
             location=dict(type='str'),
@@ -654,11 +668,12 @@ class StonesoftCluster(StonesoftModuleBase):
             default_nat=dict(default=False, type='bool'),
             antivirus=dict(default=False, type='bool'),
             file_reputation=dict(default=False, type='bool'),
-            primary_mgt=dict(type='str', default='0'),
+            primary_mgt=dict(type='str'),
             backup_mgt=dict(type='str'),
             primary_heartbeat=dict(type='str'),
             tags=dict(type='list'),
             skip_interfaces=dict(type='bool', default=False),
+            delete_undefined_interfaces=dict(type='bool', default=False),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
         
@@ -676,6 +691,7 @@ class StonesoftCluster(StonesoftModuleBase):
         self.antivirus = None
         self.file_reputation = None
         self.skip_interfaces = None
+        self.delete_undefined_interfaces = None
         self.tags = None
         
         self.results = dict(
@@ -699,6 +715,13 @@ class StonesoftCluster(StonesoftModuleBase):
                 if not self.interfaces:
                     self.fail(msg='You must provide at least one interface '
                         'configuration to create a cluster.')
+                
+                if not self.primary_mgt:
+                    self.fail(msg='You must provide a primary_mgt interface to create '
+                        'an engine.')
+                
+                if not self.cluster_mode:
+                    self.fail(msg='You must define a cluster mode to create an engine')
                 
                 node_req = ('address', 'network_value', 'nodeid')
                 
@@ -800,11 +823,10 @@ class StonesoftCluster(StonesoftModuleBase):
                     if self.update_general(engine):
                         changed = True
                     
-                    if self.snmp:
-                        if self.update_snmp(engine):
-                            changed = True
+                    if self.update_snmp(engine):
+                        changed = True
                             
-                    if engine.cluster_mode != self.cluster_mode:
+                    if self.cluster_mode and engine.cluster_mode != self.cluster_mode:
                         engine.data.update(cluster_mode=self.cluster_mode)
                         changed = True
 
@@ -829,8 +851,9 @@ class StonesoftCluster(StonesoftModuleBase):
                         changed = True
                     
                     # Lastly, delete top level interfaces that are not defined in 
-                    # the YAML or added while looping
-                    if not self.skip_interfaces:
+                    # the YAML or added while looping. Only delete if skip_interfaces
+                    # was not provided and that delete_undefined_interfaces is set to True
+                    if not self.skip_interfaces and self.delete_undefined_interfaces:
                         for interface in engine.interface:
                             if interface.interface_id not in interfaces:
                                 interface.delete()
@@ -918,18 +941,21 @@ class StonesoftCluster(StonesoftModuleBase):
         :rtype: bool
         """
         changed = False
-        management = engine.interface.get(self.primary_mgt)
-        if not management.is_primary_mgt:
-            engine.interface_options.set_primary_mgt(self.primary_mgt)
-            changed = True
+        if self.primary_mgt:
+            management = engine.interface.get(self.primary_mgt)
+            if not management.is_primary_mgt:
+                engine.interface_options.set_primary_mgt(self.primary_mgt)
+                changed = True
         
-        if engine.interface_options.backup_mgt != self.backup_mgt:
-            engine.interface_options.set_backup_mgt(self.backup_mgt)
-            changed = True
+        if self.backup_mgt:
+            if engine.interface_options.backup_mgt != self.backup_mgt:
+                engine.interface_options.set_backup_mgt(self.backup_mgt)
+                changed = True
         
-        if engine.interface_options.primary_heartbeat != self.primary_heartbeat:
-            engine.interface_options.set_primary_heartbeat(self.primary_heartbeat)
-            changed = True
+        if self.primary_heartbeat:
+            if engine.interface_options.primary_heartbeat != self.primary_heartbeat:
+                engine.interface_options.set_primary_heartbeat(self.primary_heartbeat)
+                changed = True
         return changed
     
     def update_interfaces(self, engine):
@@ -966,7 +992,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     # specified and no addresses, you cannot convert this to
                     # a non-VLAN interface. You must delete it and recreate.
                     if yaml.vlan_id:
-                        engine.physical_interface.add_ipaddress_and_vlan_to_cluster(
+                        engine.physical_interface.add_layer3_vlan_cluster_interface(
                             **yaml.as_dict())
                         changed = True
                         continue
@@ -974,7 +1000,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     # network_value and macaddress, or nodes (NDI's) are specified.
                     elif (yaml.cluster_virtual and yaml.network_value and \
                           yaml.macaddress) or len(yaml.nodes):
-                        engine.physical_interface.add_cluster_virtual_interface(
+                        engine.physical_interface.add_layer3_cluster_interface(
                             **yaml.as_dict())
                         changed = True
                         continue    
@@ -1026,7 +1052,8 @@ class StonesoftCluster(StonesoftModuleBase):
                         else:
                             # YAML does not define an existing interface, so
                             # delete the VLAN interface
-                            updated, network = delete_vlan_interface(vlan)
+                            if self.delete_undefined_interfaces:
+                                updated, network = delete_vlan_interface(vlan)
                         
                         # If the interface was updated, check to see if we need
                         # to remove stale routes and add the interface ID so we
@@ -1058,10 +1085,10 @@ class StonesoftCluster(StonesoftModuleBase):
                 ifs = Interfaces(interfaces)
                 for itf in ifs:
                     if itf.is_vlan:
-                        engine.physical_interface.add_vlan_to_cluster(
+                        engine.physical_interface.add_layer3_vlan_cluster_interface(
                             **itf.as_dict())
                     else:
-                        engine.physical_interface.add_cluster_virtual_interface(
+                        engine.physical_interface.add_layer3_cluster_interface(
                             **itf.as_dict())
                     
                     changed = True
@@ -1140,53 +1167,56 @@ class StonesoftCluster(StonesoftModuleBase):
         :rtype: bool
         """
         changed = False
-        snmp = engine.snmp
-        enable = self.snmp.pop('enabled', True)
-        if not enable:
-            if snmp.status:
-                snmp.disable()
-                changed = True
-        else:
-            if not snmp.status:
-                agent = SNMPAgent(self.snmp.pop('snmp_agent', None))
-                snmp.enable(snmp_agent=agent, **self.snmp)
-                changed = True
-            else: # Enabled check for changes
-                update_snmp = False
-                if snmp.agent.name != self.snmp.get('snmp_agent', ''):
-                    update_snmp = True
-                if snmp.location != self.snmp.get('snmp_location'):
-                    update_snmp = True
-                
-                snmp_interfaces = [interface.interface_id for interface in snmp.interface]
-                yaml_snmp_interfaces = map(str, self.snmp.get('snmp_interface', []))
-                if not set(snmp_interfaces) == set(yaml_snmp_interfaces):
-                    update_snmp = True
-                
-                if update_snmp:
+        if self.snmp:
+            snmp = engine.snmp
+            enable = self.snmp.pop('enabled', True)
+            if not enable:
+                if snmp.status:
+                    snmp.disable()
+                    changed = True
+            else:
+                if not snmp.status:
                     agent = SNMPAgent(self.snmp.pop('snmp_agent', None))
                     snmp.enable(snmp_agent=agent, **self.snmp)
                     changed = True
+                else: # Enabled check for changes
+                    update_snmp = False
+                    if snmp.agent.name != self.snmp.get('snmp_agent', ''):
+                        update_snmp = True
+                    if snmp.location != self.snmp.get('snmp_location'):
+                        update_snmp = True
+                    
+                    snmp_interfaces = [interface.interface_id for interface in snmp.interface]
+                    yaml_snmp_interfaces = map(str, self.snmp.get('snmp_interface', []))
+                    if not set(snmp_interfaces) == set(yaml_snmp_interfaces):
+                        update_snmp = True
+                    
+                    if update_snmp:
+                        agent = SNMPAgent(self.snmp.pop('snmp_agent', None))
+                        snmp.enable(snmp_agent=agent, **self.snmp)
+                        changed = True
         return changed
     
     def update_location(self, engine):
         """
         Check for an update on the engine location
+        If the engine has a location and you want to reset it to
+        unspecified, use 'None'.
         
-        #TODO: rethink
         :rtype: bool
         """
         changed = False
-        location = engine.location
-
-        if not location and self.location:
-            engine.location = self.location
-            changed = True
-        elif location and not self.location:
-            engine.location = None
-            changed = True
-        elif location and self.location:
-            if location.name != self.location:
+        
+        if self.location:
+            location = engine.location # 1 Query
+            if self.location.lower() == 'none':
+                if location:
+                    engine.location = None
+                    changed = True
+            elif not location:
+                engine.location = self.location
+                changed = True
+            elif location and self.location != location.name:
                 engine.location = self.location
                 changed = True
         return changed
@@ -1241,7 +1271,7 @@ class StonesoftCluster(StonesoftModuleBase):
         interface_id = peering_dict.get('interface_id')
         network = peering_dict.get('network')
         routing = engine.routing.get(interface_id)
-            
+        
         interface_peerings = list(routing.bgp_peerings)
         needs_update = False
         if interface_peerings:
@@ -1256,9 +1286,10 @@ class StonesoftCluster(StonesoftModuleBase):
             needs_update = True
         
         if needs_update:
-            routing.add_bgp_peering(
+            modified = routing.add_bgp_peering(
                 bgp_peering, extpeer, network)
-            changed = True
+            if modified:
+                changed = True
        
         return changed
         

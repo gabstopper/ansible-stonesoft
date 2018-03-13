@@ -32,9 +32,9 @@
               name: mynew
           bgp_peering:
           -   external_bgp_peer: bgppeer
-              interface_id: '1'
+              interface_id: '21.21'
               name: bgppeering
-              network: 2.2.2.0/24
+              #network: 2.2.2.0/24
           bgp_profile: Default BGP Profile
           enabled: true
           router_id: 1.1.1.1
@@ -45,37 +45,6 @@
       - 8.8.8.8
       file_reputation: false
       interfaces:
-      -   interface_id: '3'
-      -   interface_id: '2'
-          nodes:
-          -   address: 32.32.32.1
-              network_value: 32.32.32.0/24
-              nodeid: 1
-          -   address: 32.32.32.2
-              network_value: 32.32.32.0/24
-              nodeid: 2
-          vlan_id: '3'
-      -   cluster_virtual: 2.2.2.1
-          interface_id: '1'
-          macaddress: 02:02:02:02:02:04
-          network_value: 2.2.2.0/24
-          nodes:
-          -   address: 2.2.2.3
-              network_value: 2.2.2.0/24
-              nodeid: 2
-          -   address: 2.2.2.2
-              network_value: 2.2.2.0/24
-              nodeid: 1
-          zone_ref: internal
-      -   interface_id: '1002'
-          nodes:
-          -   address: 25.25.25.25
-              network_value: 25.25.25.25/32
-              nodeid: 1
-          -   address: 25.25.25.26
-              network_value: 25.25.25.25/32
-              nodeid: 2
-          type: tunnel_interface
       -   interface_id: '1001'
           nodes:
           -   address: 24.24.24.26
@@ -85,6 +54,41 @@
               network_value: 24.24.24.0/24
               nodeid: 1
           type: tunnel_interface
+      -   interface_id: '1002'
+          nodes:
+          -   address: 25.25.25.25
+              network_value: 25.25.25.25/32
+              nodeid: 1
+          -   address: 25.25.25.26
+              network_value: 25.25.25.25/32
+              nodeid: 2
+          type: tunnel_interface
+      -   interface_id: '22'
+          macaddress: 02:02:02:02:02:06
+      -   cluster_virtual: 22.22.22.254
+          interface_id: '21'
+          macaddress: 02:02:02:20:20:20
+          network_value: 22.22.22.0/24
+          nodes:
+          -   address: 22.22.22.1
+              network_value: 22.22.22.0/24
+              nodeid: 1
+          -   address: 22.22.22.2
+              network_value: 22.22.22.0/24
+              nodeid: 2
+          vlan_id: '21'
+      -   cluster_virtual: 21.21.21.254
+          interface_id: '21'
+          macaddress: 02:02:02:20:20:20
+          network_value: 21.21.21.0/24
+          nodes:
+          -   address: 21.21.21.1
+              network_value: 21.21.21.0/24
+              nodeid: 1
+          -   address: 21.21.21.2
+              network_value: 21.21.21.0/24
+              nodeid: 2
+          vlan_id: '20'
       -   interface_id: '5'
       -   interface_id: '4'
           nodes:
@@ -95,16 +99,48 @@
               network_value: 5.5.5.0/24
               nodeid: 2
           zone_ref: heartbeat
-      location: somelocation
+      -   interface_id: '20'
+          nodes:
+          -   address: 20.20.20.1
+              network_value: 20.20.20.0/24
+              nodeid: 1
+          -   address: 20.20.20.2
+              network_value: 20.20.20.0/24
+              nodeid: 2
+          vlan_id: '20'
+      -   interface_id: '2'
+          nodes:
+          -   address: 32.32.32.1
+              network_value: 32.32.32.0/24
+              nodeid: 1
+          -   address: 32.32.32.2
+              network_value: 32.32.32.0/24
+              nodeid: 2
+          vlan_id: '3'
+      -   interface_id: '2'
+          nodes:
+          -   address: 4.4.4.2
+              network_value: 4.4.4.0/24
+              nodeid: 1
+          -   address: 4.4.4.3
+              network_value: 4.4.4.0/24
+              nodeid: 2
+          vlan_id: '4'
+          zone_ref: somevlan
+      -   interface_id: '2'
+          nodes:
+          -   address: 44.44.44.2
+              network_value: 44.44.44.0/24
+              nodeid: 1
+          -   address: 44.44.44.3
+              network_value: 44.44.44.0/24
+              nodeid: 2
+          vlan_id: '5'
+      -   interface_id: '3'
+          vlan_id: '33'
       name: newcluster
       primary_heartbeat: '4'
-      primary_mgt: '1'
-      snmp:
-          enabled: false
-          snmp_agent: myagent
-          snmp_interface:
-          - '1'
-          - '2.4'
-          snmp_location: newcluster
+      primary_mgt: '21.21'
+      #delete_undefined_interfaces: true
       tags:
       - footag
