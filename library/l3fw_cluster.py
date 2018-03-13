@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-from smc.routing.bgp import BGPPeering
+
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -436,7 +436,7 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache  # @U
 try:
     from smc.core.engines import FirewallCluster
     from smc.api.exceptions import SMCException, InterfaceNotFound
-    from smc.routing.bgp import AutonomousSystem
+    from smc.routing.bgp import AutonomousSystem, BGPPeering
     from smc.elements.helpers import zone_helper
     from smc.elements.profiles import SNMPAgent
 except ImportError:
@@ -723,25 +723,17 @@ class StonesoftCluster(StonesoftModuleBase):
                 if not self.cluster_mode:
                     self.fail(msg='You must define a cluster mode to create an engine')
                 
-                node_req = ('address', 'network_value', 'nodeid')
-                
-                itf = Interfaces(self.interfaces)
-                for interface in itf:
-                    if not interface.interface_id:
-                        self.fail(msg='interface_id is required for all interface '
-                            'definitions')
-                    for node in interface.nodes:
-                        if not all(k in node for k in node_req):
-                            self.fail(msg='Node missing required field. Required '
-                                'fields are: %s, interface: %s' %
-                                (list(node_req), interface))
+                itf = self.check_interfaces()
                     
                 # Management interface
                 mgmt_interface = itf.get(self.primary_mgt)
                 if not mgmt_interface:
                     self.fail(msg='Management interface is not defined. Management was '
                         'specified on interface: %s' % self.primary_mgt)
-           
+            
+            if engine and self.interfaces and not self.skip_interfaces:
+                self.check_interfaces()
+            
             # Only validate BGP if it's specifically set to enabled    
             if self.bgp and self.bgp.get('enabled', True):
                 # Save the cache until the end..
@@ -958,6 +950,29 @@ class StonesoftCluster(StonesoftModuleBase):
                 changed = True
         return changed
     
+    def check_interfaces(self):
+        """
+        Check interfaces to validate node settings
+        
+        :rtype: Interfaces
+        """
+        node_req = set(['address', 'network_value', 'nodeid'])
+        itf = Interfaces(self.interfaces)
+        for interface in itf:
+            if not interface.interface_id:
+                self.fail(msg='interface_id is required for all interface '
+                    'definitions')
+            for node in interface.nodes:
+                node_values = set(node.keys())
+                differences = node_values - node_req
+                for diff in differences:
+                    if diff not in node_req:
+                        self.fail(msg='Invalid field provided: %s. Valid fields: %s'
+                            % (diff, list(node_req)))
+                    else:
+                        self.fail(msg='Missing required node field: %s' % diff)
+        return itf
+                   
     def update_interfaces(self, engine):
         """
         Update the interfaces on engine if necessary. You can also
@@ -1038,6 +1053,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     routes_to_remove = []
                     vlan_interfaces = interface.vlan_interface
                     
+                    updated = False
                     for vlan in vlan_interfaces:
                         yaml = ifs.get_vlan(vlan.vlan_id)
                         # If the YAML definition for the interface exists, either
@@ -1054,7 +1070,7 @@ class StonesoftCluster(StonesoftModuleBase):
                             # delete the VLAN interface
                             if self.delete_undefined_interfaces:
                                 updated, network = delete_vlan_interface(vlan)
-                        
+
                         # If the interface was updated, check to see if we need
                         # to remove stale routes and add the interface ID so we
                         # can get the routing for that specific interface_id
