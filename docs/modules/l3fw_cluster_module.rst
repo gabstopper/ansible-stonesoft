@@ -249,6 +249,16 @@ Options
         </tr>
 
         <tr>
+        <td>comment<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Optional comment for this interface. If you want to unset the interface comment, set to an empty string or define with no value</div>
+        </td>
+        </tr>
+
+        <tr>
         <td>macaddress<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
@@ -712,6 +722,7 @@ Examples
                   network_value: 5.5.5.0/24
                   nodeid: 2
               zone_ref: heartbeat
+              comment: test interface comment
           -   interface_id: '3'
           -   interface_id: '2'
               nodes:

@@ -112,6 +112,11 @@ options:
               - The node ID for the cluster node. Required for each node in the cluster.
             type: int
             required: true
+      comment:
+        description:
+          - Optional comment for this interface. If you want to unset the interface comment,
+            set to an empty string or define with no value
+        type: str
   default_nat:
     description:
       - Whether to enable default NAT on the FW. Default NAT will identify
@@ -363,6 +368,7 @@ EXAMPLES = '''
               network_value: 5.5.5.0/24
               nodeid: 2
           zone_ref: heartbeat
+          comment: test interface comment
       -   interface_id: '3'
       -   interface_id: '2'
           nodes:
@@ -438,7 +444,6 @@ try:
     from smc.api.exceptions import SMCException, InterfaceNotFound
     from smc.routing.bgp import AutonomousSystem, BGPPeering
     from smc.elements.helpers import zone_helper
-    from smc.elements.profiles import SNMPAgent
 except ImportError:
     # Caught in StonesoftModuleBase
     pass
@@ -452,6 +457,7 @@ class YamlInterface(object):
         self.network_value = None
         self.vlan_id = None
         self.zone_ref = None
+        self.comment = None
         self.nodes = []
         for name, value in interfaces.items():
             if name not in ('nodes',):
@@ -459,22 +465,13 @@ class YamlInterface(object):
             else:
                 setattr(self, name, value)
         self.cvi_mode = 'packetdispatch' if self.cluster_virtual else None
-        
-    def __iter__(self):
-        for node in self.nodes:
-            yield node
-    
+
     def __len__(self):
         return len(self.nodes)
     
     @property
     def is_vlan(self):
         return bool(self.vlan_id)
-    
-    def get_nodeid(self, nodeid):
-        for nodes in self:
-            if nodes.get('nodeid') == nodeid:
-                return nodes
     
     def as_dict(self):
         if not self.is_vlan:
@@ -553,6 +550,10 @@ def create_cluster_vlan_interface(interface, yaml):
     """
     Create a new VLAN interface on the cluster. This mutates the
     interface definition directly.
+    Note: If a cluster VLAN interface has only NDIs and you add
+    a CVI or CVI+NDI's to it, you must specify a macaddress, and
+    this macaddress will then be set on the top level physical
+    interface.
     
     :param PhysicalInterface interface: the interface ref
     :param YamlInterface yaml: yaml interface
@@ -562,18 +563,22 @@ def create_cluster_vlan_interface(interface, yaml):
     if (yaml.cluster_virtual and yaml.network_value) or yaml.nodes:
         builder, interface = interface._get_builder()
         if yaml.cluster_virtual and yaml.network_value:   # Add CVI 
-            builder.add_cvi_to_vlan(yaml.cluster_virtual, yaml.network_value, yaml.vlan_id) 
-            if yaml.macaddress: 
-                builder.macaddress = yaml.macaddress 
-                builder.cvi_mode = yaml.cvi_mode 
-            else: 
-                builder.cvi_mode = None 
+            builder.add_cvi_to_vlan(yaml.cluster_virtual, yaml.network_value, yaml.vlan_id,
+                                    comment=yaml.comment) 
+            if yaml.macaddress:
+                interface.macaddress = yaml.macaddress
+                interface.data['cvi_mode'] = yaml.cvi_mode
         else: # VLAN on an NDI 
-            builder.add_vlan_only(yaml.vlan_id, zone_ref=yaml.zone_ref) 
+            builder.add_vlan_only(yaml.vlan_id, zone_ref=yaml.zone_ref,
+                                  comment=yaml.comment) 
         if yaml.nodes: 
             for node in yaml.nodes: 
                 node.update(vlan_id=yaml.vlan_id) 
                 builder.add_ndi_to_vlan(**node)
+        return True
+    elif not yaml.nodes and yaml.vlan_id: # VLAN only
+        builder, interface = interface._get_builder()
+        builder.add_vlan_only(yaml.vlan_id, zone_ref=yaml.zone_ref, comment=yaml.comment)
         return True
     return False
                 
@@ -597,11 +602,10 @@ def update_cluster_vlan_interface(self, yaml):
     # from the routing table.
     changes = False, False
     
-    # Check the zone to see if we have a different value
-    # If a zone exists and yaml defines a different zone,
-    # change. If no interface zone exists and yaml zone
-    # exists, set it. If yaml and interface zone exists,
-    # compare and only change if they are not the same
+    # Check the zone to see if we have a different value. If a zone exists and
+    # yaml defines a different zone, change. If no interface zone exists and yaml
+    # zone exists, set it. If yaml and interface zone exists, compare and only change
+    # if they are not the same
     if self.zone_ref and not yaml.zone_ref:
         self.data.update(zone_ref=None)
         changes = True, False
@@ -613,7 +617,10 @@ def update_cluster_vlan_interface(self, yaml):
         if zone != self.zone_ref:
             self.zone_ref = zone
             changes = True, False
-        
+    
+    if yaml.comment is not None and yaml.comment != self.comment:
+        self.data['comment'] = yaml.comment
+        changes = True, False    
     # Delete all interfaces
     if not nodes and self.has_interfaces:
         self.data.update(interfaces=[])
@@ -665,9 +672,9 @@ class StonesoftCluster(StonesoftModuleBase):
             comment=dict(type='str'),
             log_server=dict(type='str'),
             snmp=dict(type='dict', default={}),
-            default_nat=dict(default=False, type='bool'),
-            antivirus=dict(default=False, type='bool'),
-            file_reputation=dict(default=False, type='bool'),
+            default_nat=dict(type='bool'),
+            antivirus=dict(type='bool'),
+            file_reputation=dict(type='bool'),
             primary_mgt=dict(type='str'),
             backup_mgt=dict(type='str'),
             primary_heartbeat=dict(type='str'),
@@ -734,10 +741,40 @@ class StonesoftCluster(StonesoftModuleBase):
             if engine and self.interfaces and not self.skip_interfaces:
                 self.check_interfaces()
             
+            cache = Cache()
+            
+            # SNMP settings
+            if self.snmp and self.snmp.get('enabled', True):
+                cache._add_entry('snmp_agent', self.snmp.get('snmp_agent', None))
+                if cache.missing:
+                    self.fail(msg='SNMP configured but the SNMP Agent specified is not '
+                        'found: %s' % cache.missing)
+
             # Only validate BGP if it's specifically set to enabled    
             if self.bgp and self.bgp.get('enabled', True):
-                # Save the cache until the end..
-                cache = Cache()
+                # Get external bgp peers, can be type 'engine' or 'external_bgp_peer'
+                # Can also be empty if you don't want to attach a peer.
+                peerings = self.bgp.get('bgp_peering', [])
+                for peer in peerings:
+                    if 'name' not in peer:
+                        self.fail(msg='BGP Peering requires a name field to identify the '
+                            'BGP Peering element. Peer info provided: %s' % peer)
+                    if 'external_bgp_peer' not in peer and 'engine' not in peer:
+                        self.fail(msg='Missing the external_bgp_peer or engine parameter '
+                            'which defines the next hop for the BGP Peering')
+                    if 'external_bgp_peer' in peer:
+                        cache._add_entry('external_bgp_peer', peer['external_bgp_peer'])
+                    elif 'engine' in peer:
+                        cache._add_entry('single_fw,fw_cluster', peer['engine'])
+        
+                if cache.missing:
+                    self.fail(msg='Missing external BGP Peering elements: %s' % cache.missing)
+                
+                as_system = self.bgp.get('autonomous_system')
+                if 'name' not in as_system or 'as_number' not in as_system:
+                    self.fail(msg='Autonomous System requires a name and and '
+                        'as_number value.')
+
                 spoofing = self.bgp.get('antispoofing_network', {})
                 self.validate_antispoofing_network(spoofing)
                 cache.add(spoofing)
@@ -751,30 +788,7 @@ class StonesoftCluster(StonesoftModuleBase):
                 if cache.missing:
                     self.fail(msg='Missing elements in announced configuration: %s' % cache.missing)
                 
-                as_system = self.bgp.get('autonomous_system')
-                if 'name' not in as_system or 'as_number' not in as_system:
-                    self.fail(msg='Autonomous System requires a name and and '
-                        'as_number value.')
-            
-                # Get external bgp peers, can be type 'engine' or 'external_bgp_peer'
-                # Can also be empty if you don't want to attach a peer.
-                peerings = self.bgp.get('bgp_peering', [])
-                for peer in peerings:
-                    if 'name' not in peer:
-                        self.fail(msg='BGP Peering requires a name field to identify the '
-                            'BGP Peering element')
-                    if 'external_bgp_peer' not in peer and 'engine' not in peer:
-                        self.fail(msg='Missing the external_bgp_peer or engine parameter '
-                            'which defines the next hop for the BGP Peering')
-                    if 'external_bgp_peer' in peer:
-                        cache._add_entry('external_bgp_peer', peer['external_bgp_peer'])
-                    elif 'engine' in peer:
-                        cache._add_entry('single_fw,fw_cluster', peer['engine'])
-        
-                if cache.missing:
-                    self.fail(msg='Missing external BGP Peering elements: %s' % cache.missing)
-                
-                self.cache = cache
+            self.cache = cache
         
         try:
                         
@@ -833,14 +847,17 @@ class StonesoftCluster(StonesoftModuleBase):
                     if changed:
                         engine.update()
                     
+                    # Reset management interfaces before operating on interfaces
+                    # in case interfaces are removed that might have previously
+                    # been used as interface options (primary mgt, etc)
+                    if self.reset_management(engine):
+                        changed = True
+
                     # Set skip interfaces to bypass interface checks
                     if not self.skip_interfaces:
                         interfaces, modified = self.update_interfaces(engine)
                         if modified:
                             changed = True
-                    
-                    if self.reset_management(engine):
-                        changed = True
                     
                     # Lastly, delete top level interfaces that are not defined in 
                     # the YAML or added while looping. Only delete if skip_interfaces
@@ -964,13 +981,10 @@ class StonesoftCluster(StonesoftModuleBase):
                     'definitions')
             for node in interface.nodes:
                 node_values = set(node.keys())
-                differences = node_values - node_req
-                for diff in differences:
-                    if diff not in node_req:
-                        self.fail(msg='Invalid field provided: %s. Valid fields: %s'
-                            % (diff, list(node_req)))
-                    else:
-                        self.fail(msg='Missing required node field: %s' % diff)
+                differences = node_values ^ node_req
+                if differences:
+                    self.fail(msg='Invalid or missing field for node. Valid fields '
+                        'are %s' % list(node_req))
         return itf
                    
     def update_interfaces(self, engine):
@@ -1030,14 +1044,16 @@ class StonesoftCluster(StonesoftModuleBase):
                 if not interface.has_vlan and  0 <= len(yaml) <= len(engine.nodes):
                     
                     # To delete nodes, remove the interface and re-add
-                    if len(yaml): # Nodes are defined
+                    if len(yaml) or (yaml.cluster_virtual or yaml.network_value or \
+                        yaml.macaddress):
+                        
                         if interface.change_cluster_interface(
                             cluster_virtual=yaml.cluster_virtual,
                             network_value=yaml.network_value,
                             macaddress=yaml.macaddress,
                             nodes=yaml.nodes, zone_ref=yaml.zone_ref,
-                            vlan_id=None):
-                            
+                            vlan_id=None, comment=yaml.comment):
+
                             changed = True
                     elif interface.has_interfaces:
                         # Yaml nodes are undefined, reset if addresses exist
@@ -1056,15 +1072,10 @@ class StonesoftCluster(StonesoftModuleBase):
                     updated = False
                     for vlan in vlan_interfaces:
                         yaml = ifs.get_vlan(vlan.vlan_id)
-                        # If the YAML definition for the interface exists, either
-                        # create interface addresses or update existing, otherwise
-                        # delete the interface.
+                        # If the YAML definition for the same interface exists, try to
+                        # update the interface
                         if yaml is not None:
-                            if not vlan.has_interfaces:
-                                updated = create_cluster_vlan_interface(interface, yaml)
-                                network = False
-                            else:
-                                updated, network = update_cluster_vlan_interface(vlan, yaml)
+                            updated, network = update_cluster_vlan_interface(vlan, yaml)
                         else:
                             # YAML does not define an existing interface, so
                             # delete the VLAN interface
@@ -1104,8 +1115,17 @@ class StonesoftCluster(StonesoftModuleBase):
                         engine.physical_interface.add_layer3_vlan_cluster_interface(
                             **itf.as_dict())
                     else:
-                        engine.physical_interface.add_layer3_cluster_interface(
-                            **itf.as_dict())
+                        # Can't do VLANs on Tunnel Interfaces
+                        if getattr(itf, 'type', None) is not None:
+                            if itf.type == 'tunnel_interface':
+                                tunnel = itf.as_dict()
+                                for attr in ('macaddress', 'type', 'cvi_mode'):
+                                    tunnel.pop(attr, None)
+                            engine.tunnel_interface.add_cluster_virtual_interface(
+                                **tunnel)
+                        else:
+                            engine.physical_interface.add_layer3_cluster_interface(
+                                **itf.as_dict())
                     
                     changed = True
                 
@@ -1128,10 +1148,11 @@ class StonesoftCluster(StonesoftModuleBase):
                     # delete the obsolete network, otherwise delete all
                     if len(list(route)) > 1:
                         for vlan_network in route:
-                            if vlan_network.invalid:
+                            if vlan_network.invalid and vlan_network.level == 'network':
                                 vlan_network.delete()
                     else:
-                        route.delete()
+                        if route.level == 'network':
+                            route.delete()
         
     def update_general(self, engine):
         """
@@ -1192,7 +1213,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     changed = True
             else:
                 if not snmp.status:
-                    agent = SNMPAgent(self.snmp.pop('snmp_agent', None))
+                    agent = self.cache.get('snmp_agent', self.snmp.pop('snmp_agent'))
                     snmp.enable(snmp_agent=agent, **self.snmp)
                     changed = True
                 else: # Enabled check for changes
@@ -1208,7 +1229,7 @@ class StonesoftCluster(StonesoftModuleBase):
                         update_snmp = True
                     
                     if update_snmp:
-                        agent = SNMPAgent(self.snmp.pop('snmp_agent', None))
+                        agent = self.cache.get('snmp_agent', self.snmp.pop('snmp_agent'))
                         snmp.enable(snmp_agent=agent, **self.snmp)
                         changed = True
         return changed
@@ -1244,7 +1265,7 @@ class StonesoftCluster(StonesoftModuleBase):
         :param bgp BGP: reference from engine.bgp
         :rtype: bool (needs update)
         """
-        if bgp.router_id != self.bgp.get('router_id', ''):
+        if bgp.router_id != self.bgp.get('router_id', None):
             return True
         
         bgp_profile = self.bgp.get('bgp_profile', None)
@@ -1346,7 +1367,8 @@ class StonesoftCluster(StonesoftModuleBase):
             for typeof, dict_value in announced.items():
                 if not isinstance(dict_value, dict):
                     self.fail(msg='Announced network type should be defined with '
-                        'name and optionally route_map as a dict.')
+                        'name and optionally route_map as a dict. Invalid entry '
+                        'was: %s' % announced)
                 if typeof not in valid:
                     self.fail(msg='Invalid announced network was provided: %s, '
                         'valid types: %s' % (typeof, list(valid)))

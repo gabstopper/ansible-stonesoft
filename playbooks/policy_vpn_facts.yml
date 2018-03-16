@@ -2,17 +2,18 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Retrieve all Policy VPN's
-    policy_vpn_facts:
+  # - name: Retrieve all Policy VPN's
+  #   policy_vpn_facts:
   
-  - name: Get a specific Policy VPN details
-    policy_vpn_facts:
-      filter: mypolicyvpn
+  # - name: Get a specific Policy VPN details
+  #   policy_vpn_facts:
+  #     filter: mynewvpn
   
   - name: Get a specific Policy VPN, and expand specific engines
     policy_vpn_facts:
-      filter: mypolicyvpn
+      filter: mynewvpn
       expand:
         - extgw
         - fw2 Primary
         - doodoo - Primary
+        - vpn_profile
