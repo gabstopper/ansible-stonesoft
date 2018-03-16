@@ -167,6 +167,8 @@ def yaml_firewall(engine):
         if 'physical_interface' not in interface.typeof:
             itf.update(type=interface.typeof)
         if interface.has_interfaces:
+            if getattr(interface, 'comment', None):
+                itf.update(comment=interface.comment)
             for sub_interface in interface.all_interfaces:
                 node = {}
                 if isinstance(sub_interface, ClusterVirtualInterface):
@@ -203,6 +205,8 @@ def yaml_firewall(engine):
                 itf = {}
                 itf.update(interface_id=interface.interface_id,
                            vlan_id=vlan.vlan_id)
+                if getattr(vlan, 'comment', None):
+                    itf.update(comment=vlan.comment)
                 if vlan.has_interfaces:
                     for sub_vlan in vlan.all_interfaces:
                         node = {}
@@ -240,6 +244,8 @@ def yaml_firewall(engine):
         else: # Single interface, no addresses
             if getattr(interface, 'macaddress', None) is not None:
                 itf.update(macaddress=interface.macaddress)
+            if getattr(interface, 'comment', None):
+                itf.update(comment=interface.comment)
             if interface.zone_ref:
                 itf.update(zone_ref=zone_finder(
                     zone_cache, interface.zone_ref))
