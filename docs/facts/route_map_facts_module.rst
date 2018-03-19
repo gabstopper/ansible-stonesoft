@@ -258,21 +258,62 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Return all categories
-        route_map:
+    - name: Return all route map policies
+        route_map_facts:
     
-    - name: Return all route map and references containing 'my' in the name
-        route_map:
+    - name: Return 5 route map policies containing 'my' in the name
+        route_map_facts:
           limit: 5
           filter: my
     
     - name: Return detailed information on route map named myroutemap
-        category_facts:
-          limit: 1
+        route_map_facts:
           filter: myroutemap
           exact_match: yes
           case_sensitive: yes
+          
+    - name: Get route map details for myroutemap and save to yaml
+        register: results
+        route_map_facts:
+          smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
+          filter: newroutemap
+          as_yaml: true
+    
+      - name: Write the yaml using a jinja template
+        template: src=templates/facts_yaml.j2 dest=./foo.yml
+        vars:
+          playbook: route_map
 
+Return Values
+-------------
+
+Common return values are documented `Return Values <http://docs.ansible.com/ansible/latest/common_return_values.html>`_, the following are the fields unique to this module:
+
+.. raw:: html
+
+    <table border=1 cellpadding=4>
+
+    <tr>
+    <th class="head">name</th>
+    <th class="head">description</th>
+    <th class="head">returned</th>
+    <th class="head">type</th>
+    <th class="head">sample</th>
+    </tr>
+
+    <tr>
+    <td>route_map</td>
+    <td>
+        <div>Return a specific route map by name</div>
+    </td>
+    <td align=center>always</td>
+    <td align=center>list</td>
+    <td align=center>[{'comment': 'foo', 'rules': [{'action': 'permit', 'comment': None, 'match_condition': [{'type': 'peer_address', 'name': 'bgppeer', 'element': 'external_bgp_peer'}, {'type': 'access_list', 'name': 'myacl', 'element': 'ip_access_list'}, {'type': 'metric', 'value': 20}], 'tag': '141.0', 'name': 'Rule @141.0'}], 'name': 'anewmap'}]</td>
+    </tr>
+    </table>
+    </br></br>
 
 
 Notes

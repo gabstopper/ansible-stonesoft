@@ -35,24 +35,92 @@ author:
 
 
 EXAMPLES = '''
-- name: Return all categories
-    route_map:
+- name: Return all route map policies
+    route_map_facts:
 
-- name: Return all route map and references containing 'my' in the name
-    route_map:
+- name: Return 5 route map policies containing 'my' in the name
+    route_map_facts:
       limit: 5
       filter: my
 
 - name: Return detailed information on route map named myroutemap
-    category_facts:
-      limit: 1
+    route_map_facts:
       filter: myroutemap
       exact_match: yes
       case_sensitive: yes
+      
+- name: Get route map details for myroutemap and save to yaml
+    register: results
+    route_map_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: newroutemap
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/facts_yaml.j2 dest=./foo.yml
+    vars:
+      playbook: route_map
 '''
 
 
 RETURN = '''
+route_map:
+  description: Return all route maps
+  returned: always
+  type: list
+  sample: [
+    {
+        "name": "routemap_for_aws", 
+        "type": "route_map"
+    }, 
+    {
+        "name": "myroutemap", 
+        "type": "route_map"
+    }, 
+    {
+        "name": "newroutemap", 
+        "type": "route_map"
+    }, 
+    {
+        "name": "anewmap", 
+        "type": "route_map"
+    }]
+
+route_map: 
+  description: Return a specific route map by name
+  returned: always
+  type: list
+  sample: [
+    {
+        "comment": "foo", 
+        "name": "anewmap", 
+        "rules": [
+            {
+                "action": "permit", 
+                "comment": null, 
+                "match_condition": [
+                    {
+                        "element": "external_bgp_peer", 
+                        "name": "bgppeer", 
+                        "type": "peer_address"
+                    }, 
+                    {
+                        "element": "ip_access_list", 
+                        "name": "myacl", 
+                        "type": "access_list"
+                    }, 
+                    {
+                        "type": "metric", 
+                        "value": 20
+                    }
+                ], 
+                "name": "Rule @141.0", 
+                "tag": "141.0"
+            }
+        ]
+    }]
 '''
 
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
@@ -81,7 +149,7 @@ def to_yaml(rm):
                     dict(type=condition.type,
                          value=condition.element.value))
             else:
-                elem = 'engine_clusters' if isinstance(condition.element, Engine) \
+                elem = 'engine' if isinstance(condition.element, Engine) \
                     else condition.element.typeof 
                 r.setdefault('match_condition', []).append(
                     dict(name=condition.element.name,

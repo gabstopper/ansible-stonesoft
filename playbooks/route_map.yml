@@ -1,0 +1,49 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Task output
+    register: result
+    route_map:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      comment: mycomment
+      name: newroutemap
+      rules:
+      -   action: deny
+          comment: null
+          match_condition:
+          -   element: ip_access_list
+              name: myacl
+              type: access_list
+          name: Rule @257.0
+          tag: '257.0'
+      -   action: permit
+          comment: null
+          match_condition:
+          -   element: as_path_access_list
+              name: aspath
+              type: access_list
+          -   element: community_access_list
+              name: mycommunityacl
+              type: access_list
+          -   element: extended_community_access_list
+              name: extended
+              type: access_list
+          -   element: ip_access_list
+              name: myacl
+              type: access_list
+          -   element: ip_prefix_list
+              name: myprefixlist
+              type: access_list
+          -   type: metric
+              value: 20
+          -   element: engine
+              name: myfw
+              type: peer_address
+          -   element: ip_access_list
+              name: myacl
+              type: next_hop
+          name: myrule3
+          tag: '228.0'

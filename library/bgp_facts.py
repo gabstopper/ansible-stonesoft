@@ -12,7 +12,7 @@ ANSIBLE_METADATA = {
    
 DOCUMENTATION = '''
 ---
-module: bgp_facts
+module: bgp_element_facts
 short_description: Facts about BGP based elements in the SMC
 description:
   - BGP elements are the building blocks to building a BGP configuration on

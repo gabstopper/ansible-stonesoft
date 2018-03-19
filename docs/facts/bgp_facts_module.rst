@@ -1,8 +1,8 @@
-.. _bgp_facts:
+.. _bgp_element_facts:
 
 
-bgp_facts - Facts about BGP based elements in the SMC
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
+bgp_element_facts - Facts about BGP based elements in the SMC
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 

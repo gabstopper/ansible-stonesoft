@@ -644,132 +644,194 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Firewall Template
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Create a single layer 3 firewall
-        l3fw_cluster:
-          smc_logging:
-            level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
-          antivirus: false
-          backup_mgt: '2.3'
-          bgp:
-              announced_network:
-              -   network:
-                      name: foo
-                      route_map: newroutemap
-              -   host:
-                      name: hostb
-              -   group:
-                      name: group1
-                      route_map: myroutemap
-              antispoofing_network:
-                  host:
-                  - hostb
-                  network:
-                  - network-1.1.1.0/24
-                  - network-172.18.1.0/24
-              autonomous_system:
-                  as_number: 8061051
-                  comment: foo
-                  name: mynew
-              bgp_peering:
-              -   external_bgp_peer: bgppeer
-                  interface_id: '1'
-                  name: bgppeering
-                  network: 2.2.2.0/24
-              -   engine: myfw
-                  interface_id: '2.3'
-                  name: bgppeering2
-                  network: 3.3.3.0/24
-              bgp_profile: Default BGP Profile
-              enabled: true
-              router_id: 1.1.1.1
-          cluster_mode: standby
-          comment: my new firewall
-          default_nat: false
-          domain_server_address:
-          - 8.8.8.8
-          file_reputation: false
-          interfaces:
-          -   interface_id: '1002'
-              nodes:
-              -   address: 25.25.25.25
-                  network_value: 25.25.25.25/32
-                  nodeid: 1
-              -   address: 25.25.25.26
-                  network_value: 25.25.25.25/32
-                  nodeid: 2
-              type: tunnel_interface
-          -   interface_id: '1001'
-              nodes:
-              -   address: 24.24.24.26
-                  network_value: 24.24.24.0/24
-                  nodeid: 2
-              -   address: 24.24.24.25
-                  network_value: 24.24.24.0/24
-                  nodeid: 1
-              type: tunnel_interface
-          -   interface_id: '5'
-          -   interface_id: '4'
-              nodes:
-              -   address: 5.5.5.2
-                  network_value: 5.5.5.0/24
-                  nodeid: 1
-              -   address: 5.5.5.3
-                  network_value: 5.5.5.0/24
-                  nodeid: 2
-              zone_ref: heartbeat
-              comment: test interface comment
-          -   interface_id: '3'
-          -   interface_id: '2'
-              nodes:
-              -   address: 3.3.3.3
-                  network_value: 3.3.3.0/24
-                  nodeid: 2
-              -   address: 3.3.3.2
-                  network_value: 3.3.3.0/24
-                  nodeid: 1
-              vlan_id: '3'
-          -   interface_id: '2'
-              nodes:
-              -   address: 4.4.4.2
-                  network_value: 4.4.4.0/24
-                  nodeid: 1
-              -   address: 4.4.4.3
-                  network_value: 4.4.4.0/24
-                  nodeid: 2
-              vlan_id: '4'
-              zone_ref: somevlan
-          -   cluster_virtual: 2.2.2.1
-              interface_id: '1'
-              macaddress: 02:02:02:02:02:04
-              network_value: 2.2.2.0/24
-              nodes:
-              -   address: 2.2.2.3
-                  network_value: 2.2.2.0/24
-                  nodeid: 2
-              -   address: 2.2.2.2
-                  network_value: 2.2.2.0/24
-                  nodeid: 1
-              zone_ref: internal
-          location: somelocation
-          name: newcluster
-          primary_heartbeat: '4'
-          primary_mgt: '1'
-          snmp:
-              snmp_agent: myagent
-              snmp_interface:
-              - '1'
-              - '2.4'
-              snmp_location: newcluster
-          tags:
-          - footag
-          #skip_interfaces: false
-          #delete_undefined_interfaces: false
-          #state: absent
+    - name: Create a cluster firewall
+      l3fw_cluster:
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        antivirus: false
+        bgp:
+            announced_network:
+            -   network:
+                    name: foo
+                    route_map: newroutemap
+            -   host:
+                    name: hostb
+            -   group:
+                    name: group1
+                    route_map: myroutemap
+            antispoofing_network:
+                group:
+                - hostgroup
+                host:
+                - hostb
+                network:
+                - network-1.1.1.0/24
+                - network-172.18.1.0/24
+            autonomous_system:
+                as_number: 8061051
+                comment: foo
+                name: mynew
+            bgp_peering:
+            -   external_bgp_peer: bgppeer
+                interface_id: '21.21'
+                name: bgppeering
+                network: 22.22.22.0/24
+            bgp_profile: Default BGP Profile
+            enabled: true
+            router_id: 1.1.1.1
+        cluster_mode: standby
+        comment: my new firewall
+        default_nat: false
+        domain_server_address:
+        - 8.8.8.8
+        file_reputation: false
+        interfaces:
+        -   interface_id: '1005'
+            nodes:
+            -   address: 15.15.15.15
+                network_value: 15.15.15.0/24
+                nodeid: 1
+            -   address: 15.15.15.16
+                network_value: 15.15.15.0/24
+                nodeid: 2
+            type: tunnel_interface
+        -   interface_id: '1001'
+            nodes:
+            -   address: 24.24.24.25
+                network_value: 24.24.24.0/24
+                nodeid: 1
+            -   address: 24.24.24.26
+                network_value: 24.24.24.0/24
+                nodeid: 2
+            type: tunnel_interface
+        -   comment: no interfaces
+            interface_id: '5'
+        -   interface_id: '4'
+            nodes:
+            -   address: 5.5.5.2
+                network_value: 5.5.5.0/24
+                nodeid: 1
+            -   address: 5.5.5.3
+                network_value: 5.5.5.0/24
+                nodeid: 2
+            comment: NDIs only
+            zone_ref: heartbeat
+        -   interface_id: '3'
+        -   cluster_virtual: 67.67.67.67
+            comment: CVI only
+            interface_id: '67'
+            macaddress: 02:02:04:04:04:04
+            network_value: 67.67.67.0/24
+        -   cluster_virtual: 36.36.36.40
+            comment: CVI with NDIs
+            interface_id: '24'
+            macaddress: 02:02:02:04:02:08
+            network_value: 36.36.36.0/24
+            nodes:
+            -   address: 36.36.36.1
+                network_value: 36.36.36.0/24
+                nodeid: 1
+            -   address: 36.36.36.2
+                network_value: 36.36.36.0/24
+                nodeid: 2
+            vlan_id: '21'
+        -   interface_id: '55'
+        -   comment: BGP interface
+            interface_id: '1050'
+            nodes:
+            -   address: 101.101.101.1
+                network_value: 101.101.101.0/24
+                nodeid: 1
+            -   address: 101.101.101.2
+                network_value: 101.101.101.0/24
+                nodeid: 2
+            type: tunnel_interface
+        -   interface_id: '22'
+            macaddress: 02:02:02:02:02:06
+        -   cluster_virtual: 22.22.22.254
+            interface_id: '21'
+            macaddress: 02:02:02:20:20:20
+            network_value: 22.22.22.0/24
+            nodes:
+            -   address: 22.22.22.1
+                network_value: 22.22.22.0/24
+                nodeid: 1
+            -   address: 22.22.22.2
+                network_value: 22.22.22.0/24
+                nodeid: 2
+            vlan_id: '21'
+        -   cluster_virtual: 21.21.21.254
+            interface_id: '21'
+            macaddress: 02:02:02:20:20:20
+            network_value: 21.21.21.0/24
+            nodes:
+            -   address: 21.21.21.1
+                network_value: 21.21.21.0/24
+                nodeid: 1
+            -   address: 21.21.21.2
+                network_value: 21.21.21.0/24
+                nodeid: 2
+            vlan_id: '20'
+        -   comment: delete by api
+            interface_id: '6'
+            vlan_id: '6'
+        -   interface_id: '2'
+            nodes:
+            -   address: 32.32.32.2
+                network_value: 32.32.32.0/24
+                nodeid: 2
+            -   address: 32.32.32.1
+                network_value: 32.32.32.0/24
+                nodeid: 1
+            vlan_id: '3'
+        -   interface_id: '2'
+            nodes:
+            -   address: 4.4.4.3
+                network_value: 4.4.4.0/24
+                nodeid: 2
+            -   address: 4.4.4.2
+                network_value: 4.4.4.0/24
+                nodeid: 1
+            vlan_id: '4'
+            zone_ref: somevlan
+        -   interface_id: '2'
+            nodes:
+            -   address: 44.44.44.2
+                network_value: 44.44.44.0/24
+                nodeid: 1
+            -   address: 44.44.44.3
+                network_value: 44.44.44.0/24
+                nodeid: 2
+            vlan_id: '5'
+        -   interface_id: '2'
+            nodes:
+            -   address: 26.26.26.2
+                network_value: 26.26.26.0/24
+                nodeid: 1
+            -   address: 26.26.26.3
+                network_value: 26.26.26.0/24
+                nodeid: 2
+            vlan_id: '26'
+        -   interface_id: '20'
+            nodes:
+            -   address: 20.20.20.1
+                network_value: 20.20.20.0/24
+                nodeid: 1
+            -   address: 20.20.20.2
+                network_value: 20.20.20.0/24
+                nodeid: 2
+            vlan_id: '20'
+        name: newcluster
+        primary_heartbeat: '4'
+        primary_mgt: '21.21'
+        backup_mgt: '20.20'
+        tags:
+        - footag2
+        - footag
+        #skip_interfaces: false
+        #delete_undefined_interfaces: false
+        #state: absent
     
     # Delete a cluster
     - name: layer 3 cluster with 3 members

@@ -1,0 +1,25 @@
+- name: Facts about dynamic routing route maps
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Find all route maps
+    route_map_facts:
+  
+  - name: Find route maps with my in the name
+    route_map_facts:
+      filter: anewmap
+  
+  - name: Get route map details for myroutemap
+    register: results
+    route_map_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: newroutemap
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/facts_yaml.j2 dest=./route_map.yml
+    vars:
+      playbook: route_map
+    

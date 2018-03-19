@@ -498,7 +498,7 @@ state:
 '''
 
 import traceback
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache  # @UnresolvedImport
+from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache
 
 
 try:
@@ -530,6 +530,18 @@ class YamlInterface(object):
 
     def __len__(self):
         return len(self.nodes)
+    
+    @property
+    def str_id(self):
+        """
+        Format interface id into a string format, useful
+        to normalize the id for VLANs
+        
+        :rtype: str
+        """
+        if self.vlan_id:
+            return '{}.{}'.format(self.interface_id, self.vlan_id)
+        return self.interface_id
     
     @property
     def is_vlan(self):
@@ -580,6 +592,8 @@ class Interfaces(object):
         """
         Get the interface by ID
         """
+        if '.' in str(interface_id):
+            return self.get_vlan(str(interface_id).split('.')[-1])
         for interface in self:
             if interface.interface_id == str(interface_id):
                 return interface
@@ -793,8 +807,8 @@ class StonesoftCluster(StonesoftModuleBase):
                     self.fail(msg='You must define a cluster mode to create an engine')
                 
                 itf = self.check_interfaces()
-                    
                 # Management interface
+                
                 mgmt_interface = itf.get(self.primary_mgt)
                 if not mgmt_interface:
                     self.fail(msg='Management interface is not defined. Management was '
@@ -814,6 +828,13 @@ class StonesoftCluster(StonesoftModuleBase):
 
             # Only validate BGP if it's specifically set to enabled    
             if self.bgp and self.bgp.get('enabled', True):
+                # BGP Profile if specified
+                if self.bgp.get('bgp_profile', None):
+                    cache._add_entry('bgp_profile', self.bgp['bgp_profile'])
+                    if cache.missing:
+                        self.fail(msg='A BGP Profile was specified that does not exist: '
+                            '%s' % self.bgp['bgp_profile'])
+                
                 # Get external bgp peers, can be type 'engine' or 'external_bgp_peer'
                 # Can also be empty if you don't want to attach a peer.
                 peerings = self.bgp.get('bgp_peering', [])
@@ -827,15 +848,22 @@ class StonesoftCluster(StonesoftModuleBase):
                     if 'external_bgp_peer' in peer:
                         cache._add_entry('external_bgp_peer', peer['external_bgp_peer'])
                     elif 'engine' in peer:
-                        cache._add_entry('single_fw,fw_cluster', peer['engine'])
+                        cache._add_entry('fw_cluster', peer['engine'])
         
                 if cache.missing:
                     self.fail(msg='Missing external BGP Peering elements: %s' % cache.missing)
                 
-                as_system = self.bgp.get('autonomous_system')
-                if 'name' not in as_system or 'as_number' not in as_system:
-                    self.fail(msg='Autonomous System requires a name and and '
-                        'as_number value.')
+                as_system = self.bgp.get('autonomous_system', {})
+                if not engine:
+                    # We are trying to enable BGP on a new engine, Autonomous System
+                    # is required
+                    if not as_system:
+                        self.fail(msg='You must specify an Autonomous System when enabling '
+                            'BGP on a newly created engine.')
+                if as_system:
+                    if 'name' not in as_system or 'as_number' not in as_system:
+                        self.fail(msg='Autonomous System requires a name and and '
+                            'as_number value.')
 
                 spoofing = self.bgp.get('antispoofing_network', {})
                 self.validate_antispoofing_network(spoofing)
@@ -858,9 +886,10 @@ class StonesoftCluster(StonesoftModuleBase):
                 if not engine:
                     
                     interfaces = [intf.as_dict() for intf in itf
-                                  if intf.interface_id != self.primary_mgt]
-
+                                  if intf.str_id != self.primary_mgt]
+                    
                     cluster = mgmt_interface.as_dict()
+                    
                     cluster.update(
                         name=self.name,
                         cluster_mode=self.cluster_mode,
@@ -880,7 +909,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     
                     if self.check_mode:
                         return self.results
-                
+                    
                     engine = FirewallCluster.create(**cluster)
                     changed = True
                     
@@ -936,12 +965,12 @@ class StonesoftCluster(StonesoftModuleBase):
                 ######
                 if self.bgp:
                     bgp = engine.bgp
-                    enable = self.bgp.get('enabled', True)
-                    if not enable and bgp.status:
+                    enabled = self.bgp.get('enabled', True)
+                    if not enabled and bgp.status:
                         bgp.disable()
                         changed = True
                     
-                    elif enable:
+                    elif enabled:
                         
                         if self.update_bgp(bgp):
 
@@ -957,7 +986,8 @@ class StonesoftCluster(StonesoftModuleBase):
                                 announced_networks=[],
                                 antispoofing_networks=self.antispoofing_format(),
                                 router_id=self.bgp.get('router_id', ''),
-                                bgp_profile=None) #TODO: BGP Profile
+                                bgp_profile=self.cache.get('bgp_profile',
+                                    self.bgp.get('bgp_profile', None)))
                             
                             for network in self.announced_network_format():
                                 bgp.advertise_network(**network)
@@ -966,7 +996,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     if changed:
                         engine.update()
                 
-                    if enable:
+                    if enabled:
                         # BGP Peering is last since the BGP configuration may be placed
                         # on interfaces that might have been modified or added. It is
                         # possible that this could fail 
@@ -1046,7 +1076,8 @@ class StonesoftCluster(StonesoftModuleBase):
                 differences = node_values ^ node_req
                 if differences:
                     self.fail(msg='Invalid or missing field for node. Valid fields '
-                        'are %s' % list(node_req))
+                        'are %s. Difference was: %s' % (list(node_req),
+                            list(differences)))
         return itf
                    
     def update_interfaces(self, engine):
@@ -1330,9 +1361,13 @@ class StonesoftCluster(StonesoftModuleBase):
         if bgp.router_id != self.bgp.get('router_id', None):
             return True
         
-        bgp_profile = self.bgp.get('bgp_profile', None)
-        if bgp_profile is not None and bgp_profile != bgp.profile.name:
-            return True
+        if self.bgp.get('bgp_profile', None):
+            # Only changed BGP Profile if specified, BGP Profile. Policy is cache
+            bgp_profile = self.cache.get('bgp_profile', self.bgp['bgp_profile'])
+            if not bgp.profile:
+                return True
+            elif bgp.profile.name != bgp_profile.name:
+                return True
         
         if set(bgp.data.get('antispoofing_ne_ref', [])) ^ \
             set(self.antispoofing_format()):
@@ -1364,7 +1399,7 @@ class StonesoftCluster(StonesoftModuleBase):
         if 'external_bgp_peer' in peering_dict:
             extpeer = self.cache.get('external_bgp_peer', peering_dict.get('external_bgp_peer'))
         elif 'engine' in peering_dict:
-            extpeer = self.cache.get('single_fw,fw_cluster', peering_dict.get('engine'))
+            extpeer = self.cache.get('fw_cluster', peering_dict.get('engine'))
         
         changed = False
         interface_id = peering_dict.get('interface_id')
@@ -1378,9 +1413,14 @@ class StonesoftCluster(StonesoftModuleBase):
                 if network and net.ip == network:
                     if peering.name != bgp_peering.name:
                         needs_update = True
-                else:
-                    if bgp_peering.name != peering.name:
+                elif peering.name == bgp_peering.name:
+                    # Check for nested gateways under peering and add if the
+                    # peering next hop (external_bgp_peer, engine) are not
+                    # already there
+                    if not any(p.name == extpeer.name for p in peering):
                         needs_update = True
+                elif bgp_peering.name != peering.name:
+                    needs_update = True
         else:
             needs_update = True
         
@@ -1403,13 +1443,16 @@ class StonesoftCluster(StonesoftModuleBase):
         :return: None
         """
         valid = ('network', 'group', 'host')
+        if not isinstance(s, dict):
+            self.fail(msg='Antispoofing networks should be defined as a dict of '
+            'element types with a list of values, received: %s' % s)
         for typeof, values in s.items():
             if typeof not in valid:
                 self.fail(msg='Antispoofing network definition used an invalid '
                     'element type: %s, valid: %s' % (typeof, list(valid)))
             elif not hasattr(values, '__iter__'):
-                self.fail(msg='Antispoofing network value should be in list '
-                    'format')
+                self.fail(msg='Antispoofing element values should be in list '
+                    'format: %s, type: %s' % (values, type(values)))
     
     def validate_and_extract_announced(self, s):
         """
@@ -1426,21 +1469,25 @@ class StonesoftCluster(StonesoftModuleBase):
         valid = ('network', 'group', 'host')
         for_cache = {}
         for announced in s:
-            for typeof, dict_value in announced.items():
-                if not isinstance(dict_value, dict):
-                    self.fail(msg='Announced network type should be defined with '
-                        'name and optionally route_map as a dict. Invalid entry '
-                        'was: %s' % announced)
+            if not isinstance(announced, dict):
+                self.fail(msg='Announced network type should be defined with '
+                    'name and optionally route_map as a dict. Invalid entry '
+                    'was: %s' % announced)
+            for typeof, sub_dict in announced.items():
+                if not isinstance(sub_dict, dict):
+                    self.fail(msg='Announced network sub values must be of type dict. '
+                        'Type was: %s' % type(sub_dict))
                 if typeof not in valid:
-                    self.fail(msg='Invalid announced network was provided: %s, '
+                    self.fail(msg='Invalid announced network type was provided: %s, '
                         'valid types: %s' % (typeof, list(valid)))
-                if 'name' not in dict_value:
-                    self.fail(msg='Announced Networks requires a name')
-                if 'route_map' in dict_value:
+                if 'name' not in sub_dict:
+                    self.fail(msg='Announced Networks requires a name. Provided data '
+                        'was: %s' % sub_dict)
+                if 'route_map' in sub_dict:
                     for_cache.setdefault('route_map', []).append(
-                        dict_value['route_map'])
+                        sub_dict['route_map'])
                 for_cache.setdefault(typeof, []).append(
-                    dict_value['name'])
+                    sub_dict['name'])
         return for_cache
         
     def antispoofing_format(self):

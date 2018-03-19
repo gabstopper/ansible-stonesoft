@@ -223,7 +223,7 @@ state:
 
 import traceback
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase, Cache)  # @UnresolvedImport
+    StonesoftModuleBase, Cache)
 
 
 try:

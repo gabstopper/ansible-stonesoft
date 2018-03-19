@@ -281,34 +281,34 @@ def yaml_firewall(engine):
     
     # BGP Data
     bgp = engine.bgp
-    data = dict(announced_network=[],
-                    enabled=bgp.status,
-                    router_id=bgp.router_id)
-        
-    as_element = bgp.autonomous_system
-    autonomous_system=dict(name=as_element.name,
-                           as_number=as_element.as_number,
-                           comment=as_element.comment)
-    data.update(autonomous_system=autonomous_system)
+    data = dict(enabled=bgp.status,
+                router_id=bgp.router_id)
     
-    if bgp.profile:
-        data.update(bgp_profile=bgp.profile.name)
-    
-    antispoofing_map = {}
-    for net in bgp.antispoofing_networks:
-        antispoofing_map.setdefault(net.typeof, []).append(
-            net.name)
-    antispoofing_network = antispoofing_map if antispoofing_map else {}
-    data.update(antispoofing_network=antispoofing_network)
+    if bgp.status:    
+        as_element = bgp.autonomous_system
+        autonomous_system=dict(name=as_element.name,
+                               as_number=as_element.as_number,
+                               comment=as_element.comment)
+        data.update(autonomous_system=autonomous_system)
         
-    announced_network = []
-    for announced in bgp.advertisements:
-        element, route_map = announced
-        d = {element.typeof: {'name': element.name}}
-        if route_map:
-            d[element.typeof].update(route_map=route_map.name)
-        announced_network.append(d)
-    data.update(announced_network=announced_network)
+        if bgp.profile:
+            data.update(bgp_profile=bgp.profile.name)
+        
+        antispoofing_map = {}
+        for net in bgp.antispoofing_networks:
+            antispoofing_map.setdefault(net.typeof, []).append(
+                net.name)
+        antispoofing_network = antispoofing_map if antispoofing_map else {}
+        data.update(antispoofing_network=antispoofing_network)
+            
+        announced_network = []
+        for announced in bgp.advertisements:
+            element, route_map = announced
+            d = {element.typeof: {'name': element.name}}
+            if route_map:
+                d[element.typeof].update(route_map=route_map.name)
+            announced_network.append(d)
+        data.update(announced_network=announced_network)
         
     yaml_engine.update(bgp=data)
     bgp_peering = []
@@ -319,7 +319,7 @@ def yaml_firewall(engine):
         if network:
             peer_data.update(network=network.ip)
         for gateway in peering:
-            if gateway.related_element_type == 'external_bgp_peer':
+            if gateway.routing_node_element.typeof == 'external_bgp_peer':
                 peer_data.update(external_bgp_peer=gateway.name)
             else:
                 peer_data.update(engine=gateway.name)
@@ -331,7 +331,7 @@ def yaml_firewall(engine):
     tags = [tag.name for tag in engine.categories]
     if tags:
         yaml_engine.update(tags=tags)
-    return yaml_engine    
+    return yaml_engine
 
 
 def to_yaml(engine):
