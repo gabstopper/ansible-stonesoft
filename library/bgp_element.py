@@ -18,8 +18,8 @@ the access list type. These are used to validate the input prior to using for
 creating.
 """
 access_lists = {
-    'ip_prefix_list': ['subnet', 'min_prefix_length', 'max_prefix_length', 'action'],
-    'ipv6_prefix_list': ['subnet', 'min_prefix_length', 'max_prefix_length', 'action'],
+    'ip_prefix_list': ['subnet', 'action'],
+    'ipv6_prefix_list': ['subnet', 'action'],
     'ip_access_list': ['subnet', 'action'],
     'ipv6_access_list': ['subnet', 'action'],
     'as_path_access_list': ['expression', 'action'],
@@ -69,6 +69,9 @@ class StonesoftBGPElement(StonesoftModuleBase):
                 # AutonomousSystem element, but only if the AS doesn't already exist
                 deferrals, elements = self.resolve_references(self.elements)
                 
+                if self.check_mode:
+                    return self.results
+                
                 for element in elements:
                     if self.create_or_update_element(element):
                         changed = True
@@ -85,14 +88,16 @@ class StonesoftBGPElement(StonesoftModuleBase):
                     for typeof, values in element.items():
                         klazz = lookup_class(typeof)
                         name = values.get('name')
-                        try:
-                            klazz(name).delete()
-                            self.results['state'].append(
-                                {'name': name, 'type': klazz.typeof, 'action': 'deleted'})
-                        except SMCException as e:
-                            self.results['state'].append(
-                                {'name': name, 'type': klazz.typeof, 'action': 'failed to delete '
-                                 'with reason: %s' % str(e)})
+                        if name:
+                            try:
+                                klazz(name).delete()
+                                self.results['state'].append(
+                                    {'name': name, 'type': klazz.typeof, 'action': 'deleted'})
+                                changed = True
+                            except SMCException as e:
+                                self.results['state'].append(
+                                    {'name': name, 'type': klazz.typeof, 'action': 'failed to delete '
+                                     'with reason: %s' % str(e)})
             
         except SMCException as err:
             self.fail(msg=str(err), exception=traceback.format_exc())
