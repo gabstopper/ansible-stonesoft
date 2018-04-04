@@ -1,0 +1,33 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Task output
+    register: result
+    external_gateway:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      external_endpoint:
+      -   address: 33.33.33.41
+          enabled: true
+          name: extgw3 (33.33.33.41)
+      -   address: 34.34.34.34
+          enabled: true
+          name: endpoint2 (34.34.34.34)
+      -   address: 44.44.44.44
+          enabled: true
+          name: extgw4 (44.44.44.44)
+      -   address: 33.33.33.50
+          enabled: true
+          name: endpoint1 (33.33.33.50)
+      name: extgw3
+      vpn_site:
+          group:
+          - hostgroup
+          host:
+          - hosta
+          name: site12
+          network:
+          - network-172.18.1.0/24
+          - network-172.18.2.0/24

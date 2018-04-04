@@ -8,7 +8,7 @@
 
   - name: Retrieve a specific VPN
     route_vpn_facts:
-      filter: myrbvpn
+      filter: rbvpn
 
   - name: Retrieve a specific VPN and expand special members
     route_vpn_facts:
@@ -21,3 +21,18 @@
         - rbvpn_tunnel_side_b
         - vpn_profile_ref
         - monitoring_group_ref
+
+  - name: Retrieve a specific route VPN and format as playbook YAML
+    register: results
+    route_vpn_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: myrbvpn
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/facts_yaml.j2 dest=./route_vpn.yml
+    vars:
+      playbook: route_vpn
+      

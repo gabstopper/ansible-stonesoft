@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* An external gateway is a non-SMC managed VPN endpoint used in either policy or route based VPN. When deleting an endpoint, only tags, endpoints and the top level external gateway can be removed. External GW settings can be modified if state is present and the gateway already exists.
+* An external gateway is a non-SMC managed VPN endpoint used in either policy or route based VPN.
 
 
 
@@ -377,22 +377,12 @@ Options
         </tr>
 
         <tr>
-        <td>site_element<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>Network CIDR for this site element</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>element type<br/><div style="font-size: small;"></div></td>
         <td>yes</td>
         <td></td>
         <td></td>
         <td>
-            <div>Name of VPN site</div>
+            <div>This is the type of element that is referenced in the SMC. For example, network, host, group, etc. This should be a dict of lists, where the dict key is the element type and the list value is the name of each element.</div>
         </td>
         </tr>
 
@@ -412,65 +402,36 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create an external gateway with static IP addresses
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Create an external gateway
-        external_gateway:
-          name: myremotevpn
-          vpn_site:
-            - name: mysite
-              site_element:
-                - 1.1.1.0/24
-          external_endpoint:
-            - name: endpoint1
-              address: 33.33.33.40
-              force_nat_t: no
-              balancing_mode: active
-            - name: endpoint2
-              address: 33.33.33.35
-              force_nat_t: yes
-              balancing_mode: active
-          tags: footag
-    
-    - name: Create an external gateway
+    - name: Create a static IP based external gateway
+      register: result
       external_gateway:
-        name: dynamicendpoint
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        external_endpoint:
+        -   address: 33.33.33.41
+            enabled: true
+            name: extgw3 (33.33.33.41)
+        -   address: 34.34.34.34
+            enabled: true
+            name: endpoint2 (34.34.34.34)
+        -   address: 44.44.44.44
+            enabled: true
+            name: extgw4 (44.44.44.44)
+        -   address: 33.33.33.50
+            enabled: true
+            name: endpoint1 (33.33.33.50)
+        name: extgw3555
         vpn_site:
-          - name: site1
-            site_element:
-              - 1.1.1.0/24
-        external_endpoint:
-          - name: mydynamicendpoint
-            dynamic: yes
-            ike_phase1_id_type: 1
-            ike_phasee1_id_value: a@a.com
-        tags: footag
+            group:
+            - hostgroup
+            host:
+            - hosta
+            name: site12a
+            network:
+            - network-172.18.1.0/24
+            - network-172.18.2.0/24
     
-    - name: Add a new site to existing external GW
-        external_gateway:
-          name: mydynamicgw
-          vpn_site:
-            - name: dynamicsite
-              site_element:
-                - 192.168.8.0/24
-    
-    - name: Delete a VPN site from an external gateway
-        external_gateway:
-          name: myremotevpn
-          vpn_site:
-            - name: site-a
-              site_element:
-                - 2.2.2.0/24
-          state: absent
-    
-    - name: Change balancing mode from active to standby
-      external_gateway:
-        name: myremotevpn
-        external_endpoint:
-          - name: endpoint1
-            balancing_mode: standby
     
     - name: Delete an external gateway
       external_vpn_gw:
@@ -497,10 +458,10 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     <tr>
     <td>state</td>
     <td>
-        <div>Representation of the current state of the gateway</div>
+        <div>Output of operations performed on gateway</div>
     </td>
     <td align=center>always</td>
-    <td align=center>dict</td>
+    <td align=center>list</td>
     <td align=center></td>
     </tr>
     </table>

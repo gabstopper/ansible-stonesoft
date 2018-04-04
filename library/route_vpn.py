@@ -34,6 +34,10 @@ options:
     type: str
     choices: ['ipsec', 'gre']
     default: ipsec
+  enabled:
+    description:
+      - Whether the VPN is enabled or disabled
+    type: bool
   local_gw:
     description:
       - Represents the locally managed Stonesoft FW gateway. If the remote_gw is also
@@ -69,7 +73,8 @@ options:
       - The name of the remote GW. If the remote gateway is an Stonesoft FW, it must
         pre-exist. Use the local_gw documentation for settings. If it is an External Gateway,
         this module will create the gateway based on the gateway settings provided if it
-        doesn't already exist. This documents an External Gateway configuration
+        doesn't already exist. This documents an External Gateway configuration. See also
+        the external_gateway module for additional external endpoint settings.
     type: str
     suboptions:
       name:
@@ -155,39 +160,41 @@ author:
 '''  
 
 EXAMPLES = '''
-- name: Create a new Route VPN with an external gateway
+- name: Route VPN between internal engine and 3rd party external gateway
+  register: result
   route_vpn:
     smc_logging:
       level: 10
       path: /Users/davidlepage/Downloads/ansible-smc.log
-    name: myrbvpn
-    type: ipsec
+    enabled: true
     local_gw:
-      name: newcluster
-      tunnel_interface: 1001
-      interface_id: 1
-      #address: 2.2.2.2
+        address: 50.50.50.1
+        name: newcluster
+        tunnel_interface: '1001'
+    name: myrbvpn
     remote_gw:
-      name: extgw3
-      preshared_key: abc123
-      type: external_gateway
-      vpn_site:
-        name: site12
-        network:
-          - network-172.18.1.0/24
-          - network-172.18.2.0/24
-        host:
-          - hosta
-      external_endpoint:
-        - name: endpoint1
-          address: 33.33.33.41
-          enabled: true
-        - name: endpoint2
-          address: 34.34.34.34
-          force_nat_t: true
-          enabled: true
-    tags:
-      - footag
+        external_endpoint:
+        -   address: 33.33.33.41
+            enabled: true
+            name: extgw3 (33.33.33.41)
+        -   address: 34.34.34.34
+            enabled: true
+            name: endpoint2 (34.34.34.34)
+        -   address: 44.44.44.44
+            enabled: false
+            name: extgw4 (44.44.44.44)
+        -   address: 33.33.33.50
+            enabled: false
+            name: endpoint1 (33.33.33.50)
+        name: extgw3
+        preshared_key: '********'
+        type: external_gateway
+        vpn_site:
+            name: extgw3-site
+            network:
+            - network-172.18.15.0/24
+            - network-172.18.1.0/24
+            - network-172.18.2.0/24
 
 - name: Create a new Route VPN with internal gateways
   route_vpn:
@@ -241,23 +248,29 @@ class StonesoftRouteVPN(StonesoftModuleBase):
         self.module_args = dict(
             name=dict(type='str', required=True),
             type=dict(default='ipsec', type='str', choices=['ipsec', 'gre']),
-            local_gw=dict(type='dict', required=True),
-            remote_gw=dict(type='dict', required=True),
+            local_gw=dict(type='dict'),
+            remote_gw=dict(type='dict'),
+            enabled=dict(type='bool'),
             tags=dict(type='list'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
-        
         self.name = None
         self.type = None
+        self.enabled = None
         self.local_gw = None
         self.remote_gw = None
         self.tags = None
+        
+        required_if=([
+            ('state', 'present', ['local_gw', 'remote_gw'])
+        ])
         
         self.results = dict(
             changed=False,
             state=[]
         )
-        super(StonesoftRouteVPN, self).__init__(self.module_args, supports_check_mode=True)
+        super(StonesoftRouteVPN, self).__init__(self.module_args, supports_check_mode=True,
+                                                required_if=required_if)
     
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
@@ -268,7 +281,13 @@ class StonesoftRouteVPN(StonesoftModuleBase):
         changed = False
         
         if state == 'present':
-        
+            
+            # Short circuit disable
+            if rbvpn and self.enabled is not None and (rbvpn.enabled and not self.enabled):
+                rbvpn.disable()
+                self.results['changed'] = True
+                return self.results
+            
             local_engine = self.get_managed_gateway(self.local_gw)
             local_tunnel_interface = self.get_tunnel_interface(
                 local_engine, self.local_gw.get('tunnel_interface'))
@@ -343,9 +362,10 @@ class StonesoftRouteVPN(StonesoftModuleBase):
                             changed = True
                         
                     else: # Update or Create
-                        gw, created = ExternalGateway.update_or_create(with_status=True, **external_gateway)
+                        gw, updated, created = ExternalGateway.update_or_create(
+                            with_status=True, **external_gateway)
                         remote_gateway = TunnelEndpoint.create_ipsec_endpoint(gw) 
-                        if created:
+                        if created or updated:
                             changed = True
                     
                     vpn = dict(
@@ -356,11 +376,26 @@ class StonesoftRouteVPN(StonesoftModuleBase):
                     if is_external:
                         vpn.update(preshared_key=self.remote_gw['preshared_key'])
                     
-                    routevpn = RouteVPN.create_ipsec_tunnel(**vpn)
+                    rbvpn = RouteVPN.create_ipsec_tunnel(**vpn)
                     changed = True
+                
+                else:
+                    #TODO: Update or create from top level RBVPN
+                    #rbvpn.update_or_create()
                     
-                    self.results['state'] = routevpn.data.data
-                    self.results['changed'] = changed
+                    if rbvpn and self.enabled is not None and (not rbvpn.enabled and self.enabled):
+                        rbvpn.enable()
+                        changed = True
+                    
+                    if self.remote_gw.get('type') == 'external_gateway':
+                        gw, updated, created = ExternalGateway.update_or_create(
+                            with_status=True, **external_gateway)
+                    
+                        if updated or created:
+                            changed = True
+                    
+                self.results['state'] = rbvpn.data.data
+                self.results['changed'] = changed
         
             elif state == 'absent':
                 if rbvpn:
@@ -433,7 +468,7 @@ class StonesoftRouteVPN(StonesoftModuleBase):
                 break
         
         if not tunnel_interface:
-            self.fail(msg='Cannot tunnel interface: %s for specified gateway '
+            self.fail(msg='Cannot find specified tunnel interface: %s for specified gateway '
                 '%s' % (interface_id, engine.name))
         return tunnel_interface
                 

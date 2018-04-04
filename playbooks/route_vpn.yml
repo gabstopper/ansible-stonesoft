@@ -1,44 +1,42 @@
-- name: Route Based VPN operations
+- name: 
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Create a new Route VPN with specified gateways
+  - name: Task output
+    register: result
     route_vpn:
       smc_logging:
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
-      name: myrbvpn
-      type: ipsec
+      enabled: true
       local_gw:
-        name: newcluster
-        tunnel_interface: 1001
-        interface_id: 1
-        #address: 2.2.2.2
-      # remote_gw:
-      #   name: myfw
-      #   tunnel_interface: 1000
-      #   interface_id: 0
+          address: 50.50.50.1
+          name: newcluster
+          tunnel_interface: '1001'
+      name: myrbvpn
       remote_gw:
-        name: extgw3
-        preshared_key: abc123
-        type: external_gateway
-        vpn_site:
-          name: site12
-          network:
-            - network-172.18.1.0/24
-            - network-172.18.2.0/24
-          host:
-            - hosta
-          group:
-            - hostgroup
-        external_endpoint:
-          - name: endpoint1
-            address: 33.33.33.41
-            enabled: true
-          - name: endpoint2
-            address: 34.34.34.34
-            force_nat_t: true
-            enabled: true
-      tags:
-        - footag
-      #state: absent
+          external_endpoint:
+          -   address: 33.33.33.41
+              enabled: true
+              name: extgw3 (33.33.33.41)
+          -   address: 34.34.34.34
+              enabled: true
+              name: endpoint2 (34.34.34.34)
+          -   address: 44.44.44.44
+              enabled: true
+              name: extgw4 (44.44.44.44)
+          -   address: 33.33.33.50
+              enabled: true
+              name: endpoint1 (33.33.33.50)
+          name: extgw3
+          preshared_key: '********'
+          type: external_gateway
+          vpn_site:
+              group:
+              - hostgroup
+              host:
+              - hosta
+              name: site12
+              network:
+              - network-172.18.1.0/24
+              - network-172.18.2.0/24

@@ -13,21 +13,17 @@
             name: myservice2
             comment: my ip acl
             entries: 
-              - subnet: 1.1.3.0/24
-                action: permit
-              - subnet: 2.2.2.0/24
-                action: deny
+             - subnet: 1.1.4.0/24
+               action: permit
+             - subnet: 2.2.2.0/24
+               action: deny
         - ip_prefix_list:
             name: aprefix
-            comment: prefixes
+            comment: prefix lists without min and max prefix
             entries:
               - subnet: 10.0.0.0/8
-                min_prefix_length: 16
-                max_prefix_length: 32
                 action: deny
-              - subnet: 192.16.1.0/24
-                min_prefix_length: 25
-                max_prefix_length: 32
+              - subnet: 192.16.2.0/24
                 action: permit
         - ipv6_access_list:
             name: myipv6acl
@@ -83,7 +79,8 @@
             name: myas123
             as_number: '123.123'
             comment: foo comment
-      #state: absent
+      state: absent
+      #overwrite_existing: true
         
 
           

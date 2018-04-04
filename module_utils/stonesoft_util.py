@@ -19,7 +19,7 @@ try:
     from smc.api.exceptions import (
         ConfigLoadError,
         SMCException,
-        ElementNotFound)
+        ElementNotFound, DeleteElementFailed)
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
@@ -33,11 +33,11 @@ class Cache(object):
     validating the existence of elements, you should check missing
     before continuing the playbook run.
     """
-    cache = {}
     
     def __init__(self):
         self.missing = []
-
+        self.cache = {}
+        
     def add_many(self, list_of_entries):
         """
         Add many elements into cache. Format should be:
@@ -271,6 +271,12 @@ def delete_element(element, ignore_if_not_found=True):
                 name=element.name,
                 type=element.typeof,
                 msg='Element not found, skipping delete')
+    except DeleteElementFailed as e:
+        if ignore_if_not_found:
+            return dict(
+                name=element.name,
+                type=element.typeof,
+                msg=str(e))
     
 
 def format_element(element):

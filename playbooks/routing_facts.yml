@@ -4,4 +4,4 @@
   tasks:
   - name: Specify the engine name to get route table
     routing_facts:
-      element: myfirewall
+      element: newcluster

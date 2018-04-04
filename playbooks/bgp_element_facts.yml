@@ -1,0 +1,37 @@
+- name: Facts about BGP elements
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Find all Autonomous System elements
+    bgp_element_facts:
+      element: autonomous_system
+
+  - name: Find an access list by name
+    bgp_element_facts:
+      element: ip_access_list
+      filter: myacl
+  
+  - name: Find ip prefix
+    bgp_element_facts:
+      element: ip_prefix_list
+      filter: myprefixlist
+
+  - name: Find Autonomous System using filter of myas
+    bgp_element_facts:
+      element: autonomous_system
+      filter: myas
+
+  - name: Get details for autonomous system myas and save as yaml
+    register: results
+    bgp_element_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      element: extended_community_access_list
+      filter: extended
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/facts_yaml.j2 dest=./foo.yml
+    vars:
+      playbook: bgp_element

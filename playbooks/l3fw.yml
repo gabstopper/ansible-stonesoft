@@ -1,43 +1,146 @@
-- name: creating and deleting layer 3 firewalls
+- name: Firewall Template
   hosts: localhost
   gather_facts: no
   tasks:
   - name: Create a single layer 3 firewall
-    register: result
     l3fw:
       smc_logging:
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
-      name: myfw
-      mgmt_interface: 10
-      interfaces:
-        - interface_id: 0
-          address: 1.1.1.2
-          network_value: 1.1.1.0/16
-          zone_ref: management
-        - interface_id: 10
-          address: 10.10.10.1
-          network_value: 10.10.10.0/24
-          zone_ref: external
-          enable_vpn: yes
-        - interface_id: 11
-        - interface_id: 1000
-          address: 11.11.11.1
-          network_value: 11.11.11.0/24
-          zone_ref: awsvpn
-          type: tunnel_interface 
+      antivirus: false
+      backup_mgt: '1.2'
+      bgp:
+          bgp_peering:
+          -   external_bgp_peer: bgppeer
+              interface_id: '1000'
+              name: mypeering4
+          enabled: false
+          router_id: null
+      default_nat: false
       domain_server_address:
-        - 10.0.0.1
-        - 10.0.0.2
-      default_nat: yes
-      enable_antivirus: yes
-      enable_gti: yes
-      enable_sidewinder_proxy: yes
-      tags: 
-        - footag
-
-  #- name: Delete a NGFW
-  #  l3fw:
-  #    name: myfw
-  #    state: absent
-
+      - 8.8.8.8
+      file_reputation: false
+      interfaces:
+      -   interface_id: '1000'
+          interfaces:
+          -   nodes:
+              -   address: 90.90.90.71
+                  network_value: 90.90.90.0/24
+                  nodeid: 1
+          type: tunnel_interface
+      -   interface_id: '6'
+          interfaces:
+          -   nodes:
+              -   dynamic: true
+      -   interface_id: '5'
+          zone_ref: management
+      -   interface_id: '56'
+          interfaces:
+          -   comment: added by api
+              nodes:
+              -   address: 56.56.56.56
+                  network_value: 56.56.56.0/24
+                  nodeid: 1
+              vlan_id: '56'
+      -   interface_id: SWP_0
+      -   interface_id: '20'
+          interfaces:
+          -   nodes:
+              -   address: 11.11.11.11
+                  network_value: 11.11.11.0/24
+                  nodeid: 1
+      -   comment: foocomment
+          interface_id: '1008'
+          interfaces:
+          -   nodes:
+              -   address: 13.13.13.13
+                  network_value: 13.13.13.0/24
+                  nodeid: 1
+          type: tunnel_interface
+          zone_ref: foozone
+      -   interface_id: '4'
+          interfaces:
+          -   vlan_id: '4'
+      -   interface_id: '3'
+          interfaces:
+          -   nodes:
+              -   address: 4.4.4.5
+                  network_value: 4.4.4.0/24
+                  nodeid: 1
+              -   address: 4.4.4.4
+                  network_value: 4.4.4.0/24
+                  nodeid: 1
+      -   interface_id: '2'
+          interfaces:
+          -   nodes:
+              -   address: 12.12.12.10
+                  network_value: 12.12.12.0/24
+                  nodeid: 1
+              vlan_id: '8'
+              zone_ref: foozone
+          zone_ref: management
+      -   interface_id: '1'
+          interfaces:
+          -   nodes:
+              -   address: 2.2.2.2
+                  network_value: 2.2.2.0/24
+                  nodeid: 1
+              vlan_id: '1'
+          -   nodes:
+              -   address: 3.3.3.3
+                  network_value: 3.3.3.0/24
+                  nodeid: 1
+              vlan_id: '2'
+      -   interface_id: '0'
+          interfaces:
+          -   nodes:
+              -   address: 1.1.1.1
+                  network_value: 1.1.1.0/24
+                  nodeid: 1
+      -   interface_id: '55'
+          interfaces:
+          -   nodes:
+              -   address: 55.55.55.55
+                  network_value: 55.55.55.0/24
+                  nodeid: 1
+      -   interface_id: '52'
+          interfaces:
+          -   comment: comment for interface 52
+              nodes:
+              -   address: 52.52.52.52
+                  network_value: 52.52.52.0/24
+                  nodeid: 1
+              vlan_id: '52'
+      -   comment: comment for interface 49
+          interface_id: '51'
+          interfaces:
+          -   nodes:
+              -   address: 51.51.51.1
+                  network_value: 51.51.51.0/24
+                  nodeid: 1
+      -   interface_id: '50'
+          interfaces:
+          -   nodes:
+              -   address: 50.50.50.1
+                  network_value: 50.50.50.0/24
+                  nodeid: 1
+      -   interface_id: '49'
+          interfaces:
+          -   nodes:
+              -   address: 49.49.49.49
+                  network_value: 49.49.49.0/24
+                  nodeid: 1
+      -   interface_id: '1005'
+          interfaces:
+          -   nodes:
+              -   address: 14.14.14.14
+                  network_value: 14.14.14.0/24
+                  nodeid: 1
+          type: tunnel_interface
+      name: myfw
+      primary_mgt: '0'
+      snmp:
+          snmp_agent: testsnmp
+          snmp_interface:
+          - '3'
+          - '2.8'

@@ -290,194 +290,137 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Create a cluster firewall
-  l3fw_cluster:
-    smc_logging:
-      level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
-    antivirus: false
-    bgp:
-        announced_network:
-        -   network:
-                name: foo
-                route_map: newroutemap
-        -   host:
-                name: hostb
-        -   group:
-                name: group1
-                route_map: myroutemap
-        antispoofing_network:
-            group:
-            - hostgroup
-            host:
-            - hostb
-            network:
-            - network-1.1.1.0/24
-            - network-172.18.1.0/24
-        autonomous_system:
-            as_number: 8061051
-            comment: foo
-            name: mynew
-        bgp_peering:
-        -   external_bgp_peer: bgppeer
-            interface_id: '21.21'
-            name: bgppeering
-            network: 22.22.22.0/24
-        bgp_profile: Default BGP Profile
-        enabled: true
-        router_id: 1.1.1.1
-    cluster_mode: standby
-    comment: my new firewall
-    default_nat: false
-    domain_server_address:
-    - 8.8.8.8
-    file_reputation: false
-    interfaces:
-    -   interface_id: '1005'
-        nodes:
-        -   address: 15.15.15.15
-            network_value: 15.15.15.0/24
-            nodeid: 1
-        -   address: 15.15.15.16
-            network_value: 15.15.15.0/24
-            nodeid: 2
-        type: tunnel_interface
-    -   interface_id: '1001'
-        nodes:
-        -   address: 24.24.24.25
-            network_value: 24.24.24.0/24
-            nodeid: 1
-        -   address: 24.24.24.26
-            network_value: 24.24.24.0/24
-            nodeid: 2
-        type: tunnel_interface
-    -   comment: no interfaces
-        interface_id: '5'
-    -   interface_id: '4'
-        nodes:
-        -   address: 5.5.5.2
-            network_value: 5.5.5.0/24
-            nodeid: 1
-        -   address: 5.5.5.3
-            network_value: 5.5.5.0/24
-            nodeid: 2
-        comment: NDIs only
-        zone_ref: heartbeat
-    -   interface_id: '3'
-    -   cluster_virtual: 67.67.67.67
-        comment: CVI only
-        interface_id: '67'
-        macaddress: 02:02:04:04:04:04
-        network_value: 67.67.67.0/24
-    -   cluster_virtual: 36.36.36.40
-        comment: CVI with NDIs
-        interface_id: '24'
-        macaddress: 02:02:02:04:02:08
-        network_value: 36.36.36.0/24
-        nodes:
-        -   address: 36.36.36.1
-            network_value: 36.36.36.0/24
-            nodeid: 1
-        -   address: 36.36.36.2
-            network_value: 36.36.36.0/24
-            nodeid: 2
-        vlan_id: '21'
-    -   interface_id: '55'
-    -   comment: BGP interface
-        interface_id: '1050'
-        nodes:
-        -   address: 101.101.101.1
-            network_value: 101.101.101.0/24
-            nodeid: 1
-        -   address: 101.101.101.2
-            network_value: 101.101.101.0/24
-            nodeid: 2
-        type: tunnel_interface
-    -   interface_id: '22'
-        macaddress: 02:02:02:02:02:06
-    -   cluster_virtual: 22.22.22.254
-        interface_id: '21'
-        macaddress: 02:02:02:20:20:20
-        network_value: 22.22.22.0/24
-        nodes:
-        -   address: 22.22.22.1
-            network_value: 22.22.22.0/24
-            nodeid: 1
-        -   address: 22.22.22.2
-            network_value: 22.22.22.0/24
-            nodeid: 2
-        vlan_id: '21'
-    -   cluster_virtual: 21.21.21.254
-        interface_id: '21'
-        macaddress: 02:02:02:20:20:20
-        network_value: 21.21.21.0/24
-        nodes:
-        -   address: 21.21.21.1
-            network_value: 21.21.21.0/24
-            nodeid: 1
-        -   address: 21.21.21.2
-            network_value: 21.21.21.0/24
-            nodeid: 2
-        vlan_id: '20'
-    -   comment: delete by api
-        interface_id: '6'
-        vlan_id: '6'
-    -   interface_id: '2'
-        nodes:
-        -   address: 32.32.32.2
-            network_value: 32.32.32.0/24
-            nodeid: 2
-        -   address: 32.32.32.1
-            network_value: 32.32.32.0/24
-            nodeid: 1
-        vlan_id: '3'
-    -   interface_id: '2'
-        nodes:
-        -   address: 4.4.4.3
-            network_value: 4.4.4.0/24
-            nodeid: 2
-        -   address: 4.4.4.2
-            network_value: 4.4.4.0/24
-            nodeid: 1
-        vlan_id: '4'
-        zone_ref: somevlan
-    -   interface_id: '2'
-        nodes:
-        -   address: 44.44.44.2
-            network_value: 44.44.44.0/24
-            nodeid: 1
-        -   address: 44.44.44.3
-            network_value: 44.44.44.0/24
-            nodeid: 2
-        vlan_id: '5'
-    -   interface_id: '2'
-        nodes:
-        -   address: 26.26.26.2
-            network_value: 26.26.26.0/24
-            nodeid: 1
-        -   address: 26.26.26.3
-            network_value: 26.26.26.0/24
-            nodeid: 2
-        vlan_id: '26'
-    -   interface_id: '20'
-        nodes:
-        -   address: 20.20.20.1
-            network_value: 20.20.20.0/24
-            nodeid: 1
-        -   address: 20.20.20.2
-            network_value: 20.20.20.0/24
-            nodeid: 2
-        vlan_id: '20'
-    name: newcluster
-    primary_heartbeat: '4'
-    primary_mgt: '21.21'
-    backup_mgt: '20.20'
-    tags:
-    - footag2
-    - footag
-    #skip_interfaces: false
-    #delete_undefined_interfaces: false
-    #state: absent
+- name: Firewall Template
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Create a single layer 3 firewall
+    l3fw_cluster:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      antivirus: false
+      backup_mgt: '2.34'
+      bgp:
+          announced_network:
+          -   network:
+                  name: foonet
+                  route_map: newroutemap
+          antispoofing_network:
+              group:
+              - group1
+              host:
+              - 2.2.2.3
+              network:
+              - foo
+          autonomous_system:
+              as_number: 4261608949
+              comment: optional
+              name: myas
+          bgp_profile: Default BGP Profile
+          enabled: true
+          router_id: 1.2.3.4
+      cluster_mode: balancing
+      comment: my new firewall
+      default_nat: false
+      domain_server_address:
+      - 8.8.8.8
+      file_reputation: false
+      interfaces:
+      -   interface_id: '1000'
+          interfaces:
+          -   nodes:
+              -   address: 100.100.100.1
+                  network_value: 100.100.100.0/24
+                  nodeid: 1
+              -   address: 100.100.100.2
+                  network_value: 100.100.100.0/24
+                  nodeid: 2
+          type: tunnel_interface
+          zone_ref: AWSTunnel
+      -   cvi_mode: packetdispatch
+          interface_id: '21'
+          interfaces:
+          -   cluster_virtual: 22.22.22.254
+              network_value: 22.22.22.0/24
+              nodes:
+              -   address: 22.22.22.1
+                  network_value: 22.22.22.0/24
+                  nodeid: 1
+              -   address: 22.22.22.2
+                  network_value: 22.22.22.0/24
+                  nodeid: 2
+              vlan_id: '21'
+          -   cluster_virtual: 21.21.21.254
+              network_value: 21.21.21.0/24
+              nodes:
+              -   address: 21.21.21.2
+                  network_value: 21.21.21.0/24
+                  nodeid: 2
+              -   address: 21.21.21.1
+                  network_value: 21.21.21.0/24
+                  nodeid: 1
+              vlan_id: '20'
+          macaddress: 02:02:02:20:20:22
+      -   interface_id: '4'
+          interfaces:
+          -   nodes:
+              -   address: 5.5.5.2
+                  network_value: 5.5.5.0/24
+                  nodeid: 1
+              -   address: 5.5.5.3
+                  network_value: 5.5.5.0/24
+                  nodeid: 2
+          zone_ref: heartbeat
+      -   cvi_mode: packetdispatch
+          interface_id: '0'
+          interfaces:
+          -   cluster_virtual: 1.1.1.1
+              network_value: 1.1.1.0/24
+              nodes:
+              -   address: 1.1.1.2
+                  network_value: 1.1.1.0/24
+                  nodeid: 1
+              -   address: 1.1.1.3
+                  network_value: 1.1.1.0/24
+                  nodeid: 2
+          macaddress: 02:02:02:02:02:02
+      -   comment: foocomment
+          interface_id: '2'
+          interfaces:
+          -   comment: vlan comment
+              nodes:
+              -   address: 34.34.34.35
+                  network_value: 34.34.34.0/24
+                  nodeid: 2
+              -   address: 34.34.34.34
+                  network_value: 34.34.34.0/24
+                  nodeid: 1
+              vlan_id: '34'
+          -   nodes:
+              -   address: 35.35.35.35
+                  network_value: 35.35.35.0/24
+                  nodeid: 1
+              -   address: 35.35.35.36
+                  network_value: 35.35.35.0/24
+                  nodeid: 2
+              vlan_id: '35'
+      location: foolocation
+      name: newcluster2
+      primary_heartbeat: '4'
+      primary_mgt: '0'
+      snmp:
+          snmp_agent: myagent
+          snmp_interface:
+          - '2.35'
+          - '2.34'
+          - '0'
+          snmp_location: snmplocation
+      tags:
+      - footag
+      #skip_interfaces: false
+      #delete_undefined_interfaces: false
+      #state: absent
 
 # Delete a cluster
 - name: layer 3 cluster with 3 members
@@ -503,60 +446,58 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache
 
 try:
     from smc.core.engines import FirewallCluster
-    from smc.api.exceptions import SMCException, InterfaceNotFound
+    from smc.core.interfaces import ClusterPhysicalInterface, TunnelInterface
+    from smc.api.exceptions import SMCException
     from smc.routing.bgp import AutonomousSystem, BGPPeering
-    from smc.elements.helpers import zone_helper
 except ImportError:
     # Caught in StonesoftModuleBase
     pass
 
 
 class YamlInterface(object):
-    def __init__(self, interfaces):
-        self.cluster_virtual = None
+    def __init__(self, interface):
+        self.interfaces = []
         self.interface_id = None
-        self.macaddress = None
-        self.network_value = None
-        self.vlan_id = None
-        self.zone_ref = None
-        self.comment = None
-        self.nodes = []
-        for name, value in interfaces.items():
-            if name not in ('nodes',):
-                setattr(self, name, str(value))
-            else:
-                setattr(self, name, value)
-        self.cvi_mode = 'packetdispatch' if self.cluster_virtual else None
-
-    def __len__(self):
-        return len(self.nodes)
-    
-    @property
-    def str_id(self):
-        """
-        Format interface id into a string format, useful
-        to normalize the id for VLANs
+        #self.macaddress = None #: provide macaddress for cvi
+        #self.zone_ref = None #: optional zone
+        #self.comment = None #: optional comment
+        for name, value in interface.items():
+            setattr(self, name, value)
         
-        :rtype: str
-        """
-        if self.vlan_id:
-            return '{}.{}'.format(self.interface_id, self.vlan_id)
-        return self.interface_id
+        if hasattr(self, 'macaddress') and not hasattr(self, 'cvi_mode'):
+            self.cvi_mode = 'packetdispatch'
+    
+    def as_obj(self):
+        if getattr(self, 'type', None) == 'tunnel_interface':
+            return TunnelInterface(interface=vars(self))
+        return ClusterPhysicalInterface(**vars(self))
+
+    def __iter__(self):
+        for interface in self.interfaces:
+            yield interface
+    
+    def __len__(self):
+        return len(self.interfaces)
+        
+    @property
+    def nodes(self):
+        for interface in self:
+            for node in interface.get('nodes', []):
+                yield node
     
     @property
-    def is_vlan(self):
-        return bool(self.vlan_id)
-    
-    def as_dict(self):
-        if not self.is_vlan:
-            delattr(self, 'vlan_id')
-        return vars(self)
+    def vlan_ids(self):
+        """
+        Return all defined VLAN ids
+        """
+        return [str(interface['vlan_id']) for interface in self.interfaces
+                if 'vlan_id' in interface]
 
     def __repr__(self):
-        return 'Interface(interface_id={}, vlan_id={})'.format(
-            self.interface_id, self.vlan_id)
+        return 'YamlInterface(interface_id={}, vlans={})'.format(
+            self.interface_id, self.vlan_ids)
 
-    
+
 class Interfaces(object):
     """
     All interfaces defined by the YAML. Use this container
@@ -572,155 +513,23 @@ class Interfaces(object):
         for interface in self._interfaces:
             yield YamlInterface(interface)
     
-    @property
-    def vlan_ids(self):
-        """
-        Return all defined VLAN ids
-        """
-        return [itf.vlan_id for itf in self
-                if itf.vlan_id]
-    
-    def get_vlan(self, vlan_id):
-        """
-        Get the VLAN by id
-        """
-        for interface in self:
-            if interface.vlan_id == vlan_id:
-                return interface
-    
+    def __contains__(self, interface_id):
+        if '.' in str(interface_id):
+            itf, vlan = str(interface_id).split('.')
+            if self.get(itf) and vlan in self.get(itf).vlan_ids:
+                return True
+        elif self.get(interface_id):
+            return True
+        return False
+        
     def get(self, interface_id):
         """
         Get the interface by ID
         """
-        if '.' in str(interface_id):
-            return self.get_vlan(str(interface_id).split('.')[-1])
         for interface in self:
-            if interface.interface_id == str(interface_id):
+            if str(interface.interface_id) == str(interface_id):
                 return interface
 
-
-def delete_vlan_interface(self):
-    """
-    Delete a VLAN interface. This mutates the
-    interface definition directly.
-    
-    :param self PhysicalVlanInterface
-    :return: tuple(was_changed, delete_network)
-    """
-    changes = False, False
-    # If we have interfaces, we will need to delete the route
-    if self.addresses:
-        changes = True, True
-    else:
-        changes = True, False
-    
-    vlan_str = self.interface_id
-    self._parent.data['vlanInterfaces'] = [
-        vlan for vlan in self._parent.data['vlanInterfaces']
-        if vlan.get('interface_id') != vlan_str]
-    
-    return changes
-
-
-def create_cluster_vlan_interface(interface, yaml):
-    """
-    Create a new VLAN interface on the cluster. This mutates the
-    interface definition directly.
-    Note: If a cluster VLAN interface has only NDIs and you add
-    a CVI or CVI+NDI's to it, you must specify a macaddress, and
-    this macaddress will then be set on the top level physical
-    interface.
-    
-    :param PhysicalInterface interface: the interface ref
-    :param YamlInterface yaml: yaml interface
-    :return: True if the create met the criteria and was added, false
-        if there was no cluster address or nodes defined
-    """
-    if (yaml.cluster_virtual and yaml.network_value) or yaml.nodes:
-        builder, interface = interface._get_builder()
-        if yaml.cluster_virtual and yaml.network_value:   # Add CVI 
-            builder.add_cvi_to_vlan(yaml.cluster_virtual, yaml.network_value, yaml.vlan_id,
-                                    comment=yaml.comment) 
-            if yaml.macaddress:
-                interface.macaddress = yaml.macaddress
-                interface.data['cvi_mode'] = yaml.cvi_mode
-        else: # VLAN on an NDI 
-            builder.add_vlan_only(yaml.vlan_id, zone_ref=yaml.zone_ref,
-                                  comment=yaml.comment) 
-        if yaml.nodes: 
-            for node in yaml.nodes: 
-                node.update(vlan_id=yaml.vlan_id) 
-                builder.add_ndi_to_vlan(**node)
-        return True
-    elif not yaml.nodes and yaml.vlan_id: # VLAN only
-        builder, interface = interface._get_builder()
-        builder.add_vlan_only(yaml.vlan_id, zone_ref=yaml.zone_ref, comment=yaml.comment)
-        return True
-    return False
-                
-    
-def update_cluster_vlan_interface(self, yaml):
-    """
-    Update the cluster VLAN interface. This mutates the
-    interface definition directly.
-    
-    :param self PhysicalVlanInterface
-    :param YamlInterface yaml: yaml serialized to interface
-    :return: tuple(was_changed, delete_network)
-    """
-    cluster_virtual = yaml.cluster_virtual
-    cluster_mask = yaml.network_value
-    nodes = yaml.nodes
-    
-    # Tuple is defined as: (was_changed, network). If the interface
-    # is changed, store the original network in the second tuple position only
-    # if it is in a different network than the original so it can be removed
-    # from the routing table.
-    changes = False, False
-    
-    # Check the zone to see if we have a different value. If a zone exists and
-    # yaml defines a different zone, change. If no interface zone exists and yaml
-    # zone exists, set it. If yaml and interface zone exists, compare and only change
-    # if they are not the same
-    if self.zone_ref and not yaml.zone_ref:
-        self.data.update(zone_ref=None)
-        changes = True, False
-    elif not self.zone_ref and yaml.zone_ref:
-        self.zone_ref = yaml.zone_ref
-        changes = True, False
-    elif self.zone_ref and yaml.zone_ref:
-        zone = zone_helper(yaml.zone_ref)
-        if zone != self.zone_ref:
-            self.zone_ref = zone
-            changes = True, False
-    
-    if yaml.comment is not None and yaml.comment != self.comment:
-        self.data['comment'] = yaml.comment
-        changes = True, False    
-    # Delete all interfaces
-    if not nodes and self.has_interfaces:
-        self.data.update(interfaces=[])
-        changes = True, True
-    else:
-        for interface in self.interfaces:
-            if cluster_virtual and interface.nodeid is None: #CVI has no nodeid
-                if cluster_virtual != interface.address:
-                    interface.update(address=cluster_virtual)
-                    changes = True, False
-                if cluster_mask and cluster_mask != interface.network_value:
-                    interface.update(network_value=cluster_mask)
-                    changes = True, True
-            elif nodes:
-                for node in nodes:
-                    if node.get('nodeid') == interface.nodeid:
-                        if interface.address != node.get('address'):
-                            interface.update(address=node.get('address'))
-                            changes = True, False                  
-                        if interface.network_value != node.get('network_value'):
-                            interface.update(network_value=node.get('network_value'))
-                            changes = True, True
-    return changes
-    
 
 def get_or_create_asystem(as_system):
     return AutonomousSystem.get_or_create(
@@ -779,9 +588,9 @@ class StonesoftCluster(StonesoftModuleBase):
         
         self.results = dict(
             changed=False,
-            state=dict()
+            engine=dict(),
+            state=[]
         )
-            
         super(StonesoftCluster, self).__init__(self.module_args, supports_check_mode=True)
     
     def exec_module(self, **kwargs):
@@ -807,15 +616,14 @@ class StonesoftCluster(StonesoftModuleBase):
                     self.fail(msg='You must define a cluster mode to create an engine')
                 
                 itf = self.check_interfaces()
-                # Management interface
                 
-                mgmt_interface = itf.get(self.primary_mgt)
-                if not mgmt_interface:
+                # Management interface
+                if not self.primary_mgt in itf:
                     self.fail(msg='Management interface is not defined. Management was '
                         'specified on interface: %s' % self.primary_mgt)
             
             if engine and self.interfaces and not self.skip_interfaces:
-                self.check_interfaces()
+                itf = self.check_interfaces()
             
             cache = Cache()
             
@@ -881,18 +689,17 @@ class StonesoftCluster(StonesoftModuleBase):
             self.cache = cache
         
         try:
-                        
+            
             if state == 'present':
                 if not engine:
+
+                    interfaces = [vars(intf) for intf in itf]
                     
-                    interfaces = [intf.as_dict() for intf in itf
-                                  if intf.str_id != self.primary_mgt]
-                    
-                    cluster = mgmt_interface.as_dict()
-                    
+                    cluster = {'interfaces': interfaces}
                     cluster.update(
                         name=self.name,
                         cluster_mode=self.cluster_mode,
+                        primary_mgt=self.primary_mgt,
                         backup_mgt=self.backup_mgt,
                         primary_heartbeat=self.primary_heartbeat,
                         log_server_ref=self.log_server,
@@ -901,16 +708,13 @@ class StonesoftCluster(StonesoftModuleBase):
                         enable_antivirus=self.antivirus,
                         enable_gti=self.file_reputation,
                         location_ref=self.location,
-                        interfaces=interfaces,
-                        snmp_agent=self.snmp.get('snmp_agent', None),
-                        snmp_location=self.snmp.get('snmp_location', None),
-                        snmp_interface=self.snmp.get('snmp_interface', []),
+                        snmp=self.snmp,
                         comment=self.comment)
                     
                     if self.check_mode:
                         return self.results
                     
-                    engine = FirewallCluster.create(**cluster)
+                    engine = FirewallCluster.create_bulk(**cluster)
                     changed = True
                     
                 else: # Engine exists, check for modifications
@@ -922,7 +726,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     
                     if self.update_snmp(engine):
                         changed = True
-                            
+                    
                     if self.cluster_mode and engine.cluster_mode != self.cluster_mode:
                         engine.data.update(cluster_mode=self.cluster_mode)
                         changed = True
@@ -946,18 +750,13 @@ class StonesoftCluster(StonesoftModuleBase):
 
                     # Set skip interfaces to bypass interface checks
                     if not self.skip_interfaces:
-                        interfaces, modified = self.update_interfaces(engine)
-                        if modified:
-                            changed = True
+                        self.update_interfaces(engine)
                     
                     # Lastly, delete top level interfaces that are not defined in 
                     # the YAML or added while looping. Only delete if skip_interfaces
                     # was not provided and that delete_undefined_interfaces is set to True
                     if not self.skip_interfaces and self.delete_undefined_interfaces:
-                        for interface in engine.interface:
-                            if interface.interface_id not in interfaces:
-                                interface.delete()
-                                changed = True
+                        self.check_for_deletes(engine)
                 
                 ######                
                 # Check for BGP configuration on either newly created engine
@@ -1018,7 +817,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     if self.clear_tags(engine):
                         changed = True
 
-                self.results['state'] = engine.data.data
+                self.results['engine'] = engine.data.data
                 
             elif state == 'absent':
                 if engine:
@@ -1028,7 +827,9 @@ class StonesoftCluster(StonesoftModuleBase):
         except SMCException as err:
                 self.fail(msg=str(err), exception=traceback.format_exc())
         
-        self.results['changed'] = changed        
+        if not changed and self.results.get('state'):
+            changed = True
+        self.results['changed'] = changed    
         return self.results
     
     def reset_management(self, engine):
@@ -1068,9 +869,24 @@ class StonesoftCluster(StonesoftModuleBase):
         node_req = set(['address', 'network_value', 'nodeid'])
         itf = Interfaces(self.interfaces)
         for interface in itf:
-            if not interface.interface_id:
+            if interface.interface_id is None:
                 self.fail(msg='interface_id is required for all interface '
-                    'definitions')
+                    'definitions, data: %s' % vars(interface))
+            if getattr(interface, 'cvi_mode', None) and not getattr(interface, 'macaddress', None):
+                self.fail(msg='You must have a macaddress defined when defining '
+                    'a CVI mode for an interface, interface_id: %s' % interface.interface_id)
+            
+            # Validate interfaces
+            for _interface in interface:
+                # CVI's require a macaddress and cvi_mode
+                if _interface.get('cluster_virtual') and (not getattr(interface, 'macaddress', None)\
+                    or not getattr(interface, 'cvi_mode', None)):
+                    # TunnelInterface is exempt. Can't define macaddress on this type
+                    if not getattr(interface, 'type', None) == 'tunnel_interface':
+                        self.fail(msg='Cluster virtual interface require a macaddress and '
+                            'cvi_mode be defined, invalid entry, interface_id: %s' %
+                            interface.interface_id)
+            
             for node in interface.nodes:
                 node_values = set(node.keys())
                 differences = node_values ^ node_req
@@ -1079,7 +895,7 @@ class StonesoftCluster(StonesoftModuleBase):
                         'are %s. Difference was: %s' % (list(node_req),
                             list(differences)))
         return itf
-                   
+    
     def update_interfaces(self, engine):
         """
         Update the interfaces on engine if necessary. You can also
@@ -1088,165 +904,52 @@ class StonesoftCluster(StonesoftModuleBase):
         :param engine Engine: ref to engine
         :rtype: tuple(interfaces, bool)
         """
-        changed = False
-        playbook = {}  # {interface_id: [interface defs]} 
-        for interface in self.interfaces:
-            playbook.setdefault(str(interface.get('interface_id')), []).append(
-                interface)
+        yaml = Interfaces(self.interfaces)
         
-        # Track interfaces defined and add new ones as they are
-        # created so undefined interfaces can be deleted at the end
-        playbook_interfaces = playbook.keys()
-        
-        # Iterate the YAML defintions
-        for interface_id, interfaces in playbook.items():
-            try:
-                interface = engine.interface.get(interface_id)
-                needs_update = False
-                # Use case #1: The engine interface is defined but has no
-                # interface addresses. Create as VLAN if vlan_id is defined
-                # otherwise it's a non-VLAN interface
-                if not interface.has_interfaces and not \
-                    interface.has_vlan:
-                    yaml = Interfaces(interfaces).get(interface_id)
-                    
-                    # Note: If the interface already exists with a VLAN
-                    # specified and no addresses, you cannot convert this to
-                    # a non-VLAN interface. You must delete it and recreate.
-                    if yaml.vlan_id:
-                        engine.physical_interface.add_layer3_vlan_cluster_interface(
-                            **yaml.as_dict())
-                        changed = True
-                        continue
-                    # Create a cluster interface only if a Cluster Virtual Address,
-                    # network_value and macaddress, or nodes (NDI's) are specified.
-                    elif (yaml.cluster_virtual and yaml.network_value and \
-                          yaml.macaddress) or len(yaml.nodes):
-                        engine.physical_interface.add_layer3_cluster_interface(
-                            **yaml.as_dict())
-                        changed = True
-                        continue    
-                
-                ifs = Interfaces(interfaces)
-                yaml = ifs.get(interface_id)
-                
-                # If the engine has at least 0 interfaces but as many interfaces
-                # as there are nodes (i.e. not multiple interfaces), continue.
-                # It is currently not supported to modify interfaces that have
-                # multiple IP addresses
-                if not interface.has_vlan and  0 <= len(yaml) <= len(engine.nodes):
-                    
-                    # To delete nodes, remove the interface and re-add
-                    if len(yaml) or (yaml.cluster_virtual or yaml.network_value or \
-                        yaml.macaddress):
-                        
-                        if interface.change_cluster_interface(
-                            cluster_virtual=yaml.cluster_virtual,
-                            network_value=yaml.network_value,
-                            macaddress=yaml.macaddress,
-                            nodes=yaml.nodes, zone_ref=yaml.zone_ref,
-                            vlan_id=None, comment=yaml.comment):
-
-                            changed = True
-                    elif interface.has_interfaces:
-                        # Yaml nodes are undefined, reset if addresses exist
-                        interface.reset_interface()
-                        changed = True
-                
-                elif interface.has_vlan:
-                    # Collection of VLANs. It is not possible to change the VLAN
-                    # ID and the interface address. You must change one or the
-                    # other as it's not possible to represent the previous then
-                    # new cleanly in the YAML
-                    
-                    routes_to_remove = []
-                    vlan_interfaces = interface.vlan_interface
-                    
-                    updated = False
-                    for vlan in vlan_interfaces:
-                        yaml = ifs.get_vlan(vlan.vlan_id)
-                        # If the YAML definition for the same interface exists, try to
-                        # update the interface
-                        if yaml is not None:
-                            updated, network = update_cluster_vlan_interface(vlan, yaml)
-                        else:
-                            # YAML does not define an existing interface, so
-                            # delete the VLAN interface
-                            if self.delete_undefined_interfaces:
-                                updated, network = delete_vlan_interface(vlan)
-
-                        # If the interface was updated, check to see if we need
-                        # to remove stale routes and add the interface ID so we
-                        # can get the routing for that specific interface_id
-                        if updated:
-                            needs_update = True
-                            if network:
-                                routes_to_remove.append(
-                                    vlan.interface_id)
-                    
-                    # Check YAML to see if VLANs are defined in YAML but not
-                    # in the engine interface and create
-                    interface_vlans = set(vlan_interfaces.vlan_ids)
-                    missing_vlans = [x for x in ifs.vlan_ids if x not in interface_vlans]
-                    for vlan in missing_vlans:
-                        create_cluster_vlan_interface(interface, ifs.get_vlan(vlan))
-                        needs_update = True
-                          
-                    if needs_update:
-                        interface.update()
-                        changed = True
-                    
-                    if routes_to_remove:
-                        self.remove_routes(engine, routes_to_remove)
-              
-            except InterfaceNotFound:
-                # Create the missing interface. Verify if it's a VLAN interface
-                # versus standard
-                ifs = Interfaces(interfaces)
-                for itf in ifs:
-                    if itf.is_vlan:
-                        engine.physical_interface.add_layer3_vlan_cluster_interface(
-                            **itf.as_dict())
-                    else:
-                        # Can't do VLANs on Tunnel Interfaces
-                        if getattr(itf, 'type', None) is not None:
-                            if itf.type == 'tunnel_interface':
-                                tunnel = itf.as_dict()
-                                for attr in ('macaddress', 'type', 'cvi_mode'):
-                                    tunnel.pop(attr, None)
-                            engine.tunnel_interface.add_cluster_virtual_interface(
-                                **tunnel)
-                        else:
-                            engine.physical_interface.add_layer3_cluster_interface(
-                                **itf.as_dict())
-                    
-                    changed = True
-                
-                playbook_interfaces.append(interface_id)
-        
-        return playbook, changed
+        for yaml_interface in yaml:
+            interface, updated, created = engine.interface.update_or_create(
+                yaml_interface.as_obj())
+            
+            if updated or created:
+                self.results['state'].append({
+                    'interface_id': interface.interface_id,
+                    'type': interface.typeof,
+                    'action': 'created' if created else 'updated'})        
     
-    def remove_routes(self, engine, routes_to_remove):
+    def check_for_deletes(self, engine):
         """
-        Remove routes from removed interfaces
-        
-        :param Engine engine: engine ref
-        :param list routes_to_remove: list of route interface IDs
+        Check for interfaces that should be deleted. This is only called
+        when delete_undefined_interfaces is set to True. It is recommended
+        to pull the engine as yaml, remove the interfaces to be deleted,
+        then run the playbook.
         """
-        routing = engine.routing
-        for int_id in routes_to_remove:
-            for route in routing:
-                if route.name == 'VLAN {}'.format(int_id):
-                    # If this interface has multiple networks, only
-                    # delete the obsolete network, otherwise delete all
-                    if len(list(route)) > 1:
-                        for vlan_network in route:
-                            if vlan_network.invalid and vlan_network.level == 'network':
-                                vlan_network.delete()
-                    else:
-                        if route.level == 'network':
-                            route.delete()
-        
+        yaml = Interfaces(self.interfaces)
+        for interface in engine.interface:
+            defined = yaml.get(interface.interface_id)
+            if defined is None:
+                self.results['state'].append({
+                    'interface_id': interface.interface_id,
+                    'type': interface.typeof,
+                    'action': 'delete'})
+                interface.delete()
+            else:
+                vlan_updated = False
+                if interface.has_vlan:
+                    defined_vlans = defined.vlan_ids
+                    vlan_interfaces = []
+                    for vlan in interface.vlan_interface:
+                        if vlan.vlan_id in defined_vlans:
+                            vlan_interfaces.append(vlan)
+                        else:
+                            vlan_updated = True
+                            self.results['state'].append({
+                                'interface_id': vlan.interface_id,
+                                'type': 'vlan_interface',
+                                'action': 'delete'})
+                    if vlan_updated:
+                        interface.data['vlanInterfaces'] = vlan_interfaces
+                        interface.update()
+                        
     def update_general(self, engine):
         """
         Update general settings on the engine

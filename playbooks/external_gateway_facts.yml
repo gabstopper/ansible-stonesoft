@@ -15,4 +15,18 @@
       expand:
         - gateway_profile
         - vpn_site
+  
+  - name: Retrieve a specific route VPN and format as playbook YAML
+    register: results
+    external_gateway_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: extgw3
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/facts_yaml.j2 dest=./external_gateway.yml
+    vars:
+      playbook: external_gateway
       

@@ -154,7 +154,27 @@ def zone_finder(zones, zone):
             return z.name
 
 
-def yaml_firewall(engine):
+def yaml_cluster(engine):
+    """
+    Example interface dict created from cluster engine:
+        
+        {'cluster_virtual': u'2.2.2.1',
+         'interface_id': u'1',
+         'macaddress': u'02:02:02:02:02:03',
+         'network_value': u'2.2.2.0/24',
+         'nodes': [{'address': u'2.2.2.2',
+                    'network_value': u'2.2.2.0/24',
+                    'nodeid': 1,
+                    'primary_mgt': True},
+                   {'address': u'2.2.2.3',
+                    'network_value': u'2.2.2.0/24',
+                    'nodeid': 2,
+                    'primary_mgt': True}]}
+    
+    Nodes dict key will always have at least `address`,
+    `network_value` and `nodeid` if the interface definition
+    has interface addresses assigned.
+    """
     # Prefetch all zones to reduce queries
     zone_cache = list(Zone.objects.all())
     management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat')
@@ -162,21 +182,36 @@ def yaml_firewall(engine):
     interfaces = []
     
     for interface in engine.interface:
-        itf = {}
-        itf.update(interface_id=interface.interface_id)
+        top_itf = {}
+        
+        # Interface common settings
+        top_itf.update(interface_id=interface.interface_id)
+        
+        if getattr(interface, 'macaddress', None) is not None:
+            top_itf.update(macaddress=interface.macaddress)
+        if getattr(interface, 'comment', None):
+            top_itf.update(comment=interface.comment)
+        if interface.zone_ref:
+            top_itf.update(zone_ref=zone_finder(
+                zone_cache, interface.zone_ref))
+        
+        cvi_mode = getattr(interface, 'cvi_mode', None)
+        if cvi_mode is not None and cvi_mode != 'none':
+            top_itf.update(cvi_mode=interface.cvi_mode)
+        
         if 'physical_interface' not in interface.typeof:
-            itf.update(type=interface.typeof)
+            top_itf.update(type=interface.typeof)
+        
         if interface.has_interfaces:
-            if getattr(interface, 'comment', None):
-                itf.update(comment=interface.comment)
+            _interfaces = []    
+            nodes = {}
             for sub_interface in interface.all_interfaces:
                 node = {}
                 if isinstance(sub_interface, ClusterVirtualInterface):
-                    itf.update(
+                    nodes.update(
                         cluster_virtual=sub_interface.address,
                         network_value=sub_interface.network_value)
-                    if not 'type' in itf: # It's a physical interface
-                        itf.update(macaddress=interface.macaddress)
+
                     # Skip remaining to get nodes
                     continue
                 else: # NDI
@@ -191,22 +226,24 @@ def yaml_firewall(engine):
                         for role in management:
                             if getattr(sub_interface, role, None):
                                 yaml_engine[role] = getattr(sub_interface, 'nicid')    
-        
-                if interface.zone_ref:
-                    itf.update(zone_ref=
-                        zone_finder(zone_cache, interface.zone_ref))
-                
-                itf.setdefault('nodes', []).append(node)
 
-            interfaces.append(itf)
+                nodes.setdefault('nodes', []).append(node)
+            
+            if nodes:
+                _interfaces.append(nodes)
+            if _interfaces:
+                top_itf.update(interfaces=_interfaces)
         
         elif interface.has_vlan:
+
             for vlan in interface.vlan_interface:
-                itf = {}
-                itf.update(interface_id=interface.interface_id,
-                           vlan_id=vlan.vlan_id)
+                
+                itf = {'vlan_id': vlan.vlan_id}
                 if getattr(vlan, 'comment', None):
                     itf.update(comment=vlan.comment)
+
+                _interfaces = []    
+                nodes = {}
                 if vlan.has_interfaces:
                     for sub_vlan in vlan.all_interfaces:
                         node = {}
@@ -214,7 +251,6 @@ def yaml_firewall(engine):
                         if isinstance(sub_vlan, ClusterVirtualInterface):
                             itf.update(
                                 cluster_virtual=sub_vlan.address,
-                                macaddress=interface.macaddress,
                                 network_value=sub_vlan.network_value)
                             continue
                         else: # NDI
@@ -231,26 +267,25 @@ def yaml_firewall(engine):
                             itf.update(zone_ref=zone_finder(
                                 zone_cache, vlan.zone_ref))
                         
-                        itf.setdefault('nodes', []).append(node)
+                        nodes.setdefault('nodes', []).append(node)
                         
-                    interfaces.append(itf)
+                    if nodes:
+                        _interfaces.append(nodes)
+                    if _interfaces:
+                        itf.update(nodes)
+                    
+                    top_itf.setdefault('interfaces', []).append(itf)
+            
                 else:
                     # Empty VLAN, check for zone
                     if vlan.zone_ref:
                         itf.update(zone_ref=zone_finder(
                             zone_cache, vlan.zone_ref))
-                    interfaces.append(itf)
+                    
+                    top_itf.setdefault('interfaces', []).append(itf)    
+                    
+        interfaces.append(top_itf)
         
-        else: # Single interface, no addresses
-            if getattr(interface, 'macaddress', None) is not None:
-                itf.update(macaddress=interface.macaddress)
-            if getattr(interface, 'comment', None):
-                itf.update(comment=interface.comment)
-            if interface.zone_ref:
-                itf.update(zone_ref=zone_finder(
-                    zone_cache, interface.zone_ref))
-            interfaces.append(itf)
-    
     yaml_engine.update(
         interfaces=interfaces,
         default_nat=engine.default_nat.status,
@@ -291,8 +326,9 @@ def yaml_firewall(engine):
                                comment=as_element.comment)
         data.update(autonomous_system=autonomous_system)
         
-        if bgp.profile:
-            data.update(bgp_profile=bgp.profile.name)
+        bgp_profile = bgp.profile
+        if bgp_profile:
+            data.update(bgp_profile=bgp_profile.name)
         
         antispoofing_map = {}
         for net in bgp.antispoofing_networks:
@@ -336,7 +372,8 @@ def yaml_firewall(engine):
 
 def to_yaml(engine):
     if 'single_fw' in engine.type or 'cluster' in engine.type:
-        return yaml_firewall(engine)
+        #return yaml_firewall(engine)
+        return yaml_cluster(engine)
     else:
         raise ValueError('Only single FW and cluster FW types are '
             'currently supported.')

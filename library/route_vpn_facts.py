@@ -262,6 +262,57 @@ def valid_attr():
     return ('rbvpn_tunnel_side_a', 'rbvpn_tunnel_side_b',
         'vpn_profile_ref', 'monitoring_group_ref')
 
+
+def to_yaml(vpn):
+    rbvpn = {'name': vpn.name,
+             'enabled': vpn.enabled}
+    local_gw = vpn.local_endpoint
+    gateway = local_gw.gateway
+    rbvpn.update(local_gw=
+        {'name': gateway.name.replace(' - Primary', ''),
+         'tunnel_interface': local_gw.tunnel_interface.interface_id})
+    
+    for endpoint in gateway.internal_endpoint:
+        if endpoint.enabled:
+            rbvpn.setdefault('local_gw').update(address=endpoint.name)
+            break
+    
+    remote_gw = vpn.remote_endpoint
+    gateway = remote_gw.gateway
+    if gateway.typeof == 'internal_gateway':
+        rbvpn.update(remote_gw=
+            {'name': gateway.name.replace(' - Primary', ''),
+             'tunnel_interface': remote_gw.tunnel_interface.interface_id})
+        
+        for endpoint in gateway.internal_endpoint:
+            if endpoint.enabled:
+                rbvpn.setdefault('remote_gw').update(address=endpoint.name)
+                break
+    else: #External GW
+        remote_gw = {'name': gateway.name,
+                     'type': gateway.typeof,
+                     'preshared_key': '********'}
+        endpoints = []
+        for endpoint in gateway.external_endpoint:
+            endpoints.append({
+                'name': endpoint.name,
+                'address': endpoint.address,
+                'enabled': endpoint.enabled})
+        remote_gw.update(external_endpoint=endpoints)
+        # Obtain VPN sites
+        vpn_site = {}
+        site_elements = {} # Dict of typeof: [element names]
+        for site in gateway.vpn_site:
+            vpn_site.update(name=site.name)
+            for element in site.site_element:
+                vpn_site.setdefault(element.typeof, []).append(
+                    element.name)
+            break
+        vpn_site.update(site_elements)
+        remote_gw.update(vpn_site=vpn_site)
+        rbvpn.update(remote_gw=remote_gw)
+        return rbvpn
+    
     
 def to_dict(vpn, expand=None):
     """
@@ -294,6 +345,7 @@ class RouteVPNFacts(StonesoftModuleBase):
         self.element = 'rbvpn_tunnel'
         self.limit = None
         self.filter = None
+        self.as_yaml = None
         self.expand = None
         self.exact_match = None
         self.case_sensitive = None
@@ -309,6 +361,10 @@ class RouteVPNFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.as_yaml and not self.filter:
+            self.fail(msg='You must provide a filter to use the as_yaml '
+                'parameter')
+        
         valid = valid_attr()
         for attr in self.expand:
             if attr not in valid:
@@ -317,12 +373,16 @@ class RouteVPNFacts(StonesoftModuleBase):
             
         result = self.search_by_type(RouteVPN)
         # Search by specific element type
-        if self.filter:    
-            elements = [to_dict(element, self.expand) for element in result]
+        if self.filter:
+            if self.as_yaml:
+                route_vpn = [to_yaml(rbvpn) for rbvpn in result
+                             if rbvpn.name == self.filter]
+            else:
+                route_vpn = [to_dict(element, self.expand) for element in result]
         else:
-            elements = [{'name': element.name, 'type': element.typeof} for element in result]
+            route_vpn = [{'name': element.name, 'type': element.typeof} for element in result]
         
-        self.results['ansible_facts']['route_vpn'] = elements
+        self.results['ansible_facts']['route_vpn'] = route_vpn
         return self.results
 
 def main():

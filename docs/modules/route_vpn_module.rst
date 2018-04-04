@@ -42,6 +42,18 @@ Options
     <th class="head">choices</th>
     <th class="head">comments</th>
     </tr>
+
+    <tr>
+    <td>enabled<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Whether the VPN is enabled or disabled</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
     <tr>
     <td rowspan="2">local_gw<br/><div style="font-size: small;"></div></td>
     <td>no</td>
@@ -128,7 +140,7 @@ Options
     <td></td>
     <td></td>
     <td>
-        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module will create the gateway based on the gateway settings provided if it doesn't already exist. This documents an External Gateway configuration</div>
+        <div>The name of the remote GW. If the remote gateway is an Stonesoft FW, it must pre-exist. Use the local_gw documentation for settings. If it is an External Gateway, this module will create the gateway based on the gateway settings provided if it doesn't already exist. This documents an External Gateway configuration. See also the external_gateway module for additional external endpoint settings.</div>
     </tr>
 
     <tr>
@@ -404,39 +416,41 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a new Route VPN with an external gateway
+    - name: Route VPN between internal engine and 3rd party external gateway
+      register: result
       route_vpn:
         smc_logging:
           level: 10
           path: /Users/davidlepage/Downloads/ansible-smc.log
-        name: myrbvpn
-        type: ipsec
+        enabled: true
         local_gw:
-          name: newcluster
-          tunnel_interface: 1001
-          interface_id: 1
-          #address: 2.2.2.2
+            address: 50.50.50.1
+            name: newcluster
+            tunnel_interface: '1001'
+        name: myrbvpn
         remote_gw:
-          name: extgw3
-          preshared_key: abc123
-          type: external_gateway
-          vpn_site:
-            name: site12
-            network:
-              - network-172.18.1.0/24
-              - network-172.18.2.0/24
-            host:
-              - hosta
-          external_endpoint:
-            - name: endpoint1
-              address: 33.33.33.41
-              enabled: true
-            - name: endpoint2
-              address: 34.34.34.34
-              force_nat_t: true
-              enabled: true
-        tags:
-          - footag
+            external_endpoint:
+            -   address: 33.33.33.41
+                enabled: true
+                name: extgw3 (33.33.33.41)
+            -   address: 34.34.34.34
+                enabled: true
+                name: endpoint2 (34.34.34.34)
+            -   address: 44.44.44.44
+                enabled: false
+                name: extgw4 (44.44.44.44)
+            -   address: 33.33.33.50
+                enabled: false
+                name: endpoint1 (33.33.33.50)
+            name: extgw3
+            preshared_key: '********'
+            type: external_gateway
+            vpn_site:
+                name: extgw3-site
+                network:
+                - network-172.18.15.0/24
+                - network-172.18.1.0/24
+                - network-172.18.2.0/24
     
     - name: Create a new Route VPN with internal gateways
       route_vpn:

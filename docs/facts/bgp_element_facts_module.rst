@@ -1,8 +1,8 @@
-.. _external_gw_facts:
+.. _bgp_element_facts:
 
 
-external_gw_facts - Facts about external VPN gateways
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
+bgp_element_facts - Facts about BGP based elements in the SMC
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* An external vpn gateway is a non-SMC managed endpoint used for terminating a VPN. It defines the remote side networks and settings specific to handling VPN. Use *expand* to specify attributes that should be resolved to raw data instead of href.
+* BGP elements are the building blocks to building a BGP configuration on a layer 3 engine. Use this module to obtain available elements and their values.
 
 
 
@@ -56,24 +56,24 @@ Options
     </tr>
 
     <tr>
-    <td>exact_match<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
+    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
     <td></td>
-    <td></td>
+    <td><ul><li>ip_access_list</li><li>ip_prefix_list</li><li>ipv6_access_list</li><li>ipv6_prefix_list</li><li>as_path_access_list</li><li>community_access_list</li><li>extended_community_access_list</li><li>external_bgp_peer</li><li>bgp_peering</li><li>autonomous_system</li></ul></td>
 	<td>
-        <p>Whether to do an exact match on the filter specified</p>
+        <p>Type of bgp element to retrieve</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>exact_match<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
-    <td><ul><li>vpn_site</li><li>gateway_profile</li></ul></td>
+    <td></td>
 	<td>
-        <p>Expand sub elements that only provide href data. Specify a list of external gateways by name</p>
+        <p>Whether to do an exact match on the filter specified</p>
 	</td>
 	</tr>
     </td>
@@ -270,35 +270,33 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Facts related to external VPN gateways
+    - name: BGP Facts
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Retrieve all external GW's
-        external_gateway_facts:
-      
-      - name: Get a specific external GW details
-        external_gateway_facts:
-          filter: myremotevpn
-      
-      - name: Get a specific external GW, and expand supported attributes
-        external_gateway_facts:
-          filter: myremotevpn
-          expand:
-            - gateway_profile
-            - vpn_site
+      - name: Retrieve all data about ane external bgp peer
+        bgp_facts:
+          element: external_bgp_peer
+          filter: externalpeer
     
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
-          smc_logging:
-            level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
-          filter: newcluster
-          as_yaml: true
-    
-      - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+    - name: BGP Facts
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Return all data about specified autonomous system
+        bgp_facts:
+          element: autonomous_system
+          filter: remoteas
+     
+    - name: Routing facts about an engine
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Find details about specific profile
+        bgp_facts:
+          element: bgp_profile
+          filter: Default BGP Profile
+          case_sensitive: no
 
 Return Values
 -------------
@@ -318,13 +316,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>external_gateway</td>
+    <td>elements</td>
     <td>
-        <div>Example external gateway data</div>
+        <div>Details about BGP Peering profile</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'external_endpoint&quot;': [{'read_only': False, 'udp_encapsulation': False, 'force_nat_t': True, 'name': 'endpoint2', 'enabled': True, 'balancing_mode': 'active', 'dynamic': False, 'system': False, 'nat_t': True, 'address': '33.33.33.35', 'ipsec_vpn': True, 'ike_phase1_id_type': 3}]}, {'gateway_profile': 'http://1.1.1.1:8082/6.4/elements/gateway_profile/3'}, {'name': 'myremotevpn'}, {'read_only': False}, {'system': False}, {'trust_all_cas': True}, {'trusted_certificate_authorities': []}, {'vpn_site': [{'read_only': False, 'site_element': ['http://1.1.1.1:8082/6.4/elements/network/708'], 'system': False, 'name': 'myremotevpn-site', 'gateway': 'http://1.1.1.1:8082/6.4/elements/external_gateway/47'}]}]</td>
+    <td align=center>[{'comment': None, 'default_originate': False, 'send_community': 'no', 'connection_profile': {'session_hold_timer': 180, 'connect_retry': 120, 'session_keep_alive': 60, 'name': 'Default BGP Connection Profile', 'type': 'bgp_connection_profile'}, 'orf_option': 'disabled', 'route_reflector_client': False, 'next_hop_self': True, 'max_prefix_option': 'not_enabled', 'remove_private_as': False, 'connected_check': 'disabled', 'read_only': False, 'soft_reconfiguration': True, 'name': 'mypeering', 'override_capability': False, 'local_as_option': 'not_set', 'system': False, 'ttl_option': 'disabled', 'type': 'bgp_peering', 'dont_capability_negotiate': False}]</td>
     </tr>
     </table>
     </br></br>

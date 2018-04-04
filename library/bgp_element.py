@@ -1,3 +1,203 @@
+#!/usr/bin/python
+# Copyright (c) 2017 David LePage
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
+
+   
+DOCUMENTATION = '''
+---
+module: bgp_element
+short_description: BGP Elements for BGP configuratons
+description:
+  - BGP elements are the building blocks to building a BGP configuration on
+    a layer 3 engine. Use this module to obtain available elements and their
+    values.
+
+version_added: '2.5'
+
+options:
+  element:
+    description:
+      - List of device hashes/dictionaries with custom configurations based on the element type
+      - >
+        Valid elements include: ip_access_list, ip_prefix_list, ipv6_access_list, ipv6_prefix_list, 
+        as_path_access_list, community_access_list, extended_community_access_list, external_bgp_peer,
+        bgp_peering, autonomous_system. See the example bgp_element.yaml for a full list of
+        supported parameters per item. Also see smc python documentation for routing elements 
+        U(http://smc-python.readthedocs.io/en/latest/pages/reference.html#dynamic-routing-elements)
+    required: true
+    type: list
+  overwrite_existing:
+    description:
+      - Overwrite existing will replace the contents of the Access List type with the values provided
+        in the element configuration. Otherwise operations will be update_or_create, where an update
+        will add new entries if they do not exist or fully create and add entries if the acl doesnt
+        exist. To replace entries you should fully define the access list and set overwrite_existing
+        to true.
+    type: bool
+    default: false
+  state:
+    description:
+      - Create or delete a BGP Element. If I(state=absent), the element dict must have at least the
+        type of element and name field as a valid value.
+    required: false
+    default: present
+    choices:
+      - present
+      - absent
+
+
+extends_documentation_fragment:
+  - stonesoft
+  - stonesoft_facts
+
+requirements:
+  - smc-python
+author:
+  - David LePage (@gabstopper)
+'''
+
+
+EXAMPLES = '''
+- name: Create all BGP element types
+  register: result
+  bgp_element:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    elements:
+      - ip_access_list: 
+          name: myservice2
+          comment: my ip acl without min and max prefix length
+          entries: 
+            - subnet: 1.1.3.0/24
+              action: permit
+            - subnet: 2.2.2.0/24
+              action: deny
+      - ip_prefix_list:
+          name: aprefix
+          comment: prefix lists without min and max prefix
+          entries:
+            - subnet: 10.0.0.0/8
+              action: deny
+            - subnet: 192.16.2.0/24
+              action: permit
+      - ipv6_access_list:
+          name: myipv6acl
+          comment: an ipv6 acl
+          entries:
+            - subnet: '2001:db8:1::1/128'
+              action: permit
+      - ipv6_prefix_list:
+          name: ipv6prefix
+          entries:
+            - subnet: 'ab00::/64'
+              min_prefix_length: 65
+              max_prefix_length: 128
+              action: deny
+      - as_path_access_list:
+          name: mytestaccesslist
+          comment: an as path
+          entries:
+            - expression: '123-456'
+              action: permit
+            - expression: '1234-567'
+              action: deny
+      - community_access_list:
+          name: cmtyacl
+          type: standard
+          comment: my community
+          entries:
+            - community: '123'
+              action: permit
+            - community: '456'
+              action: deny
+      - extended_community_access_list:
+          name: extcommacl
+          type: standard
+          comment: Some acl
+          entries:
+            - community: '123'
+              action: permit
+              type: rt
+            - community: '456'
+              action: deny
+              type: soo
+      - bgp_peering:
+          name: extpeer
+          comment: my peering
+      - external_bgp_peer:
+          name: mypeer666
+          neighbor_as: myas123
+          neighbor_ip: 12.12.12.12
+          #neighbor_port: 179
+          comment: mypeer
+      - autonomous_system:
+          name: myas123
+          as_number: '123.123'
+          comment: foo comment
+    #state: absent
+    #overwrite_existing: true
+    
+- name: Update an existing IP Access List and overwrite all entries
+  register: result
+  bgp_element:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    elements:
+      - ip_access_list: 
+          name: myservice2
+          comment: my ip acl
+          entries: 
+            - subnet: 1.1.4.0/24
+              action: permit
+            - subnet: 2.2.2.0/24
+              action: deny
+      overwrite_existing: true
+      
+- name: Delete an IP Access List by name
+  register: result
+  bgp_element:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    elements:
+      - ip_access_list: 
+          name: myservice2
+'''
+
+RETURN = '''
+changed:
+  description: Whether or not the change succeeded
+  returned: always
+  type: bool
+state:
+  description: Full json definition of NGFW
+  returned: always
+  type: list
+  sample: [
+      {
+        "action": "created", 
+        "name": "myservice2", 
+        "type": "ip_access_list"},
+      {
+        "action": "modified", 
+        "name": "myservice2", 
+        "type": "ip_access_list"},
+      {
+        "action": "deleted", 
+        "name": "myservice2", 
+        "type": "ip_access_list"
+      }
+    ]        
+'''
 
 
 import traceback
@@ -42,9 +242,9 @@ class StonesoftBGPElement(StonesoftModuleBase):
         
         self.module_args = dict(
             elements=dict(type='list', required=True),
+            overwrite_existing=dict(type='bool', default=False),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
-        
         self.elements = None
         
         self.results = dict(
@@ -115,8 +315,15 @@ class StonesoftBGPElement(StonesoftModuleBase):
         for typeof, values in element.items():
             klazz = lookup_class(typeof)
             
-            obj, modified, created = klazz.update_or_create(
-                with_status=True, **values)
+            if ('access_list' in klazz.typeof or 'prefix_list' in klazz.typeof)\
+                and self.overwrite_existing:
+            
+                obj, modified, created = klazz.update_or_create(
+                    with_status=True, overwrite_existing=True, **values)
+            else:
+                obj, modified, created = klazz.update_or_create(
+                    with_status=True, **values)
+            
             if created:
                 self.results['state'].append(
                     {'name': obj.name, 'type': obj.typeof, 'action': 'created'})

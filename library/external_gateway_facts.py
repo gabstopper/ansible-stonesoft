@@ -60,7 +60,19 @@ EXAMPLES = '''
       filter: myremotevpn
       expand:
         - gateway_profile
-        - vpn_site 
+        - vpn_site
+
+  - name: Get engine details for 'myfw' and save in editable YAML format
+    register: results
+    engine_facts:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
+      filter: newcluster
+      as_yaml: true
+
+  - name: Write the yaml using a jinja template
+    template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
 '''
 
 
@@ -111,6 +123,29 @@ try:
 except ImportError:
     pass
 
+
+def to_yaml(gw):
+    external_gateway = {'name': gw.name}
+    endpoints = []
+    for endpoint in gw.external_endpoint:
+        endpoints.append({
+            'name': endpoint.name,
+            'address': endpoint.address,
+            'enabled': endpoint.enabled})
+    external_gateway.update(external_endpoint=endpoints)
+    # Obtain VPN sites
+    vpn_site = {}
+    site_elements = {} # Dict of typeof: [element names]
+    for site in gw.vpn_site:
+        vpn_site.update(name=site.name)
+        for element in site.site_element:
+            vpn_site.setdefault(element.typeof, []).append(
+                element.name)
+        break
+    vpn_site.update(site_elements)
+    external_gateway.update(vpn_site=vpn_site)
+    return external_gateway
+        
        
 def to_dict(external_gw, expand=None):
     """
@@ -153,6 +188,7 @@ class ExternalGWFacts(StonesoftModuleBase):
         self.element = 'external_gateway'
         self.limit = None
         self.filter = None
+        self.as_yaml = None
         self.expand = None
         self.exact_match = None
         self.case_sensitive = None
@@ -168,6 +204,10 @@ class ExternalGWFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
+        if self.as_yaml and not self.filter:
+            self.fail(msg='You must provide a filter to use the as_yaml '
+                'parameter')
+        
         if self.expand:
             for specified in self.expand:
                 if specified not in expandable():
@@ -176,8 +216,12 @@ class ExternalGWFacts(StonesoftModuleBase):
                     
         result = self.search_by_type(ExternalGateway)
         # Search by specific element type
-        if self.filter:    
-            elements = [to_dict(element, self.expand) for element in result]
+        if self.filter:
+            if self.as_yaml:
+                elements = [to_yaml(gw) for gw in result
+                            if gw.name == self.filter]
+            else:
+                elements = [to_dict(element, self.expand) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         
