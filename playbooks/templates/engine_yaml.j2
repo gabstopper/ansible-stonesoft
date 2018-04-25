@@ -5,9 +5,9 @@
   tasks:
   - name: Create a single layer 3 firewall
   {% if 'single_fw' in results.engine_type %}
-  l3fw:
+  engine:
   {% elif 'cluster' in results.engine_type %}
-  l3fw_cluster:
+  engine:
   {% endif %}
     smc_logging:
         level: 10

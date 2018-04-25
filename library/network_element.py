@@ -2,7 +2,6 @@
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -147,6 +146,7 @@ options:
           ipv6_address:
             description:
               - IPv6 address for this host, required if I(address) is not defined.
+            type: str
           secondary:
             description:
               - Optional secondary IP addresses for this host
@@ -154,6 +154,7 @@ options:
           comment:
             description:
               - Optional comment for this host
+            type: str
       ip_list:
         description:
           - An IP list element containing individual addresses and networks
@@ -181,9 +182,75 @@ options:
             required: true
           members:
             description:
-              - A list of members by network element, either the name field must be
-                defined or the name and optional parts to create the element
+              - A list of dict with the key being the type of element and the value is
+                a list of members by name.
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
+          comment:
+            description:
+              - Optional comment for the group
+            type: str
+      netlink:
+        description:
+          - Create a Static Netlink element
+        type: dict
+        suboptions:
+          name:
+            description:
+              - Name of the netlink
+            type: str
+            required: true
+          comment:
+            description:
+              - optional comment
+            type: str
+          gateway:
+            description:
+              - The gateway element used as the next hop for the netlink. This
+                should be a dict with name and type defined. The element referenced
+                in name and type should exist and be of type router or engine
+            type: dict
+            suboptions:
+              name: 
+                description:
+                  - name of the gateway element
+                type: str
+              type:
+                description:
+                  - type of element
+                choices:
+                  - router
+                  - engine
+                type: dict
+          network:
+            description:
+              - List of networks for this netlink. These are referenced by element
+                name and expected to exist
+            type: list
+            required: true
+          domain_server_address:
+            description:
+              - Optional list of DNS server elements by name
+            type: list
+          probe_address:
+            description:
+              - optional list of addresses to probe for status
+            type: list
+        comment:
+          description:
+            - optional comment
+          type: str
   ignore_err_if_not_found:
     description:
       - When deleting elements, whether to ignore an error if the element is not found.
@@ -208,23 +275,27 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Create network elements. See smc-python documentation for required fields.
+- name: Create a network element
   hosts: localhost
   gather_facts: no
   tasks:
   - name: Example network element creation
+    register: result
     network_element:
+      smc_logging:
+        level: 10
+        path: /Users/davidlepage/Downloads/ansible-smc.log
       elements:
         - host: 
-            name: myhost
+            name: hostb
             address: 1.1.1.1
             ipv6_address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
             secondary:
               - 1.1.1.2
               - 1.1.1.3
         - network:
-            name: mynetwork
-            ipv4_network: 1.1.1.0/24
+            name: networka
+            ipv4_network: 3.3.3.0/24
             ipv6_network: fc00::/7
             comment: created by dlepage
         - address_range:
@@ -233,7 +304,8 @@ EXAMPLES = '''
         - interface_zone:
             name: myzone
         - domain_name:
-            name: google.com
+            name: mydomain.com
+            comment: foo
         - router:
             name: myrouter
             address: 172.18.1.254
@@ -241,23 +313,46 @@ EXAMPLES = '''
               - 172.18.1.253
             ipv6_address: 2003:dead:beef:4dad:23:46:bb:101
         - ip_list: 
-            name: mylist
+            name: myiplist
+            comment: testlist
             iplist:
               - 1.1.1.1
               - 1.1.1.2
               - 1.1.1.3
               - 1.1.1.4
-        - group: 
-            name: group_referencing_existing_elements
-            members:
-              - host: 
-                  name: grace
         - group:
-            name: group_and_create_elements_that_dont_exist
+            name: foogroup
+            #remove_members: true
+            #append_lists: true
             members:
-              - host:
-                  name: newhost
-                  address: 1.1.1.1
+                host:
+                - hosta
+                - hostb
+                network:
+                - networka
+        - group:
+            name: emptyregulargrp
+            members:
+        - router:
+            name: myrouter2
+            address: 13.13.13.13
+        - network:
+            name: mynetwork2
+            ipv4_network: 13.13.13.0/24
+        - netlink:
+            name: mynetlink2
+            gateway:
+                name: myrouter2
+                type: router
+            network:
+            -   mynetwork2
+            domain_server_address:
+                -   8.8.8.8
+                -   8.8.7.7
+            probe_address:
+                -   10.10.10.1
+            comment: added by ansible
+
 
 - name: Delete network elements. Use a list of elements by name
   network_element:
@@ -293,78 +388,35 @@ state:
     type: list
     sample: [
         {
-            "address": "3.3.3.3", 
-            "comment": null, 
-            "ipv6_address": null, 
-            "name": "myhost", 
-            "secondary": [], 
-            "type": "host"
+            "action": "created", 
+            "name": "myservice", 
+            "type": "tcp_service"
         }, 
         {
-            "comment": "created by dlepage", 
-            "ipv4_network": "3.3.3.0/24", 
-            "ipv6_network": "fc00::/7", 
-            "name": "mynetwork_ipv6", 
-            "type": "network"
+            "name": "newservice80", 
+            "type": "tcp_service"
         }, 
         {
-            "comment": null, 
-            "ip_range": "1.1.1.1-1.1.1.10", 
-            "name": "myrange", 
-            "type": "address_range"
+            "action": "created", 
+            "name": "myudp", 
+            "type": "udp_service"
         }, 
         {
-            "comment": null, 
-            "name": "myzone", 
-            "type": "interface_zone"
+            "name": "udp2000", 
+            "type": "udp_service"
         }, 
         {
-            "comment": null, 
-            "name": "google.com", 
-            "type": "domain_name"
-        }, 
-        {
-            "address": "172.18.1.254", 
-            "comment": null, 
-            "ipv6_address": "2003:dead:beef:4dad:23:46:bb:101", 
-            "name": "myrouter", 
-            "secondary": [
-                "172.18.1.253"
-            ], 
-            "type": "router"
-        }, 
-        {
-            "comment": null, 
-            "iplist": null, 
-            "name": "mylist2", 
-            "type": "ip_list"
-        },
-        {
-            "comment": null, 
-            "members": [
-                "http://172.18.1.151:8082/6.4/elements/host/672"
-            ], 
-            "name": "group_referencing_existing_elements", 
-            "type": "group"
-        }, 
-        {
-            "comment": null, 
-            "members": [
-                "http://172.18.1.151:8082/6.4/elements/host/705"
-            ], 
-            "name": "group_and_create_elements", 
-            "type": "group"
-        }
-    ]
+            "action": "created", 
+            "name": "new service", 
+            "type": "ip_service"
+        }]
 '''
 
+import copy
 import traceback
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase,
-    element_type_dict,
-    element_dict_from_obj,
-    update_or_create,
-    delete_element)
+    StonesoftModuleBase, Cache, element_type_dict,
+    update_or_create, delete_element)
 
 
 try:
@@ -396,80 +448,183 @@ class NetworkElement(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        changed = False
         ELEMENT_TYPES = element_type_dict()
         
-        if state == 'absent':
-            for element in self.elements:
-                for typeof in element:
-                    if typeof not in ELEMENT_TYPES:
-                        self.fail(msg='Element specified is not valid, got: {}, valid: {}'
-                            .format(typeof, ELEMENT_TYPES.keys()))
-                    else:
-                        if not self.check_mode:
-                            for elements in element[typeof]:
-                                result = delete_element(
-                                    ELEMENT_TYPES.get(typeof)['type'](elements), self.ignore_err_if_not_found)
-                                if result:
-                                    self.results['state'].append(result)
-                                else:
-                                    changed = True
-        
-        else:
-            # Validate elements before proceeding
-            for element in self.elements:
-                self.is_element_valid(element, ELEMENT_TYPES)
-            
-            try:
+        try:
+            if state == 'present':
+                deferred_elements = ('group', 'netlink')
+                # Validate elements before proceeding.
+                groups, netlinks = [], []
+                for element in self.elements:
+                    self.is_element_valid(element, ELEMENT_TYPES)
+                    if 'group' in element:
+                        groups.append(element)
+                    elif 'netlink' in element:
+                        netlinks.append(element)
+                
+                if groups or netlinks:
+                    to_be_created = self.to_be_created_elements()
+                    self.cache = Cache()
+                
+                if groups:
+                    self.enum_group_members(groups, to_be_created)
+                    if self.cache.missing:
+                        self.fail(msg='Group members referenced are missing and are not being '
+                            'created in this playbook: %s' % self.cache.missing)
+                
+                if netlinks:
+                    self.enum_netlink_members(netlinks, to_be_created)
+                    if self.cache.missing:
+                        self.fail(msg='Netlink elements referenced are missing and are not being '
+                            'created in this playbook: %s' % self.cache.missing)
+
                 for element in self.elements:
                     for typeof, _ in element.items():
-                        if 'group' in typeof:
-                            result = self.update_group(element, ELEMENT_TYPES)
-                        else:
+                        if typeof not in deferred_elements:
                             result = update_or_create(
                                 element, ELEMENT_TYPES, check_mode=self.check_mode)
-                        
-                        if self.check_mode:
-                            if result is not None:
-                                self.results['state'].append(result)
-                        else:            
-                            changed = True
-    
-                            self.results['state'].append(
-                                element_dict_from_obj(result, ELEMENT_TYPES))
-    
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
+                            self.results['state'].append(result)
+
+                for group in groups:
+                    # Run through cache again, entries that exist will not be
+                    # added twice but this captures elements that might have been
+                    # added earlier by the playbook run
+                    _group = copy.deepcopy(group)
+                    members = _group.get('group', {}).get('members', {}) 
+                    if members:
+                        self.cache.add_many([members])
+                        # Add to new members list
+                        _members = [self.cache.get(typeof, value)
+                            for typeof, member in members.items()
+                            for value in member]
+                    else: # No members defined
+                        _members = []
+
+                    _group.setdefault('group', {}).update(
+                        members=_members)
+                    
+                    result = update_or_create(_group, ELEMENT_TYPES, check_mode=self.check_mode)
+                    self.results['state'].append(result)
+                
+                for netlink in netlinks:
+                    _netlink = copy.deepcopy(netlink)
+                    gateway = _netlink.get('netlink', {}).get('gateway')
+                    self.cache._add_entry(gateway.get('type'), gateway.get('name'))
+                    _netlink.setdefault('netlink').update(
+                        gateway=self.cache.get(
+                            gateway.get('type'), gateway.get('name')))
+                    
+                    # Update networks
+                    networks = _netlink.get('netlink').get('network')
+                    for net in networks:
+                        self.cache._add_entry('network', net)
+                    _netlink.setdefault('netlink').update(
+                        network=[self.cache.get('network', net)
+                            for net in networks])
+                    
+                    result = update_or_create(
+                        _netlink, ELEMENT_TYPES, check_mode=self.check_mode)
+                    self.results['state'].append(result)
+                    
+                if self.check_mode:
+                    return self.results
+            
+            else:        
+                for element in self.elements:
+                    for typeof in element:
+                        if typeof not in ELEMENT_TYPES:
+                            self.fail(msg='Element specified is not valid, got: {}, valid: {}'
+                                .format(typeof, ELEMENT_TYPES.keys()))
+                        else:
+                            if not self.check_mode:
+                                for elements in element[typeof]:
+                                    result = delete_element(
+                                        ELEMENT_TYPES.get(typeof)['type'](elements),
+                                        self.ignore_err_if_not_found)
+                                    self.results['state'].append(result)
+
+        except SMCException as err:
+            self.fail(msg=str(err), exception=traceback.format_exc())
         
-        self.results['changed'] = changed
+        for results in self.results['state']:
+            if 'action' in results:
+                self.results['changed'] = True
+                break 
         return self.results
     
-    def update_group(self, group_dict, type_dict):
+    def to_be_created_elements(self):
         """
-        Process a group and it's members (if any). Each group member can
-        be referenced by name only, or they can be created like a normal
-        element nested in the group.
+        Get a dict of all elements that are to be created by this playbook.
+        This is used when nested elements are being created that have
+        requirements on other elements. This allows nested elements to be
+        created alongside of their dependency.
         
-        :param dict group_dict: dict of group info
-        :param dict type_dict: dict of all supported elements
+        :return: dict of element by type: set([names]) to be created
+        :rtype: dict
         """
-        members = []
-        g = group_dict.get('group')
-        if g.get('members'):
-            for member in g['members']:
-                m = update_or_create(member, type_dict, check_mode=self.check_mode)
-                if self.check_mode:
-                    if m is not None:
-                        members.append(m)
-                else:
-                    members.append(m.href)
-                
-        group_dict['group']['members'] = members
-        result = update_or_create(group_dict, type_dict, check_mode=self.check_mode)
-        if self.check_mode:
-            if result is None and members:
-                return group_dict
-        return result
+        nested_element = ('netlink', 'group')
+        to_be_created = {} # dict of element by type: set([names]) to be created.
+        for element in self.elements:
+            for typeof, values in element.items():
+                if typeof not in nested_element:
+                    to_be_created.setdefault(typeof, set()).add(
+                        values.get('name'))
+        return to_be_created
+        
+    def enum_group_members(self, groups, pending_elements):
+        """
+        Check group membership. Groups reference only the type of element and
+        the names of those members. If the element is being created, skip the
+        existence check. If the member is not being created, attempt to fetch
+        the member and save to cache. Return the cache. Check cache.missing
+        before continuing to ensure all required elements are found.
+        
+        :param list groups: list of groups extracted from elements
+        :param dict pending_elements: elements waiting to be created
+        :return: None
+        """
+        for group in groups:
+            members = group.get('group', {}).get('members', {})
+            members = {} if members is None else members
+            for typeof, member in members.items():
+                for name in member:
+                    if name not in pending_elements.get(typeof, set()):
+                        self.cache._add_entry(typeof, name)
+    
+    def enum_netlink_members(self, netlinks, pending_elements):
+        """
+        Netlinks reference nested elements gateway and networks. Attempt to
+        locate these either in definitions to be created by this playbook or
+        existing already in SMC. Populate cache with href and name map and
+        catch any missing before continuing.
+        
+        :return: None
+        """
+        for netlink in netlinks:
+            values = netlink.get('netlink', [])
+            for req in ('gateway', 'network'):
+                if req not in values:
+                    self.fail(msg='Netlink requires a gateway and list of networks, '
+                        'received: %s' % values)
+            # Add requirements to cache
+            gateway = values['gateway']
+            if not isinstance(gateway, dict) or 'name' not in gateway or 'type' not in gateway:
+                self.fail(msg='Netlink gateway must be a dict with a name and type key value: %s'
+                    % gateway)
+            if gateway.get('type') not in ('engine', 'router'):
+                self.fail(msg='Netlink types can only be of type engine or router, got: %s' %
+                    gateway.get('type'))
+            
+            networks = values['network']
+            if not isinstance(networks, list):
+                self.fail(msg='Netlink networks must be defined as a list, got: %s' % type(networks))
+            
+            if gateway.get('name') not in pending_elements.get(gateway.get('type'), set()):
+                self.cache._add_entry(gateway.get('type'), gateway.get('name'))
+            
+            for network in networks:
+                if network not in pending_elements.get('network', set()):
+                    self.cache._add_entry('network', network)
 
 
 def main():

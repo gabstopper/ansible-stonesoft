@@ -2,7 +2,6 @@
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -446,7 +445,8 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache
 
 try:
     from smc.core.engines import FirewallCluster
-    from smc.core.interfaces import ClusterPhysicalInterface, TunnelInterface
+    from smc.core.interfaces import ClusterPhysicalInterface, TunnelInterface, \
+        Layer2PhysicalInterface
     from smc.api.exceptions import SMCException
     from smc.routing.bgp import AutonomousSystem, BGPPeering
 except ImportError:
@@ -469,7 +469,7 @@ class YamlInterface(object):
     
     def as_obj(self):
         if getattr(self, 'type', None) == 'tunnel_interface':
-            return TunnelInterface(interface=vars(self))
+            return TunnelInterface(**vars(self))
         return ClusterPhysicalInterface(**vars(self))
 
     def __iter__(self):
@@ -925,6 +925,8 @@ class StonesoftCluster(StonesoftModuleBase):
         """
         yaml = Interfaces(self.interfaces)
         for interface in engine.interface:
+            if isinstance(interface, Layer2PhysicalInterface):
+                continue
             defined = yaml.get(interface.interface_id)
             if defined is None:
                 self.results['state'].append({
@@ -1016,7 +1018,7 @@ class StonesoftCluster(StonesoftModuleBase):
                     update_snmp = False
                     if snmp.agent.name != self.snmp.get('snmp_agent', ''):
                         update_snmp = True
-                    if snmp.location != self.snmp.get('snmp_location'):
+                    if snmp.location != self.snmp.get('snmp_location', ''):
                         update_snmp = True
                     
                     snmp_interfaces = [interface.interface_id for interface in snmp.interface]

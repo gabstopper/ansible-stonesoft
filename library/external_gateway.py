@@ -163,7 +163,7 @@ state:
 
 import traceback
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase, Cache)
+    StonesoftModuleBase, Cache, delete_element)
 
 try:
     from smc.vpn.elements import ExternalGateway
@@ -180,12 +180,14 @@ class ExternalVPNGW(StonesoftModuleBase):
             external_endpoint=dict(type='list', default=[]),
             vpn_site=dict(type='dict'),
             tags=dict(type='list'),
+            ignore_err_if_not_found=dict(type='bool', default=True),
             state=dict(default='present', choices=['present', 'absent'])
         )
         self.tags = None
         self.name = None
         self.vpn_site = None
         self.external_endpoint = None
+        self.ignore_err_if_not_found = None
         
         self.results = dict(
             changed=False,
@@ -235,28 +237,28 @@ class ExternalVPNGW(StonesoftModuleBase):
                 gateway, updated, created = ExternalGateway.update_or_create(
                     with_status=True, **external_gateway)
                 
-                if created:
+                if created or updated:
                     self.results['state'].append(
-                        {'name': gateway.name, 'type': gateway.typeof, 'action': 'created'})
-                elif updated:
-                    self.results['state'].append(
-                        {'name': gateway.name, 'type': gateway.typeof, 'action': 'modified'})
-                
+                        {'name': gateway.name, 'type': gateway.typeof,
+                         'action': 'created' if created else 'modified'})
+                    changed = True
+
                 if self.tags:
                     if self.add_tags(gateway, self.tags):
                         changed = True
             
             elif state == 'absent':
-                gateway = ExternalGateway.get(self.name)
-                gateway.delete()
-                self.results['state'].append(
-                    {'name': gateway.name, 'type': gateway.typeof, 'action': 'deleted'})
-        
+                result = delete_element(ExternalGateway(self.name),
+                    self.ignore_err_if_not_found) 
+
+                if 'action' in result:
+                    changed = True 
+                self.results['state'].append(result) 
+
         except SMCException as err:
             self.fail(msg=str(err), exception=traceback.format_exc())
         
-        if changed or self.results['state']:
-            self.results['changed'] = True            
+        self.results['changed'] = changed         
         return self.results
     
 

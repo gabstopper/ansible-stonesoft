@@ -144,6 +144,8 @@ ENGINE_TYPES = frozenset(['fw_clusters', 'engine_clusters', 'ips_clusters',
 try:
     from smc.elements.network import Zone
     from smc.core.sub_interfaces import ClusterVirtualInterface
+    from smc.core.interfaces import Layer3PhysicalInterface, TunnelInterface, \
+        ClusterPhysicalInterface
 except ImportError:
     pass
 
@@ -182,6 +184,9 @@ def yaml_cluster(engine):
     interfaces = []
     
     for interface in engine.interface:
+        if not isinstance(interface,
+            (ClusterPhysicalInterface, Layer3PhysicalInterface, TunnelInterface)):
+            continue
         top_itf = {}
         
         # Interface common settings
@@ -215,8 +220,10 @@ def yaml_cluster(engine):
                     # Skip remaining to get nodes
                     continue
                 else: # NDI
-                    if sub_interface.dynamic:
-                        node.update(dynamic=True)
+                    # Dynamic address
+                    if getattr(sub_interface, 'dynamic', None):
+                        node.update(dynamic=True, dynamic_index=
+                            getattr(sub_interface, 'dynamic_index', 0))
                     else:
                         node.update(
                             address=sub_interface.address,
@@ -254,10 +261,15 @@ def yaml_cluster(engine):
                                 network_value=sub_vlan.network_value)
                             continue
                         else: # NDI
-                            node.update(
-                                address=sub_vlan.address,
-                                network_value=sub_vlan.network_value,
-                                nodeid=sub_vlan.nodeid)
+                            # Dynamic address
+                            if getattr(sub_vlan, 'dynamic', None):
+                                node.update(dynamic=True, dynamic_index=
+                                    getattr(sub_vlan, 'dynamic_index', 0))
+                            else:
+                                node.update(
+                                    address=sub_vlan.address,
+                                    network_value=sub_vlan.network_value,
+                                    nodeid=sub_vlan.nodeid)
 
                             for role in management:
                                 if getattr(sub_vlan, role, None):
@@ -362,6 +374,22 @@ def yaml_cluster(engine):
         bgp_peering.append(peer_data)
     if bgp_peering:
         data.update(bgp_peering=bgp_peering)
+    
+    # Netlinks
+    netlinks = []
+    for netlink in engine.routing.netlinks:
+        interface, network, link = netlink
+        netlink = {'interface_id': interface.nicid,
+                   'name': link.name}
+            
+        for gw in link:
+            gateway = gw.routing_node_element
+            netlink.setdefault('destination', []).append(
+                {'name': gateway.name, 'type': gateway.typeof})
+        
+        netlinks.append(netlink)
+    if netlinks:
+        yaml_engine.update(netlinks=netlinks)
     
     # Lastly, get tags
     tags = [tag.name for tag in engine.categories]

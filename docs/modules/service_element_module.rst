@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Each service type currently supported in this module is documented in the example playbook. Each service element type will have a minimum number of arguments that is required to create the element if it does not exist. Service elements supported by this module have their `create` constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'update or create' logic, therefore it is not possible to create the same element twice. If the element exists and the attributes provided are different, the element will be updated before returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, you can reference a member by name which will require it to exist, or you can also specify the required options and create the element if it doesn't exist. If running in check_mode, only fetches will be performed and the state attribute will indicate if an element is not found (i.e. would need to be created).
+* Each service type currently supported in this module is documented as a suboption. Each service element type will have a minimum number of arguments that are required to create the element if it does not exist. Service elements supported by this module have their `create` constructors documented at http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements. This module uses a 'update or create' logic, therefore it is not possible to create the same element twice. If the element exists and the attributes provided are different, the element will be updated before returned. It also means this module can be run multiple times with only slight modifications to the playbook. This is useful when an error is seen with a duplicate name, etc and you must re-adjust the playbook and re-run. For groups, members must be referenced by type and name. Members can be services that are also being created by the same playbook. If running in check_mode,' only fetches will be performed and the state attribute will indicate if an element is not found (i.e. would need to be created).
 
 
 
@@ -372,68 +372,79 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create a service element. Check smc-python documentation for required fields.
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Example service element and service group creation
-        service_element:
-          elements:
-            - tcp_service: 
-                name: myservice
-                min_dst_port: 8080
-                max_dst_port: 8100
-            - udp_service:
-                name: myudp
-                min_dst_port: 8090
-                max_dst_port: 8091
-                comment: created by dlepage
-            - ip_service:
-                name: new service
-                protocol_number: 8
-                comment: custom EGP service
-            - ethernet_service:
-                name: myethernet service
-                frame_type: eth2
-                value1: 32828
-            - icmp_service:
-                name: custom icmp
-                icmp_type: 3
-                icmp_code: 7
-                comment: custom icmp services
-            - icmp_ipv6_service:
-                name: my v6 icmp
-                icmp_type: 139
-                comment: Neighbor Advertisement Message
-            - tcp_service_group:
-                name: mygroup
-                members:
-                  - tcp_service:
-                      name: newservice80
-                      min_dst_port: 80
-            - service_group:
-                name: mysvcgrp
-                members:
-                  - tcp_service:
-                      name: newservice80
-            - udp_service_group:
-                name: myudp2000
-                members:
-                  - udp_service:
-                      name: myudp
-                  - udp_service:
-                      name: udp2000
-                      min_dst_port: 2000
-            - icmp_service_group:
-                name: myicmp
-                members:
-                  - icmp_service:
-                      name: custom icmp
-            - ip_service_group:
-                name: myipservices
-                members:
-                  - ip_service:
-                      name: new service
+    - name: Example service element creation
+      register: result
+      service_element:
+        smc_logging:
+          level: 10
+          path: /Users/davidlepage/Downloads/ansible-smc.log
+        elements:
+          - tcp_service: 
+              name: myservice
+              min_dst_port: 8080
+              max_dst_port: 8100
+          - tcp_service:
+              name: newservice80
+              min_dst_port: 80
+          - udp_service:
+              name: myudp
+              min_dst_port: 8090
+              max_dst_port: 8091
+              comment: created by dlepage
+          - udp_service:
+              name: udp2000
+              min_dst_port: 2000
+          - ip_service:
+              name: new service
+              protocol_number: 8
+              comment: custom EGP service
+          - ethernet_service:
+              name: 8021q frame
+              frame_type: eth2
+              value1: "0x8100"
+          - icmp_service:
+              name: custom icmp
+              icmp_type: 3
+              icmp_code: 7
+              comment: custom icmp services
+          - icmp_ipv6_service:
+              name: my v6 icmp
+              icmp_type: 139
+              comment: Neighbor Advertisement Message
+          - tcp_service_group:
+              name: mygroup
+              members:
+                  tcp_service:
+                  - newservice80
+          - service_group:
+              name: mysvcgrp
+              members:
+                  tcp_service:
+                  - newservice80
+                  udp_service:
+                  - myudp
+                  - udp2000
+                  icmp_service:
+                  - custom icmp
+          - udp_service_group:
+              name: myudpservices
+              members:
+                  udp_service:
+                  - myudp
+                  - udp2000
+          - icmp_service_group:
+              name: myicmp
+              members:
+                  icmp_service:
+                  - custom icmp
+          - icmp_service_group:
+              name: myemptygroup
+              members:
+          - ip_service_group:
+              name: myipservices
+              members:
+                  ip_service:
+                  - new service
     
     - name: Delete all service elements
       register: result
@@ -490,7 +501,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'max_dst_port': None, 'type': 'tcp_service', 'name': 'myservice', 'min_dst_port': 8080}, {'comment': None, 'max_dst_port': 8091, 'type': 'udp_service', 'name': 'myudp', 'min_dst_port': 8090}, {'comment': 'custom EGP service', 'protocol_number': '8', 'type': 'ip_service', 'name': 'new service'}, {'comment': None, 'frame_type': 'eth2', 'type': 'ethernet_service', 'name': 'myethernet service', 'value1': None}, {'comment': 'custom icmp services', 'icmp_code': 7, 'icmp_type': 3, 'type': 'icmp_service', 'name': 'custom icmp'}, {'comment': 'Neighbor Advertisement Message', 'icmp_type': 139, 'type': 'icmp_ipv6_service', 'name': 'my v6 icmp'}, {'comment': None, 'type': 'tcp_service_group', 'name': 'mygroup', 'members': ['http://172.18.1.151:8082/6.4/elements/tcp_service/611']}]</td>
+    <td align=center>[{'action': 'created', 'type': 'tcp_service', 'name': 'myservice'}, {'type': 'tcp_service', 'name': 'newservice80'}, {'action': 'created', 'type': 'udp_service', 'name': 'myudp'}, {'type': 'udp_service', 'name': 'udp2000'}]</td>
     </tr>
     </table>
     </br></br>

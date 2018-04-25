@@ -15,9 +15,9 @@ DOCUMENTATION = '''
 module: service_element
 short_description: Create, modify or delete service elements
 description:
-    - Each service type currently supported in this module is documented in the example
-      playbook. Each service element type will have a minimum number of arguments
-      that is required to create the element if it does not exist. Service elements
+    - Each service type currently supported in this module is documented as a suboption.
+      Each service element type will have a minimum number of arguments
+      that are required to create the element if it does not exist. Service elements
       supported by this module have their `create` constructors documented at
       U(http://smc-python.readthedocs.io/en/latest/pages/reference.html#elements).
       This module uses a 'update or create' logic, therefore it is not possible to create
@@ -25,10 +25,10 @@ description:
       different, the element will be updated before returned. It also means this module can
       be run multiple times with only slight modifications to the playbook. This is useful
       when an error is seen with a duplicate name, etc and you must re-adjust the playbook
-      and re-run. For groups, you can reference a member by name which will require it to
-      exist, or you can also specify the required options and create the element if it doesn't
-      exist. If running in check_mode, only fetches will be performed and the state attribute
-      will indicate if an element is not found (i.e. would need to be created).
+      and re-run. For groups, members must be referenced by type and name. Members can be
+      services that are also being created by the same playbook. If running in check_mode,'
+      only fetches will be performed and the state attribute will indicate if an element is
+      not found (i.e. would need to be created).
 
 version_added: '2.5'
 
@@ -166,6 +166,18 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
       service_group:
         description:
           - A group of service elements of any service type
@@ -181,6 +193,18 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
       udp_service_group:
         description:
           - A group of service elements of UDP services
@@ -196,6 +220,18 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
       icmp_service_group:
         description:
           - A group of service elements of ICMP services
@@ -211,6 +247,18 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
       ip_service_group:
         description:
           - A group of service elements of IP services
@@ -226,6 +274,18 @@ options:
               - A list of members by service element, either the name field must be
                 defined or the name and optional parts to create the element
             type: list
+          append_lists:
+            description:
+              - Append defined members to the existing list of group members. Setting this
+                to false will overwrite the existing group with the defined members
+            type: bool
+            default: false
+          remove_members:
+            description:
+              - Set to true to reverse the group logic by specifying the defined members
+                be deleted from the group. This setting is mutually exclusive with I(append_lists)
+            type: bool
+            default: false
   ignore_err_if_not_found:
     description:
       - When deleting elements, whether to ignore an error if the element is not found.
@@ -251,68 +311,79 @@ author:
 
 
 EXAMPLES = '''
-- name: Create a service element. Check smc-python documentation for required fields.
-  hosts: localhost
-  gather_facts: no
-  tasks:
-  - name: Example service element and service group creation
-    service_element:
-      elements:
-        - tcp_service: 
-            name: myservice
-            min_dst_port: 8080
-            max_dst_port: 8100
-        - udp_service:
-            name: myudp
-            min_dst_port: 8090
-            max_dst_port: 8091
-            comment: created by dlepage
-        - ip_service:
-            name: new service
-            protocol_number: 8
-            comment: custom EGP service
-        - ethernet_service:
-            name: myethernet service
-            frame_type: eth2
-            value1: 32828
-        - icmp_service:
-            name: custom icmp
-            icmp_type: 3
-            icmp_code: 7
-            comment: custom icmp services
-        - icmp_ipv6_service:
-            name: my v6 icmp
-            icmp_type: 139
-            comment: Neighbor Advertisement Message
-        - tcp_service_group:
-            name: mygroup
-            members:
-              - tcp_service:
-                  name: newservice80
-                  min_dst_port: 80
-        - service_group:
-            name: mysvcgrp
-            members:
-              - tcp_service:
-                  name: newservice80
-        - udp_service_group:
-            name: myudp2000
-            members:
-              - udp_service:
-                  name: myudp
-              - udp_service:
-                  name: udp2000
-                  min_dst_port: 2000
-        - icmp_service_group:
-            name: myicmp
-            members:
-              - icmp_service:
-                  name: custom icmp
-        - ip_service_group:
-            name: myipservices
-            members:
-              - ip_service:
-                  name: new service
+- name: Example service element creation
+  register: result
+  service_element:
+    smc_logging:
+      level: 10
+      path: /Users/davidlepage/Downloads/ansible-smc.log
+    elements:
+      - tcp_service: 
+          name: myservice
+          min_dst_port: 8080
+          max_dst_port: 8100
+      - tcp_service:
+          name: newservice80
+          min_dst_port: 80
+      - udp_service:
+          name: myudp
+          min_dst_port: 8090
+          max_dst_port: 8091
+          comment: created by dlepage
+      - udp_service:
+          name: udp2000
+          min_dst_port: 2000
+      - ip_service:
+          name: new service
+          protocol_number: 8
+          comment: custom EGP service
+      - ethernet_service:
+          name: 8021q frame
+          frame_type: eth2
+          value1: "0x8100"
+      - icmp_service:
+          name: custom icmp
+          icmp_type: 3
+          icmp_code: 7
+          comment: custom icmp services
+      - icmp_ipv6_service:
+          name: my v6 icmp
+          icmp_type: 139
+          comment: Neighbor Advertisement Message
+      - tcp_service_group:
+          name: mygroup
+          members:
+              tcp_service:
+              - newservice80
+      - service_group:
+          name: mysvcgrp
+          members:
+              tcp_service:
+              - newservice80
+              udp_service:
+              - myudp
+              - udp2000
+              icmp_service:
+              - custom icmp
+      - udp_service_group:
+          name: myudpservices
+          members:
+              udp_service:
+              - myudp
+              - udp2000
+      - icmp_service_group:
+          name: myicmp
+          members:
+              icmp_service:
+              - custom icmp
+      - icmp_service_group:
+          name: myemptygroup
+          members:
+      - ip_service_group:
+          name: myipservices
+          members:
+              ip_service:
+              - new service
 
 - name: Delete all service elements
   register: result
@@ -350,66 +421,32 @@ RETURN = '''
 state:
     description: Current state of service elements
     returned: always
-    type: list    
+    type: list
     sample: [
         {
-            "comment": null, 
-            "max_dst_port": null, 
-            "min_dst_port": 8080, 
+            "action": "created", 
             "name": "myservice", 
             "type": "tcp_service"
         }, 
         {
-            "comment": null, 
-            "max_dst_port": 8091, 
-            "min_dst_port": 8090, 
+            "name": "newservice80", 
+            "type": "tcp_service"
+        }, 
+        {
+            "action": "created", 
             "name": "myudp", 
             "type": "udp_service"
         }, 
         {
-            "comment": "custom EGP service", 
-            "name": "new service", 
-            "protocol_number": "8", 
-            "type": "ip_service"
-        }, 
-        {
-            "comment": null, 
-            "value1": null, 
-            "frame_type": "eth2", 
-            "name": "myethernet service", 
-            "type": "ethernet_service"
-        }, 
-        {
-            "comment": "custom icmp services", 
-            "icmp_code": 7, 
-            "icmp_type": 3, 
-            "name": "custom icmp", 
-            "type": "icmp_service"
-        }, 
-        {
-            "comment": "Neighbor Advertisement Message", 
-            "icmp_type": 139, 
-            "name": "my v6 icmp", 
-            "type": "icmp_ipv6_service"
-        }, 
-        {
-            "comment": null, 
-            "members": [
-                "http://172.18.1.151:8082/6.4/elements/tcp_service/611"
-            ], 
-            "name": "mygroup", 
-            "type": "tcp_service_group"
-        }
-    ]
+            "name": "udp2000", 
+            "type": "udp_service"
+        }]
 '''
 
 import traceback
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase,
-    service_type_dict,
-    element_dict_from_obj,
-    update_or_create,
-    delete_element)
+    StonesoftModuleBase, Cache, service_type_dict,
+    update_or_create, delete_element)
 
 
 try:
@@ -428,6 +465,7 @@ class ServiceElement(StonesoftModuleBase):
         )
     
         self.elements = None
+        self.ignore_err_if_not_found = None
         
         self.results = dict(
             changed=False,
@@ -443,78 +481,121 @@ class ServiceElement(StonesoftModuleBase):
         changed = False
         ELEMENT_TYPES = service_type_dict()
         
-        if state == 'absent':
-            for element in self.elements:
-                for typeof in element:
-                    if typeof not in ELEMENT_TYPES:
-                        self.fail(msg='Element specified is not valid, got: {}, valid: {}'
-                            .format(typeof, ELEMENT_TYPES.keys()))
-                    else:
-                        if not self.check_mode:
-                            for elements in element[typeof]:
-                                result = delete_element(
-                                    ELEMENT_TYPES.get(typeof)['type'](elements), self.ignore_err_if_not_found)
-                                if result:
-                                    self.results['state'].append(result)
-                                else:
-                                    changed = True
-        else:
-            # Validate elements before proceeding
-            for element in self.elements:
-                self.is_element_valid(element, ELEMENT_TYPES)
-        
-            try:
-                if state == 'present':
-                    for element in self.elements:
-                        for typeof, _ in element.items():
-                            if 'group' in typeof:
-                                result = self.update_group(element, ELEMENT_TYPES)
-                            else:
-                                result = update_or_create(
-                                    element, ELEMENT_TYPES, check_mode=self.check_mode)
+        try:
+            if state == 'present':
+                # Retrieve naes of service groups
+                group_types = [grp for grp in ELEMENT_TYPES.keys() if 'group' in grp]
+                
+                # Validate elements before proceeding.
+                groups = []
+                for element in self.elements:
+                    self.is_element_valid(element, ELEMENT_TYPES)
+                    for typeof in element:
+                        if typeof in group_types:
+                            groups.append(element)
+                
+                if groups:
+                    cache = self.enum_group_members(groups, group_types)
+                    if cache.missing:
+                        self.fail(msg='Group members referenced are missing and are not being '
+                            'created in this playbook: %s' % cache.missing)
+                
+                # Call update_or_create for elements that are NOT groups first
+                for element in self.elements:
+                    for typeof, _ in element.items():
+                        if typeof not in group_types: # Groups are deferred
+                            result = update_or_create(
+                                element, ELEMENT_TYPES, check_mode=self.check_mode)
+                            self.results['state'].append(result)
                         
-                            if self.check_mode:
-                                if result is not None:
-                                    self.results['state'].append(result)
-                            else:            
-                                changed = True
-        
-                                self.results['state'].append(
-                                    element_dict_from_obj(result, ELEMENT_TYPES))
+                # Process groups now         
+                for group in groups:
+    
+                    if self.check_mode:
+                        result = update_or_create(group, ELEMENT_TYPES, check_mode=True)
+                        self.results['state'].append(result)
+                    
+                    else:
+                        # Run through cache again, entries that exist will not be
+                        # added twice but this captures elements that might have been
+                        # added earlier by the playbook run if they are not found
+                        grouptype = group.keys()[0]
+                        members = group.get(grouptype, {}).get('members', {})
+                        if members:
+                            cache.add_many([members])
+                    
+                            # Add to new members list
+                            _members = [cache.get(typeof, value).href
+                                for typeof, member in members.items()
+                                for value in member]
+                        else: # No members defined
+                            _members = []
 
-            except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
+                        group.setdefault(grouptype, {}).update(
+                            members=_members)
+                        
+                        result = update_or_create(group, ELEMENT_TYPES, check_mode=False)
+                        if 'action' in result:
+                            changed = True
+                        self.results['state'].append(result)
+                
+                if self.check_mode:
+                    return self.results
+            
+            else:
+                for element in self.elements:
+                    for typeof in element:
+                        if typeof not in ELEMENT_TYPES:
+                            self.fail(msg='Element specified is not valid, got: {}, valid: {}'
+                                .format(typeof, ELEMENT_TYPES.keys()))
+                        else:
+                            if not self.check_mode:
+                                for elements in element[typeof]:
+                                    result = delete_element(
+                                        ELEMENT_TYPES.get(typeof)['type'](elements),
+                                        self.ignore_err_if_not_found)
+                                    if 'action' in result:
+                                        changed = True
+                                    self.results['state'].append(result)
+                                    
+        except SMCException as err:
+            self.fail(msg=str(err), exception=traceback.format_exc())
         
         self.results['changed'] = changed
         return self.results
     
-    def update_group(self, group_dict, type_dict):
+    def enum_group_members(self, groups, group_types):
         """
-        Process a group and it's members (if any). Each group member can
-        be referenced by name only, or they can be created like a normal
-        element nested in the group.
+        Check group membership. Groups reference only the type of element and
+        the names of those members. If the element is being created, skip the
+        existence check. If the member is not being created, attempt to fetch
+        the member and save to cache. Return the cache. Check cache.missing
+        before continuing to ensure all required elements are found.
         
-        :param dict group_dict: dict of group info
-        :param dict type_dict: dict of all supported elements
+        :param list groups: list of groups extracted from elements
+        :param list group_types: all supported group types by name
+        :rtype: Cache
         """
-        members = []
-        group_key = group_dict.keys().pop()
-        g = group_dict.get(group_key)
-        if g.get('members'):
-            for member in g['members']:
-                m = update_or_create(member, type_dict, check_mode=self.check_mode)
-                if self.check_mode:
-                    if m is not None:
-                        members.append(m)
-                else:
-                    members.append(m.href)
-    
-        group_dict[group_key]['members'] = members
-        result = update_or_create(group_dict, type_dict, check_mode=self.check_mode)
-        if self.check_mode:
-            if result is None and members:
-                return group_dict
-        return result
+        to_be_created = {} # dict of element by type: set([names]) to be created.
+        
+        # If groups reference elements that are to be created, skip validating.
+        # Otherwise check for existence
+        for element in self.elements:
+            for typeof, values in element.items():
+                if typeof not in group_types:
+                    to_be_created.setdefault(typeof, set()).add(
+                        values.get('name'))
+
+        cache = Cache()
+        for group in groups:
+            for _, values in group.items():
+                members = {} if values.get('members') is None else values['members']
+                for typeof, member in members.items():
+                    for name in member:
+                        if name not in to_be_created.get(typeof, set()):
+                            cache._add_entry(typeof, name)
+        return cache
+   
 
 def main():
     ServiceElement()

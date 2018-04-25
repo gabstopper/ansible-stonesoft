@@ -10,7 +10,7 @@
         path: /Users/davidlepage/Downloads/ansible-smc.log
       elements:
         - host: 
-            name: hosta
+            name: hostb
             address: 1.1.1.1
             ipv6_address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
             secondary:
@@ -43,125 +43,40 @@
               - 1.1.1.2
               - 1.1.1.3
               - 1.1.1.4
-        - group: 
-            name: mygroup
-            members:
-              - host: 
-                  name: hosta
         - group:
-            name: newgroupa
+            name: foogroup
+            #remove_members: true
+            #append_lists: true
             members:
-              - host:
-                  name: newhostb
-                  address: 1.1.1.1
-
-  - assert:
-      that:
-        - result.state|length == 9
-  - assert:
-      that:
-        - result.state[0].address == "1.1.1.1" and result.state[0].name == "hosta"
-        - result.state[0].secondary|length ==2
-        - result.state[0].ipv6_address
-  - assert:
-      that:
-        - result.state[1].name == "networka" and result.state[1].ipv4_network == "3.3.3.0/24"
-        - result.state[1].ipv6_network
-  - assert:
-      that:
-        - result.state[2].name == "myrange" and result.state[2].ip_range == "1.1.1.1-1.1.1.10"
-  - assert:
-      that:
-        - result.state[3].name == "myzone"
-  - assert:
-      that:
-        - result.state[4].name == "mydomain.com" and result.state[4].comment == "foo"
-  - assert:
-      that:
-        - result.state[5].name == "myrouter" and result.state[5].address == "172.18.1.254"
-        - result.state[5].ipv6_address
-        - result.state[5].secondary| length == 1
-  - assert:
-      that:
-        - result.state[6].name == "myiplist"
-        - result.state[6].iplist|length == 4
-  - assert:
-      that:
-        - result.state[7].name == "mygroup"
-        - result.state[7].members|length == 1
-  - assert:
-      that:
-        - result.state[8].name == "newgroupa"
-        - result.state[8].members|length == 1
-
-  - name:
-    register: result
-    network_element_facts:
-      smc_logging:
-        level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
-      element: group
-      filter: mygroup
-      exact_match: yes
-      expand:
-        - group
-
-  - assert:
-      that:
-        - item.name == "hosta"
-        - elements[0].members|length == 1
-    with_items: '{{ elements[0].members }}'
-  
-  - name:
-    register: result
-    network_element_facts:
-      element: group
-      filter: newgroupa
-      exact_match: yes
-      expand:
-        - group
-
-  - assert:
-      that:
-        - item.name == "newhostb"
-        - item.type == "host"
-        - item.address == "1.1.1.1"
-    with_items: '{{ elements[0].members }}'
-
-  - name:
-    register: result
-    network_element:
-        smc_logging:
-            level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
-        state: absent
-        elements:
-            - group:
-                - mygroup
-                - newgroupa
-            - host:
+                host:
                 - hosta
                 - hostb
-            - network:
+                network:
                 - networka
-            - address_range:
-                - myrange
-            - interface_zone:
-                - myzone
-            - domain_name:
-                - mydomain.com
-            - router:
-                - myrouter
-            - ip_list:
-                - myiplist
-
-  - assert:
-      that:
-        - item.name == "hostb"
-    with_items: '{{ result.state }}'
-        
-        
-
-              
-        
-
+        - group:
+            name: emptyregulargrp
+            members:
+        - router:
+            name: myrouter2
+            address: 13.13.13.13
+        - network:
+            name: mynetwork2
+            ipv4_network: 13.13.13.0/24
+        - netlink:
+            name: mynetlink2
+            gateway:
+                name: myrouter2
+                type: router
+            network:
+            -   mynetwork2
+            domain_server_address:
+                -   8.8.8.8
+                -   8.8.7.7
+            probe_address:
+                -   10.10.10.1
+            comment: added by ansible
+    #     - host:
+    #         - hosta
+    #         - hostb
+    #         - 2.2.2.4
+    #   state: absent

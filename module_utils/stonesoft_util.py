@@ -11,6 +11,7 @@ from ansible.module_utils.basic import AnsibleModule
 try:
     from smc import session
     import smc.elements.network as network
+    import smc.elements.netlink as netlink
     import smc.elements.group as group
     import smc.elements.service as service
     from smc.core.engine import Engine
@@ -36,7 +37,7 @@ class Cache(object):
     
     def __init__(self):
         self.missing = []
-        self.cache = {}
+        self.cache = {} # typeof: [Element1, Element2, ..]
         
     def add_many(self, list_of_entries):
         """
@@ -62,13 +63,17 @@ class Cache(object):
         for typeof, values in dict_of_entries.items():
             for name in values:
                 self._add_entry(typeof, name)
-        
+
     def _add_entry(self, typeof, name):
         # Add entry if it doesn't already exist
         if self.get(typeof, name):
             return
-        result = Search.objects.entry_point(typeof)\
-            .filter(name, exact_match=True).first()
+        if typeof == 'engine':
+            result = Search.objects.context_filter('engine_clusters')\
+                .filter(name, exact_match=True).first()
+        else:
+            result = Search.objects.entry_point(typeof)\
+                .filter(name, exact_match=True).first()
         if result:
             self.cache.setdefault(typeof, []).append(
                 result)
@@ -82,7 +87,23 @@ class Cache(object):
             if value.name == name:
                 return value
 
+    @property
+    def as_string(self):
+        out = {}
+        for typeof, values in self.cache.items():
+            out.setdefault(typeof, []).extend(
+                [(value.name, value.href) for value in values])
+        return out
 
+
+def required_args(clazz):
+    argspec = inspect.getargspec(clazz.create)
+    if argspec.defaults:
+        args = argspec.args[:-len(argspec.defaults)]
+        return args[1:]
+    return argspec.args[1:]
+
+    
 def element_type_dict(map_only=False):
     """ 
     Type dict constructed with valid `create` constructor arguments.
@@ -96,6 +117,7 @@ def element_type_dict(map_only=False):
         router=dict(type=network.Router),
         ip_list=dict(type=network.IPList),
         group=dict(type=group.Group),
+        netlink=dict(type=netlink.StaticNetlink),
         interface_zone=dict(type=network.Zone),
         domain_name=dict(type=network.DomainName))
     
@@ -105,6 +127,7 @@ def element_type_dict(map_only=False):
     for t in types.keys():
         clazz = types.get(t)['type']
         types[t]['attr'] = inspect.getargspec(clazz.create).args[1:]
+        #types[t]['attr'] = required_args(clazz)
     
     return types
 
@@ -210,8 +233,8 @@ def get_or_create(element, type_dict, hint=None, check_mode=False):
         else:
             result = type_dict['type'].get_or_create(filter_key=filter_key, **values)
             return result
-                
 
+                
 def update_or_create(element, type_dict, check_mode=False):
     """
     Update or create the element specified. Set check_mode to only
@@ -225,17 +248,20 @@ def update_or_create(element, type_dict, check_mode=False):
     :return: The result as type Element
     """
     for typeof, values in element.items():
-        type_dict = type_dict.get(typeof)
+        _type_dict = type_dict.get(typeof)
         
+        result = None
         if check_mode:
-            result = type_dict['type'].get(values.get('name'), raise_exc=False)
-            if result is None:
-                return dict(
+            element = _type_dict['type'].get(values.get('name'), raise_exc=False)
+            if element is None:
+                result = dict(
                     name=values.get('name'),
                     type=typeof,
                     msg='Specified element does not exist')
+            else:
+                result = element_dict_from_obj(element, type_dict)
         else:
-            attr_names = type_dict.get('attr', []) # Constructor args
+            attr_names = _type_dict.get('attr', []) # Constructor args
             provided_args = set(values)
                 
             # Guard against calling create for elements that may not exist
@@ -243,11 +269,28 @@ def update_or_create(element, type_dict, check_mode=False):
             if set(attr_names) == set(['name', 'comment']) or \
                 any(arg for arg in provided_args if arg not in ('name',)):
                 
-                result = type_dict['type'].update_or_create(**values)
+                element, modified, created = _type_dict['type'].update_or_create(
+                    with_status=True, **values)
+                
+                result = dict(
+                    name=element.name,
+                    type=element.typeof)
+                
+                if modified or created:
+                    result['action'] = 'created' if created else 'updated'
+
             else:
-                result = type_dict['type'].get(values.get('name'))
-        
-            return result
+                element = _type_dict['type'].get(values.get('name'), raise_exc=False)
+                result = dict(
+                    name=values.get('name'),
+                    type=_type_dict['type'].typeof)
+                
+                if element is None:
+                    result['msg'] = 'Specified element does not exist and parameters did not exist to create'
+                else:
+                    result['action'] = 'fetched'
+                
+        return result
 
 
 def delete_element(element, ignore_if_not_found=True):
@@ -263,20 +306,21 @@ def delete_element(element, ignore_if_not_found=True):
         dependency on this element (i.e. used in policy, etc).
     :return: list or None
     """
+    msg = {}
     try:
         element.delete()
+        msg['action'] = 'deleted'
     except ElementNotFound:
-        if ignore_if_not_found:
-            return dict(
-                name=element.name,
-                type=element.typeof,
-                msg='Element not found, skipping delete')
+        msg['msg'] = 'Element not found, skipping delete'
     except DeleteElementFailed as e:
+        msg['msg'] = str(e)
+    finally:
         if ignore_if_not_found:
             return dict(
                 name=element.name,
                 type=element.typeof,
-                msg=str(e))
+                **msg)
+        raise
     
 
 def format_element(element):
@@ -547,36 +591,40 @@ class StonesoftModuleBase(object):
             member.
         :return: error message on fail, otherwise None
         """
+        if not isinstance(element, dict):
+            self.fail(msg='Elements must be defined as a dict with the key identifying '
+                'the type of element')
         for key, values in element.items():
             if key not in type_dict:
                 self.fail(msg='Unsupported element type: {} provided'.format(key))
     
-            valid_values = type_dict.get(key).get('attr', [])
             # Verify that all attributes are supported for this element type
             provided_values = values.keys() if isinstance(values, dict) else []
+            valid_values = type_dict.get(key).get('attr', [])
+            
             if provided_values:
                 # Name is always required
                 if 'name' not in provided_values:
                     self.fail(msg='Entry: {}, missing required name field'.format(key))
-            
-                for value in provided_values:
-                    if value not in valid_values:
-                        self.fail(msg='Entry type: {} with name {} has an invalid field: {}. '\
-                            'Valid values: {} '.format(key, values['name'], value, valid_values))
                 
                 if check_required:
+                    # Do not enforce extra arguments be provided as kwargs may be supported.
+                    # In addition, update_or_create will always take kwargs
                     required_arg = [arg for arg in valid_values if arg not in ('name', 'comment')]
                     if required_arg: #Something other than name and comment fields
                         if not any(arg for arg in required_arg if arg in provided_values):
                             self.fail(msg='Missing a required argument for {} entry: {}, Valid values: {}'\
                                 .format(key, values['name'], valid_values))
-                
-                if 'group' in element and values.get('members', []):
-                    for element in values['members']:
-                        if not isinstance(element, dict):
-                            return 'Group {} has a member: {} with an invalid format. Members must be '\
-                                'of type dict.'.format(values['name'], element)
-                        return self.is_element_valid(element, type_dict, check_required=False)
+
+                if 'group' in key and values.get('members', []):
+                    if not isinstance(values['members'], dict):
+                        self.fail("Group members should be defined as a dict. Received: %s" %
+                            type(values['members']))
+                    for member_type, type_value in values['members'].items():
+                        if not isinstance(type_value, list):
+                            self.fail(msg='Member type: {} must be in list format'.format(member_type))
+                        if member_type not in type_dict:
+                            self.fail(msg='Group member type is not valid: {}'.format(member_type))
             else:
                 self.fail(msg='Entry type: {} has no values. Valid values: {} '\
                     .format(key, valid_values))

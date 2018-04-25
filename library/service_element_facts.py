@@ -44,6 +44,12 @@ options:
       - udp_service_group
       - ethernet_service
     type: str
+  expand:
+    description:
+      - Optionally expand element attributes that contain only href
+    type: list
+    choices:
+      - group
   
 extends_documentation_fragment:
   - stonesoft
@@ -57,24 +63,33 @@ author:
 
 
 EXAMPLES = '''
-- name: Return all services with limit
-  service_element_facts:
-    limit: 10
+- name: Obtain facts about Service Elements
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all Service elements
+    service_element_facts:
 
-- name: Return only tcp service elements
-  service_element_facts:
-    element: tcp_service
+  - name: Retrieve only TCP Services
+    service_element_facts:
+      element: tcp_service
 
-- name: Return services with 80 in the value (will match defined ports)
-  service_element_facts:
-    limit: 10
-    element: tcp_service
-    filter: 80
+  - name: Retrieve only TCP Services with port 8080
+    service_element_facts:
+      element: tcp_service
+      filter: 8080
 
-- name: Find applications related to facebook
-  service_element_facts:
-    element: application_situation
-    filter: facebook
+  - name: Retrieve TCP Service with HTTP in name
+    service_element_facts:
+      element: tcp_service
+      filter: HTTP
+  
+  - name: Retrieve TCP Service group and expand members
+    service_element_facts:
+      element: tcp_service_group
+      filter: mygroup
+      expand:
+        - group
 '''    
 
 
@@ -127,7 +142,8 @@ class ServiceFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            element=dict(type='str', choices=list(ELEMENT_TYPES.keys()))
+            element=dict(type='str', choices=list(ELEMENT_TYPES.keys())),
+            expand=dict(type='list')
         )
     
         self.element = None
@@ -138,8 +154,7 @@ class ServiceFacts(StonesoftModuleBase):
         
         self.results = dict(
             ansible_facts=dict(
-                services=[]
-            )
+                services=[])
         )
         super(ServiceFacts, self).__init__(self.module_args, is_fact=True)
 
@@ -155,7 +170,7 @@ class ServiceFacts(StonesoftModuleBase):
             result = self.search_by_context()
         
         if self.filter:
-            elements = [element_dict_from_obj(element, ELEMENT_TYPES) for element in result]
+            elements = [element_dict_from_obj(element, ELEMENT_TYPES, self.expand) for element in result]
         else:
             elements = [{'name': element.name, 'type': element.typeof} for element in result]
         

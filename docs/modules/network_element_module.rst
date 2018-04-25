@@ -65,6 +65,16 @@ Options
         </tr>
 
         <tr>
+        <td>netlink<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Create a Static Netlink element</div>
+        </td>
+        </tr>
+
+        <tr>
         <td>group<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
@@ -342,23 +352,27 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Create network elements. See smc-python documentation for required fields.
+    - name: Create a network element
       hosts: localhost
       gather_facts: no
       tasks:
       - name: Example network element creation
+        register: result
         network_element:
+          smc_logging:
+            level: 10
+            path: /Users/davidlepage/Downloads/ansible-smc.log
           elements:
             - host: 
-                name: myhost
+                name: hostb
                 address: 1.1.1.1
                 ipv6_address: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
                 secondary:
                   - 1.1.1.2
                   - 1.1.1.3
             - network:
-                name: mynetwork
-                ipv4_network: 1.1.1.0/24
+                name: networka
+                ipv4_network: 3.3.3.0/24
                 ipv6_network: fc00::/7
                 comment: created by dlepage
             - address_range:
@@ -367,7 +381,8 @@ Examples
             - interface_zone:
                 name: myzone
             - domain_name:
-                name: google.com
+                name: mydomain.com
+                comment: foo
             - router:
                 name: myrouter
                 address: 172.18.1.254
@@ -375,23 +390,46 @@ Examples
                   - 172.18.1.253
                 ipv6_address: 2003:dead:beef:4dad:23:46:bb:101
             - ip_list: 
-                name: mylist
+                name: myiplist
+                comment: testlist
                 iplist:
                   - 1.1.1.1
                   - 1.1.1.2
                   - 1.1.1.3
                   - 1.1.1.4
-            - group: 
-                name: group_referencing_existing_elements
-                members:
-                  - host: 
-                      name: grace
             - group:
-                name: group_and_create_elements_that_dont_exist
+                name: foogroup
+                #remove_members: true
+                #append_lists: true
                 members:
-                  - host:
-                      name: newhost
-                      address: 1.1.1.1
+                    host:
+                    - hosta
+                    - hostb
+                    network:
+                    - networka
+            - group:
+                name: emptyregulargrp
+                members:
+            - router:
+                name: myrouter2
+                address: 13.13.13.13
+            - network:
+                name: mynetwork2
+                ipv4_network: 13.13.13.0/24
+            - netlink:
+                name: mynetlink2
+                gateway:
+                    name: myrouter2
+                    type: router
+                network:
+                -   mynetwork2
+                domain_server_address:
+                    -   8.8.8.8
+                    -   8.8.7.7
+                probe_address:
+                    -   10.10.10.1
+                comment: added by ansible
+    
     
     - name: Delete network elements. Use a list of elements by name
       network_element:
@@ -443,7 +481,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'ipv6_address': None, 'name': 'myhost', 'address': '3.3.3.3', 'type': 'host', 'secondary': []}, {'comment': 'created by dlepage', 'ipv6_network': 'fc00::/7', 'ipv4_network': '3.3.3.0/24', 'type': 'network', 'name': 'mynetwork_ipv6'}, {'comment': None, 'type': 'address_range', 'ip_range': '1.1.1.1-1.1.1.10', 'name': 'myrange'}, {'comment': None, 'type': 'interface_zone', 'name': 'myzone'}, {'comment': None, 'type': 'domain_name', 'name': 'google.com'}, {'comment': None, 'ipv6_address': '2003:dead:beef:4dad:23:46:bb:101', 'name': 'myrouter', 'address': '172.18.1.254', 'type': 'router', 'secondary': ['172.18.1.253']}, {'comment': None, 'iplist': None, 'type': 'ip_list', 'name': 'mylist2'}, {'comment': None, 'type': 'group', 'name': 'group_referencing_existing_elements', 'members': ['http://172.18.1.151:8082/6.4/elements/host/672']}, {'comment': None, 'type': 'group', 'name': 'group_and_create_elements', 'members': ['http://172.18.1.151:8082/6.4/elements/host/705']}]</td>
+    <td align=center>[{'action': 'created', 'type': 'tcp_service', 'name': 'myservice'}, {'type': 'tcp_service', 'name': 'newservice80'}, {'action': 'created', 'type': 'udp_service', 'name': 'myudp'}, {'type': 'udp_service', 'name': 'udp2000'}, {'action': 'created', 'type': 'ip_service', 'name': 'new service'}]</td>
     </tr>
     </table>
     </br></br>

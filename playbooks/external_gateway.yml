@@ -9,9 +9,12 @@
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
       external_endpoint:
-      -   address: 33.33.33.41
+      -   address: 33.33.33.50
           enabled: true
           name: extgw3 (33.33.33.41)
+      -   address: 45.45.45.45
+          enabled: true
+          name: newname
       -   address: 34.34.34.34
           enabled: true
           name: endpoint2 (34.34.34.34)

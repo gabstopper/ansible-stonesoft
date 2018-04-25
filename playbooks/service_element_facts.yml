@@ -18,4 +18,11 @@
     service_element_facts:
       element: tcp_service
       filter: HTTP
+  
+  - name: Retrieve TCP Service group and expand members
+    service_element_facts:
+      element: tcp_service_group
+      filter: mygroup
+      expand:
+        - group
 

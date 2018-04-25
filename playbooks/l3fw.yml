@@ -3,7 +3,7 @@
   gather_facts: no
   tasks:
   - name: Create a single layer 3 firewall
-    l3fw:
+    engine:
       smc_logging:
         level: 10
         path: /Users/davidlepage/Downloads/ansible-smc.log
@@ -14,13 +14,30 @@
           -   external_bgp_peer: bgppeer
               interface_id: '1000'
               name: mypeering4
-          enabled: false
+          enabled: true
           router_id: null
       default_nat: false
       domain_server_address:
       - 8.8.8.8
       file_reputation: false
       interfaces:
+      -   interface_id: '15'
+      -   interface_id: '6'
+          interfaces:
+          -   nodes:
+              -   dynamic: true
+                  dynamic_index: 1
+              vlan_id: '10'
+      -   interface_id: '5'
+          zone_ref: management
+      -   interface_id: '3'
+          interfaces:
+          -   nodes:
+              -   address: 44.44.44.44
+                  network_value: 44.44.44.0/24
+                  nodeid: 1
+              vlan_id: '4'
+          -   vlan_id: '5'
       -   interface_id: '1000'
           interfaces:
           -   nodes:
@@ -28,12 +45,18 @@
                   network_value: 90.90.90.0/24
                   nodeid: 1
           type: tunnel_interface
-      -   interface_id: '6'
+      -   comment: foocomment
+          interface_id: '61'
           interfaces:
           -   nodes:
               -   dynamic: true
-      -   interface_id: '5'
-          zone_ref: management
+                  dynamic_index: 4
+              vlan_id: '61'
+          -   nodes:
+              -   dynamic: true
+                  dynamic_index: 6
+              vlan_id: '62'
+          zone_ref: myzone
       -   interface_id: '56'
           interfaces:
           -   comment: added by api
@@ -42,34 +65,17 @@
                   network_value: 56.56.56.0/24
                   nodeid: 1
               vlan_id: '56'
-      -   interface_id: SWP_0
-      -   interface_id: '20'
-          interfaces:
-          -   nodes:
-              -   address: 11.11.11.11
-                  network_value: 11.11.11.0/24
-                  nodeid: 1
-      -   comment: foocomment
-          interface_id: '1008'
-          interfaces:
-          -   nodes:
-              -   address: 13.13.13.13
-                  network_value: 13.13.13.0/24
-                  nodeid: 1
-          type: tunnel_interface
-          zone_ref: foozone
       -   interface_id: '4'
           interfaces:
           -   vlan_id: '4'
-      -   interface_id: '3'
+      -   comment: Interface with VLAN
+          interface_id: '67'
           interfaces:
           -   nodes:
-              -   address: 4.4.4.5
-                  network_value: 4.4.4.0/24
-                  nodeid: 1
-              -   address: 4.4.4.4
-                  network_value: 4.4.4.0/24
-                  nodeid: 1
+              -   dynamic: true
+                  dynamic_index: 2
+              vlan_id: '10'
+          zone_ref: foozone
       -   interface_id: '2'
           interfaces:
           -   nodes:
@@ -79,7 +85,8 @@
               vlan_id: '8'
               zone_ref: foozone
           zone_ref: management
-      -   interface_id: '1'
+      -   comment: foo comment
+          interface_id: '1'
           interfaces:
           -   nodes:
               -   address: 2.2.2.2
@@ -87,16 +94,37 @@
                   nodeid: 1
               vlan_id: '1'
           -   nodes:
-              -   address: 3.3.3.3
-                  network_value: 3.3.3.0/24
+              -   address: 31.31.31.31
+                  network_value: 31.31.31.0/24
                   nodeid: 1
               vlan_id: '2'
+              zone_ref: myzone
+          zone_ref: myzone123
       -   interface_id: '0'
           interfaces:
           -   nodes:
-              -   address: 1.1.1.1
-                  network_value: 1.1.1.0/24
+              -   address: 11.11.11.11
+                  network_value: 11.11.11.0/24
                   nodeid: 1
+          zone_ref: myzone123
+      -   comment: foo
+          interface_id: '1030'
+          interfaces:
+          -   nodes:
+              -   address: 130.130.130.130
+                  network_value: 130.130.130.0/24
+                  nodeid: 1
+          type: tunnel_interface
+          zone_ref: myzone
+      -   comment: foocomment
+          interface_id: '1008'
+          interfaces:
+          -   nodes:
+              -   address: 13.13.13.13
+                  network_value: 13.13.13.0/24
+                  nodeid: 1
+          type: tunnel_interface
+          zone_ref: foozone
       -   interface_id: '55'
           interfaces:
           -   nodes:
@@ -111,6 +139,36 @@
                   network_value: 52.52.52.0/24
                   nodeid: 1
               vlan_id: '52'
+          -   nodes:
+              -   address: 53.53.53.53
+                  network_value: 53.53.53.0/24
+                  nodeid: 1
+              vlan_id: '53'
+      -   interface_id: '8'
+      -   comment: foocomment
+          interface_id: '66'
+          interfaces:
+          -   nodes:
+              -   dynamic: true
+                  dynamic_index: 3
+          zone_ref: myzone
+      -   comment: foo comment
+          interface_id: '20'
+          interfaces:
+          -   nodes:
+              -   address: 121.121.121.121
+                  network_value: 121.121.121.0/24
+                  nodeid: 1
+          zone_ref: myzone
+      -   comment: Tunnel with two addresses on single FW
+          interface_id: '1005'
+          interfaces:
+          -   nodes:
+              -   address: 5.5.5.5
+                  network_value: 5.5.5.0/24
+                  nodeid: 1
+          type: tunnel_interface
+          zone_ref: myzone123
       -   comment: comment for interface 49
           interface_id: '51'
           interfaces:
@@ -130,17 +188,19 @@
               -   address: 49.49.49.49
                   network_value: 49.49.49.0/24
                   nodeid: 1
-      -   interface_id: '1005'
-          interfaces:
-          -   nodes:
-              -   address: 14.14.14.14
-                  network_value: 14.14.14.0/24
-                  nodeid: 1
-          type: tunnel_interface
       name: myfw
-      primary_mgt: '0'
+      netlinks:
+      -   destination:
+          -   name: foo
+              type: network
+          -   name: foonet
+              type: network
+          interface_id: '51'
+          name: mylink
+      -   interface_id: '3.4'
+          name: netlink
+      primary_mgt: '2.8'
       snmp:
           snmp_agent: testsnmp
           snmp_interface:
-          - '3'
           - '2.8'

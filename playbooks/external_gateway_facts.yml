@@ -2,19 +2,19 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Retrieve all external GW's
-    external_gateway_facts:
+  # - name: Retrieve all external GW's
+  #   external_gateway_facts:
   
-  - name: Get a specific external GW details
-    external_gateway_facts:
-      filter: myremotevpn
+  # - name: Get a specific external GW details
+  #   external_gateway_facts:
+  #     filter: myextgw
   
-  - name: Get a specific external GW, and expand supported attributes
-    external_gateway_facts:
-      filter: extgw3
-      expand:
-        - gateway_profile
-        - vpn_site
+  # - name: Get a specific external GW, and expand supported attributes
+  #   external_gateway_facts:
+  #     filter: myextgw
+  #     expand:
+  #       - gateway_profile
+  #       - vpn_site
   
   - name: Retrieve a specific route VPN and format as playbook YAML
     register: results

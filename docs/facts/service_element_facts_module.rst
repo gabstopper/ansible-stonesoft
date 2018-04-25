@@ -80,6 +80,18 @@ Options
     </tr>
 
     <tr>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>group</li></ul></td>
+	<td>
+        <p>Optionally expand element attributes that contain only href</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td>*</td>
@@ -270,24 +282,33 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Return all services with limit
-      service_element_facts:
-        limit: 10
+    - name: Obtain facts about Service Elements
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Retrieve all Service elements
+        service_element_facts:
     
-    - name: Return only tcp service elements
-      service_element_facts:
-        element: tcp_service
+      - name: Retrieve only TCP Services
+        service_element_facts:
+          element: tcp_service
     
-    - name: Return services with 80 in the value (will match defined ports)
-      service_element_facts:
-        limit: 10
-        element: tcp_service
-        filter: 80
+      - name: Retrieve only TCP Services with port 8080
+        service_element_facts:
+          element: tcp_service
+          filter: 8080
     
-    - name: Find applications related to facebook
-      service_element_facts:
-        element: application_situation
-        filter: facebook
+      - name: Retrieve TCP Service with HTTP in name
+        service_element_facts:
+          element: tcp_service
+          filter: HTTP
+      
+      - name: Retrieve TCP Service group and expand members
+        service_element_facts:
+          element: tcp_service_group
+          filter: mygroup
+          expand:
+            - group
 
 Return Values
 -------------

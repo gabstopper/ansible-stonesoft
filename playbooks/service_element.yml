@@ -13,11 +13,17 @@
             name: myservice
             min_dst_port: 8080
             max_dst_port: 8100
+        - tcp_service:
+            name: newservice80
+            min_dst_port: 80
         - udp_service:
             name: myudp
             min_dst_port: 8090
             max_dst_port: 8091
             comment: created by dlepage
+        - udp_service:
+            name: udp2000
+            min_dst_port: 2000
         - ip_service:
             name: new service
             protocol_number: 8
@@ -38,88 +44,38 @@
         - tcp_service_group:
             name: mygroup
             members:
-              - tcp_service:
-                  name: newservice80
-                  min_dst_port: 80
+                tcp_service:
+                - newservice80
         - service_group:
             name: mysvcgrp
             members:
-              - tcp_service:
-                  name: newservice80
+                tcp_service:
+                - newservice80
+                udp_service:
+                - myudp
+                - udp2000
+                icmp_service:
+                - custom icmp
         - udp_service_group:
-            name: myudp2000
+            name: myudpservices
             members:
-              - udp_service:
-                  name: myudp
-              - udp_service:
-                  name: udp2000
-                  min_dst_port: 2000
+                udp_service:
+                - myudp
+                - udp2000
         - icmp_service_group:
             name: myicmp
             members:
-              - icmp_service:
-                  name: custom icmp
+                icmp_service:
+                - custom icmp
+        - icmp_service_group:
+            name: myemptygroup
+            members:
         - ip_service_group:
             name: myipservices
             members:
-              - ip_service:
-                  name: new service
+                ip_service:
+                - new service
 
-  - assert:
-      that:
-        - result.state|length == 11
-  - assert:
-      that:
-        - result.state[0].name == "myservice"
-        - result.state[0].min_dst_port == 8080
-        - result.state[0].max_dst_port == 8100
-  - assert:
-      that:
-        - result.state[1].name == "myudp"
-        - result.state[1].min_dst_port == 8090
-        - result.state[1].max_dst_port == 8091
-  - assert:
-      that:
-        - result.state[2].name == "new service"
-        - result.state[2].protocol_number == 8
-        - result.state[2].comment == "custom EGP service"
-  - assert:
-      that:
-        - result.state[3].name == "8021q frame"
-        - result.state[3].frame_type == "eth2"
-        - result.state[3].value1 == "0x8100"
-  - assert:
-      that:
-        - result.state[4].name == "custom icmp"
-        - result.state[4].icmp_type == 3
-        - result.state[4].icmp_code == 7
-        - result.state[4].comment == "custom icmp services"
-  - assert:
-      that:
-        - result.state[5].name == "my v6 icmp"
-        - result.state[5].icmp_type == 139
-        - result.state[5].comment == "Neighbor Advertisement Message"
-  - assert:
-      that:
-        - result.state[6].name == "mygroup"
-        - result.state[6].members|length == 1
-  - assert:
-      that:
-        - result.state[7].name == "mysvcgrp"
-        - result.state[7].members|length == 1
-  - assert:
-      that:
-        - result.state[8].name == "myudp2000"
-        - result.state[8].members|length == 2
-  - assert:
-      that:
-        - result.state[9].name == "myicmp"
-        - result.state[9].members|length == 1
-  - assert:
-      that:
-        - result.state[10].name == "myipservices"
-        - result.state[10].members|length == 1
-  
   - name: Delete all service elements
     register: result
     service_element:
@@ -130,10 +86,10 @@
         elements:
             - tcp_service_group:
                 - mygroup
+            - udp_service_group:
+                - myudpservices
             - service_group:
                 - mysvcgrp
-            - udp_service_group:
-                - myudp2000
             - icmp_service_group:
                 - myicmp
             - ip_service_group:
@@ -152,5 +108,7 @@
                 - my v6 icmp
   - assert:
       that:
-        - result.state|length == 0
+        - item.action == "deleted"
+    with_items: '{{ result.state }}'
+
     
