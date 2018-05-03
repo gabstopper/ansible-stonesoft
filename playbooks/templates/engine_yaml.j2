@@ -13,7 +13,7 @@
   {% endif %}
     smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
 {% for engine in results.ansible_facts.engines %}
 {{- engine | to_nice_yaml | indent(6, True) }}
 {% endfor %}
