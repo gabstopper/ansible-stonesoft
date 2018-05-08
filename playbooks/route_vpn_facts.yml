@@ -14,7 +14,7 @@
     route_vpn_facts:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
       filter: myrbvpn
       expand:
         - rbvpn_tunnel_side_a
@@ -27,7 +27,7 @@
     route_vpn_facts:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
       filter: myrbvpn
       as_yaml: true
 

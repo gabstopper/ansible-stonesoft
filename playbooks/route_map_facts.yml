@@ -14,7 +14,7 @@
     route_map_facts:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
       filter: newroutemap
       as_yaml: true
 

@@ -297,7 +297,7 @@ EXAMPLES = '''
     l3fw_cluster:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
       antivirus: false
       backup_mgt: '2.34'
       bgp:

@@ -124,7 +124,7 @@ EXAMPLES = '''
   route_map:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     comment: created by ansible
     name: routemap_for_aws
     rules:

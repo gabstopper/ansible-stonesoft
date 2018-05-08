@@ -361,7 +361,7 @@ Examples
         network_element:
           smc_logging:
             level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
+            path: ansible-smc.log
           elements:
             - host: 
                 name: hostb
@@ -435,7 +435,7 @@ Examples
       network_element:
         smc_logging:
             level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
+            path: ansible-smc.log
         state: absent
         elements:
           - group:
