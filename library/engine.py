@@ -293,7 +293,7 @@ EXAMPLES = '''
   l3fw:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     name: myfw
     mgmt_interface: 10
     interfaces:

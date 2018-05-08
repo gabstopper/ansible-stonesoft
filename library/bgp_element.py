@@ -70,7 +70,7 @@ EXAMPLES = '''
   bgp_element:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     elements:
       - ip_access_list: 
           name: myservice2
@@ -150,7 +150,7 @@ EXAMPLES = '''
   bgp_element:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     elements:
       - ip_access_list: 
           name: myservice2
@@ -167,7 +167,7 @@ EXAMPLES = '''
   bgp_element:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     elements:
       - ip_access_list: 
           name: myservice2
