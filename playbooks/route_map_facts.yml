@@ -14,12 +14,12 @@
     route_map_facts:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
-      filter: newroutemap
+        path: ansible-smc.log
+      #filter: newroutemap
       as_yaml: true
 
   - name: Write the yaml using a jinja template
-    template: src=templates/facts_yaml.j2 dest=./route_map.yml
+    template: src=templates/facts_yaml.j2 dest=./route_map2.yml
     vars:
       playbook: route_map
     

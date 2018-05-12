@@ -156,6 +156,8 @@ def to_dict(vpn, expand=None):
 
         satellite.append({'name': sgw.gateway.name, 'type': sgw.gateway.typeof, 'vpn_site': vpn_site})
     
+    mobile_vpn = [mobile.name for mobile in vpn.mobile_gateway_node]
+        
     gateway_tunnel = []
     
     for tunnel in vpn.tunnels:
@@ -174,7 +176,8 @@ def to_dict(vpn, expand=None):
         gateway_tunnel.append(tunnel_map)
 
     vpn.data.update(central_gateway=central, satellite_gateway=satellite,
-                    gateway_tunnel=gateway_tunnel)       
+                    gateway_tunnel=gateway_tunnel,
+                    mobile_vpn_gateway=mobile_vpn)
     vpn.close()
     return format_element(vpn)
 

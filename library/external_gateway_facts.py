@@ -174,16 +174,13 @@ def to_dict(external_gw, expand=None):
 
     return format_element(external_gw)
 
-
-def expandable():
-    return ('vpn_site', 'gateway_profile')
-
+expands = ('vpn_site', 'gateway_profile')
 
 class ExternalGWFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            expand=dict(type='list')
+            expand=dict(type='list', default=[])
         )
         self.element = 'external_gateway'
         self.limit = None
@@ -193,27 +190,26 @@ class ExternalGWFacts(StonesoftModuleBase):
         self.exact_match = None
         self.case_sensitive = None
         
+        required_if=([
+            ('as_yaml', True, ['filter'])])
+        
         self.results = dict(
             ansible_facts=dict(
                 external_gateway=[]
             )
         )
-        super(ExternalGWFacts, self).__init__(self.module_args, is_fact=True)
+        super(ExternalGWFacts, self).__init__(self.module_args, required_if=required_if,
+                                              is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if self.as_yaml and not self.filter:
-            self.fail(msg='You must provide a filter to use the as_yaml '
-                'parameter')
-        
-        if self.expand:
-            for specified in self.expand:
-                if specified not in expandable():
-                    self.fail(msg='Expandable attributes: {}, got: {}'.format(
-                        expandable(), specified))
-                    
+        for attr in self.expand:
+            if attr not in expands:
+                self.fail(msg='Invalid expandable attribute: %s provided. Valid '
+                    'options are: %s'  % (attr, expands))
+           
         result = self.search_by_type(ExternalGateway)
         # Search by specific element type
         if self.filter:

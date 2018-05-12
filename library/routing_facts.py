@@ -22,7 +22,7 @@ description:
 version_added: '2.5'
 
 options:
-  element:
+  filter:
     description:
       - Specify the name of the engine in order to find the routing table
     required: true
@@ -85,10 +85,10 @@ class RoutingFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
-            element=dict(type='str', required=True)
+            filter=dict(type='str', required=True)
         )
         
-        self.element = None
+        self.filter = None
         
         self.results = dict(
             ansible_facts=dict(
@@ -103,7 +103,7 @@ class RoutingFacts(StonesoftModuleBase):
         
         elements = []
         try:
-            engine = Engine(self.element)
+            engine = Engine(self.filter)
             elements = [route_dict_from_obj(element) for element in engine.routing_monitoring]
             
         except SMCException as err:

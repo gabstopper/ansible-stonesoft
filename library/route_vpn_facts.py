@@ -256,11 +256,6 @@ try:
     from smc.vpn.route import RouteVPN
 except ImportError:
     pass
-    
-
-def valid_attr():
-    return ('rbvpn_tunnel_side_a', 'rbvpn_tunnel_side_b',
-        'vpn_profile_ref', 'monitoring_group_ref')
 
 
 def to_yaml(vpn):
@@ -335,6 +330,9 @@ def to_dict(vpn, expand=None):
             vpn.data['rbvpn_tunnel_side_b'] = format_element(vpn.remote_endpoint.gateway)
         return format_element(vpn)
 
+expands = ('rbvpn_tunnel_side_a', 'rbvpn_tunnel_side_b',
+    'vpn_profile_ref', 'monitoring_group_ref')
+
     
 class RouteVPNFacts(StonesoftModuleBase):
     def __init__(self):
@@ -350,26 +348,25 @@ class RouteVPNFacts(StonesoftModuleBase):
         self.exact_match = None
         self.case_sensitive = None
         
+        required_if=([
+            ('as_yaml', True, ['filter'])])
+        
         self.results = dict(
             ansible_facts=dict(
                 route_vpn=[]
             )
         )
-        super(RouteVPNFacts, self).__init__(self.module_args, is_fact=True)
+        super(RouteVPNFacts, self).__init__(self.module_args, required_if=required_if,
+                                            is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
-        
-        if self.as_yaml and not self.filter:
-            self.fail(msg='You must provide a filter to use the as_yaml '
-                'parameter')
-        
-        valid = valid_attr()
+
         for attr in self.expand:
-            if attr not in valid:
+            if attr not in expands:
                 self.fail(msg='Invalid expandable attribute provided: {}. Valid options '
-                    'are {}'.format(attr, list(valid)))
+                    'are {}'.format(attr, expands))
             
         result = self.search_by_type(RouteVPN)
         # Search by specific element type

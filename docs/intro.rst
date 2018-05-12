@@ -11,7 +11,7 @@ Requirements
 
 Stonesoft Ansible modules are dependent on the following library:
 
-- smc-python >= 0.5.7
+- smc-python >= 0.6.0
 
 They have also been tested on both python 2.x and 3.x versions.
 

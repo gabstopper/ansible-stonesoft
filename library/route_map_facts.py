@@ -156,8 +156,7 @@ def to_yaml(rm):
                          element=elem,
                          type=condition.type))
         
-        routemap.setdefault('rules', []).append(
-            r)
+        routemap.setdefault('rules', []).append(r)
     return routemap
 
     
@@ -171,20 +170,19 @@ class RouteMapFacts(StonesoftModuleBase):
         self.exact_match = None
         self.case_sensitive = None
         
+        required_if=([
+            ('as_yaml', True, ['filter'])])
+
         self.results = dict(
             ansible_facts=dict(
                 route_map=[]
             )
         )
-        super(RouteMapFacts, self).__init__({}, is_fact=True)
+        super(RouteMapFacts, self).__init__({}, required_if=required_if, is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
-        
-        if self.as_yaml and not self.filter:
-            self.fail(msg='You must provide a filter to use the as_yaml '
-                'parameter')
         
         result = self.search_by_type(RouteMap)
         if self.filter:

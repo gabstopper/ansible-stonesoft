@@ -145,7 +145,7 @@ class NetworkElementFacts(StonesoftModuleBase):
         
         self.module_args = dict(
             element=dict(type='str', choices=list(ELEMENT_TYPES.keys())),
-            expand=dict(type='list')
+            expand=dict(type='list', default=[])
         )
         self.element = None
         self.limit = None
@@ -165,11 +165,10 @@ class NetworkElementFacts(StonesoftModuleBase):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if self.expand:
-            for specified in self.expand:
-                if specified not in ('group',):
-                    self.fail(msg='Group is only supported element for expand, got: {}'
-                        .format(specified))
+        for attr in self.expand:
+            if attr not in ('group',):
+                self.fail(msg='Invalid expandable attribute: %s provided. Valid '
+                    'options are: group'  % attr)
         
         # Search by specific element type
         if self.element:

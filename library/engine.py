@@ -562,7 +562,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     itf = self.check_interfaces()
                 else:
                     itf = []
-            
+
             cache = Cache()
             
             # SNMP settings
@@ -815,7 +815,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     changed = True
 
         except SMCException as err:
-                self.fail(msg=str(err), exception=traceback.format_exc())
+            self.fail(msg=str(err), exception=traceback.format_exc())
         
         if not changed and self.results.get('state'):
             changed = True

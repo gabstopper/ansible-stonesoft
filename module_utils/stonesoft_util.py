@@ -17,10 +17,8 @@ try:
     from smc.core.engine import Engine
     from smc.base.collection import Search
     from smc.elements.other import Category
-    from smc.api.exceptions import (
-        ConfigLoadError,
-        SMCException,
-        ElementNotFound, DeleteElementFailed)
+    from smc.api.exceptions import ConfigLoadError, SMCException, \
+        UserElementNotFound, ElementNotFound, DeleteElementFailed
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
@@ -63,7 +61,41 @@ class Cache(object):
         for typeof, values in dict_of_entries.items():
             for name in values:
                 self._add_entry(typeof, name)
+    
+    def _add_user_entries(self, typeof, users):
+        # User elements are fetched by direct href
+        domain_dict = {}
+        for user in users:
+            _user, _domain = user.split(',domain=')
+            domain_dict.setdefault(_domain, []).append(_user)
+        
+        func = 'get_groups' if typeof == 'groups' else 'get_users'
+    
+        for domain, uids in domain_dict.items():
+            # Get domain first
+            entry_point = 'external_ldap_user_domain' if domain != \
+                'InternalDomain' else 'internal_user_domain'
+            
+            ldap = Search.objects.entry_point(entry_point)\
+                .filter(domain, exact_match=True).first()
 
+            if not ldap:
+                self.missing.append(
+                    dict(msg='Cannot find specified element',
+                         name=domain,
+                         type=entry_point))
+                continue
+            for uid in uids:
+                try:
+                    result = getattr(ldap, func)([uid])
+                    self.cache.setdefault('user_element', []).extend(
+                        result)
+                except UserElementNotFound as e:
+                    self.missing.append(
+                        dict(msg='Cannot find specified element: %s' % str(e),
+                             name=uid,
+                             type=typeof))
+            
     def _add_entry(self, typeof, name):
         # Add entry if it doesn't already exist
         if self.get(typeof, name):
@@ -83,9 +115,27 @@ class Cache(object):
                      name=name,type=typeof))
     
     def get(self, typeof, name):
+        """
+        Get element by type and name
+        
+        :param str typeof: typeof element
+        :param str name: name of element
+        :rtype: element or None
+        """
         for value in self.cache.get(typeof, []):
             if value.name == name:
                 return value
+    
+    def get_type(self, typeof):
+        """
+        Get all elements of a specific type
+        
+        :param str typeof: typeof element
+        :rtype: list
+        """
+        if typeof in self.cache:
+            return self.cache[typeof]
+        return []
 
     @property
     def as_string(self):
@@ -107,8 +157,7 @@ def required_args(clazz):
 def element_type_dict(map_only=False):
     """ 
     Type dict constructed with valid `create` constructor arguments.
-    This is used in modules that support get_or_create operations
-    for an element.
+    This is used in modules that support update_or_create operations
     """
     types = dict(
         host=dict(type=network.Host),
@@ -196,43 +245,6 @@ def ro_service_type_dict():
         types[t]['attr'] = inspect.getargspec(clazz.__init__).args[1:]
     
     return types
-
-
-def get_or_create(element, type_dict, hint=None, check_mode=False):
-    """
-    Create or get the element specified. Set check_mode to only
-    perform a get against the element versus an actual action.
-    
-    :param dict element: element dict, key is typeof element and values
-    :param dict type_dict: type dict mappings to get class mapping
-    :param str hint: element attribute to use when finding the element
-    :raises CreateElementFailed: may fail due to duplicate name or other
-    :raises ElementNotFound: if fetch and element doesn't exist
-    :return: The result as type Element
-    """
-    for typeof, values in element.items():
-        type_dict = type_dict.get(typeof)
-        
-        # An optional filter key specifies a valid attribute of
-        # the element that is used to refine the search so the
-        # match is done on that exact attribute. This is generally
-        # useful for networks and address ranges due to how the SMC
-        # interprets / or - when searching attributes. This changes
-        # the query to use the attribute for the top level search to
-        # get matches, then gets the elements attributes for the exact
-        # match. Without filter_key, only the name value is searched.
-        filter_key = {hint: values.get(hint)} if hint in values else None
-        
-        if check_mode:
-            result = type_dict['type'].get(values.get('name'), raise_exc=False)
-            if result is None:
-                return dict(
-                    name=values.get('name'),
-                    type=typeof,
-                    msg='Specified element does not exist')
-        else:
-            result = type_dict['type'].get_or_create(filter_key=filter_key, **values)
-            return result
 
                 
 def update_or_create(element, type_dict, check_mode=False):
@@ -572,6 +584,20 @@ class StonesoftModuleBase(object):
             changed = True
         return changed
         
+    def fail(self, msg, **kwargs):
+        """
+        Fail the request with message
+        """
+        self.disconnect()
+        self.module.fail_json(msg=msg, **kwargs)
+        
+    def success(self, **result):
+        """
+        Success with result messages
+        """
+        self.disconnect()
+        self.module.exit_json(**result)
+        
     def is_element_valid(self, element, type_dict, check_required=True):
         """
         Used by modules that want to create an element (network and service).
@@ -628,20 +654,6 @@ class StonesoftModuleBase(object):
             else:
                 self.fail(msg='Entry type: {} has no values. Valid values: {} '\
                     .format(key, valid_values))
-    
-    def fail(self, msg, **kwargs):
-        """
-        Fail the request with message
-        """
-        self.disconnect()
-        self.module.fail_json(msg=msg, **kwargs)
-        
-    def success(self, **result):
-        """
-        Success with result messages
-        """
-        self.disconnect()
-        self.module.exit_json(**result)
         
         
 

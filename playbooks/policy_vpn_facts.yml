@@ -11,9 +11,12 @@
   
   - name: Get a specific Policy VPN, and expand specific engines
     policy_vpn_facts:
-      filter: mynewvpn
-      expand:
-        - extgw
-        - fw2 Primary
-        - doodoo - Primary
-        - vpn_profile
+      smc_logging:
+       level: 10
+       path: ansible-smc.log
+      filter: ttesst
+      # expand:
+      #   - extgw
+      #   - fw2 Primary
+      #   - doodoo - Primary
+      #   - vpn_profile

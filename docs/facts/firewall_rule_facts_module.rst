@@ -1,8 +1,8 @@
-.. _routing_facts:
+.. _firewall_rule_facts:
 
 
-routing_facts - Facts about specific routes installed on an engine
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+firewall_rule_facts - Facts about firewall rules based on specified policy
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,14 +18,14 @@ Synopsis
 --------
 
 
-* Show the current routing table for the given engine. This will show references to the dst_if for the route along with the gateway and route network. Use engine_facts to resolve interface ID's returned by this module.
+* Retrieve rule specific information based on the policy specified in the facts module run. Specifying the policy is a required field. In addition, you can choose to expand fields like source, destination and services from href to their native element type and name by using the expand list with specified fields to expand. There are other search capabilities such as finding a rule based on partial match and rules within specific ranges.
 
 
 
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python
+  * smc-python >= 0.6.0
 
 
 Options
@@ -41,6 +41,18 @@ Options
     <th class="head">default</th>
     <th class="head">choices</th>
     <th class="head">comments</th>
+    </tr>
+
+    <tr>
+    <td>as_yaml<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
+	<td>
+        <p>Set this boolean to true if the output should be exported into yaml format. By default the output format is actually dict, but using this field allows you to also use the provided jinja templates to format into yaml and reuse for playbook runs.</p>
+	</td>
+	</tr>
+    </td>
     </tr>
 
     <tr>
@@ -68,12 +80,24 @@ Options
     </tr>
 
     <tr>
+    <td>expand<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>source</li><li>destination</li><li>services</li></ul></td>
+	<td>
+        <p>Specifying fields which should be expanded from href into their native elements. Expanded fields will be returned as a dict of lists with the key being the element type and list being the name values for that element type</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
     <td></td>
 	<td>
-        <p>Specify the name of the engine in order to find the routing table</p>
+        <p>The name of the FW Policy for which to retrieve rules</p>
 	</td>
 	</tr>
     </td>
@@ -86,6 +110,30 @@ Options
     <td></td>
 	<td>
         <p>Limit the number of results. Set to 0 to remove limit.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>rule_range<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide a rule range to retrieve. Firewall rules will be displayed based on the ranges provided in a top down fashion.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>search<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide a search string for which to use as a match against a rule/s name or comments field. Mutually exclusive with <em>rule_range</em></p>
 	</td>
 	</tr>
     </td>
@@ -252,7 +300,66 @@ Options
     </table>
     </br>
 
+Examples
+--------
 
+.. code-block:: yaml
+
+    
+    - name: Facts about all engines within SMC
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Show rules for policy 'TestPolicy' (only shows name, type)
+        firewall_rule_facts:
+          filter: TestPolicy
+    
+      - name: Search for specific rule/s using search value (partial searching supported)
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
+    
+      - name: Dump the results in yaml format, showing details of rule
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
+          as_yaml: true
+    
+      - name: Resolve the source, destination and services fields
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
+          as_yaml: true
+          expand:
+          - sources
+          - destinations
+          - services
+    
+      - name: Get specific rules based on range order (rules 1-10)
+        firewall_rule_facts:
+          filter: TestPolicy
+          rule_range: 1-3
+          as_yaml: true
+      
+      - name: Get firewall rule as yaml
+        register: results
+        firewall_rule_facts:
+          smc_logging:
+           level: 10
+           path: ansible-smc.log
+          filter: TestPolicy
+          search: rulet
+          #rule_range: 1-3
+          as_yaml: true
+          expand:
+          - services
+          - destinations
+          - sources
+      
+      - name: Write the yaml using a jinja template
+        template: src=templates/facts_yaml.j2 dest=./firewall_rules_test.yml
+        vars:
+          playbook: firewall_rule
 
 Return Values
 -------------
@@ -272,13 +379,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>routes</td>
+    <td>firewall_rule</td>
     <td>
-        <div>Return all policy VPNs</div>
+        <div>Obtain metadata through a simple rule search</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'route_network': '0.0.0.0', 'route_gateway': '10.0.0.1', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 1}, {'route_network': '0.0.0.0', 'route_gateway': '172.18.1.240', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 0}]</td>
+    <td align=center>[{'comment': None, 'policy': 'TestPolicy', 'inspection_policy': 'High-Security Inspection Template', 'rules': [{'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097166.2', 'pos': 1}, {'type': 'fw_ipv4_access_rule', 'name': 'ruletest', 'pos': 2}, {'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097168.0', 'pos': 3}, {'type': 'fw_ipv4_access_rule', 'name': 'nested', 'pos': 4}], 'template': 'Firewall Inspection Template'}]</td>
     </tr>
     </table>
     </br></br>

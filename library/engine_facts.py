@@ -143,6 +143,7 @@ ENGINE_TYPES = frozenset(['fw_clusters', 'engine_clusters', 'ips_clusters',
 
 try:
     from smc.elements.network import Zone
+    from smc.vpn.policy import PolicyVPN
     from smc.core.sub_interfaces import ClusterVirtualInterface
     from smc.core.interfaces import Layer3PhysicalInterface, TunnelInterface, \
         ClusterPhysicalInterface
@@ -180,7 +181,7 @@ def yaml_cluster(engine):
     # Prefetch all zones to reduce queries
     zone_cache = list(Zone.objects.all())
     management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat')
-    yaml_engine = {'name': engine.name}
+    yaml_engine = {'name': engine.name, 'type': engine.type}
     interfaces = []
     
     for interface in engine.interface:
@@ -391,6 +392,11 @@ def yaml_cluster(engine):
     if netlinks:
         yaml_engine.update(netlinks=netlinks)
     
+    # Policy VPN
+    policy_vpn = get_policy_vpn(engine)
+    if policy_vpn:
+        yaml_engine.update(policy_vpn=policy_vpn)
+    
     # Lastly, get tags
     tags = [tag.name for tag in engine.categories]
     if tags:
@@ -398,6 +404,35 @@ def yaml_cluster(engine):
     return yaml_engine
 
 
+def get_policy_vpn(engine):
+    vpn_mappings = engine.vpn_mappings
+    engine_internal_gw = engine.vpn.internal_gateway.name
+    policy_vpn = []
+    _seen = []
+    if vpn_mappings:
+        for mapping in vpn_mappings:
+            if mapping.name not in _seen:
+                _vpn = {'name': mapping.name}
+                vpn = PolicyVPN(mapping.name)
+                vpn.open()
+                nodes = vpn.central_gateway_node
+                node_central = nodes.get_contains(engine_internal_gw)
+                _vpn.update(central_node=True if node_central else False)
+                if not node_central: # If it's a central node it can't be a satellite node
+                    nodes = vpn.satellite_gateway_node
+                    _vpn.update(satellite_node=True if nodes.get_contains(engine_internal_gw) else False)
+                else:
+                    _vpn.update(satellite_node=False)
+                if vpn.mobile_vpn_topology != 'None':
+                    mobile_node = vpn.mobile_gateway_node
+                    _vpn.update(mobile_gateway=True if mobile_node.get_contains(engine_internal_gw) else False)
+                
+                policy_vpn.append(_vpn)
+                vpn.close()
+                _seen.append(mapping.name)
+    return policy_vpn
+    
+    
 def to_yaml(engine):
     if 'single_fw' in engine.type or 'cluster' in engine.type:
         #return yaml_firewall(engine)
@@ -421,28 +456,27 @@ class EngineFacts(StonesoftModuleBase):
         self.exact_match = None
         self.case_sensitive = None
         
+        required_if=([
+            ('as_yaml', True, ['filter'])])
+        
         self.results = dict(
             ansible_facts=dict(
                 engines=[]
             )
         )
-        super(EngineFacts, self).__init__(self.module_args, is_fact=True)
+        super(EngineFacts, self).__init__(self.module_args, required_if=required_if,
+                                          is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        if self.as_yaml and not self.filter:
-            self.fail(msg='You must provide a filter to use the as_yaml '
-                'parameter')
-        
         result = self.search_by_context()
+        engines = []
         if self.filter:
             if self.as_yaml:
                 engines = [to_yaml(engine) for engine in result
                            if engine.name == self.filter]
-                if engines:
-                    self.results['engine_type'] = engine.type
             else:
                 engines = [engine.data.data for engine in result]
         else:

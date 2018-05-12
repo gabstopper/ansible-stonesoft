@@ -1,0 +1,43 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Task output
+    register: result
+    firewall_rule:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      policy: TestPolicy
+      rules:
+      -   action: continue
+          comment: logging rule
+          log_options:
+            log_accounting_info_mode: true
+            log_closing_mode: true
+            log_level: stored
+          is_disabled: false
+          name: Log all continue rule
+      -   action: enforce_vpn
+          comment: my comment
+          destinations:
+              any: true
+          is_disabled: false
+          log_options:
+              application_logging: default
+              eia_executable_logging: default
+              log_accounting_info_mode: true
+              log_closing_mode: true
+              log_compression: 'off'
+              log_level: stored
+              log_payload_additionnal: false
+              log_payload_excerpt: false
+              log_payload_record: false
+              log_severity: -1
+              user_logging: default
+          name: ruletest2
+          services:
+              any: true
+          sources:
+              any: true
+          vpn_policy: MOBILE CLIENT VPN

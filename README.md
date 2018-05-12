@@ -21,6 +21,8 @@ pip install -r requirements.txt
 
 * Enable the SMC API within the management center
 
+Once you have installed ansible and the stonesoft libraries, you can run the helper `install.py` which will copy the ansible library dependencies into your respective ansible paths (docs and module_utils).
+
 ### Usage
 
 
@@ -61,7 +63,7 @@ The other option is to install the ansible libraries on the SMC server itself an
 All modules provide doc snippets when run from the ansible client:
 
 ```
-ansible-doc -s stonesoft_l3fw
+ansible-doc -s engine
 ```
 
 #### Contributions

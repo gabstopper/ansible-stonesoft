@@ -2,11 +2,11 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Create a single layer 3 firewall
+  - name: Layer 3 FW template
     engine:
       smc_logging:
-        level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+          level: 10
+          path: ansible-smc.log
       antivirus: false
       bgp:
           enabled: false
@@ -198,24 +198,6 @@
                   nodeid: 2
               vlan_id: '20'
           macaddress: 02:02:02:03:02:04
-      -   interface_id: '20'
-          interfaces:
-          -   nodes:
-              -   address: 211.211.211.2
-                  network_value: 211.211.211.0/24
-                  nodeid: 2
-              -   address: 211.211.211.1
-                  network_value: 211.211.211.0/24
-                  nodeid: 1
-              vlan_id: '21'
-          -   nodes:
-              -   address: 20.20.20.2
-                  network_value: 20.20.20.0/24
-                  nodeid: 2
-              -   address: 20.20.20.1
-                  network_value: 20.20.20.0/24
-                  nodeid: 1
-              vlan_id: '20'
       -   interface_id: '2000'
           interfaces:
           -   nodes:
@@ -254,6 +236,24 @@
                   nodeid: 2
           type: tunnel_interface
           zone_ref: foozone
+      -   interface_id: '20'
+          interfaces:
+          -   nodes:
+              -   address: 20.20.20.2
+                  network_value: 20.20.20.0/24
+                  nodeid: 2
+              -   address: 20.20.20.1
+                  network_value: 20.20.20.0/24
+                  nodeid: 1
+              vlan_id: '20'
+          -   nodes:
+              -   address: 211.211.211.2
+                  network_value: 211.211.211.0/24
+                  nodeid: 2
+              -   address: 211.211.211.1
+                  network_value: 211.211.211.0/24
+                  nodeid: 1
+              vlan_id: '21'
       -   interface_id: '2001'
           interfaces:
           -   nodes:
@@ -265,8 +265,15 @@
                   nodeid: 2
           type: tunnel_interface
       name: newcluster
+      policy_vpn:
+      -   central_node: true
+          mobile_gateway: false
+          name: ttesst
+          satellite_node: false
+          vpn_profile: VPN-A Suite
       primary_heartbeat: '4.14'
       primary_mgt: '68'
       tags:
       - footag2
       - footag
+      type: fw_cluster

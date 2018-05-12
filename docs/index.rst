@@ -19,6 +19,14 @@ Playbooks
    
    playbooks
 
+How-To's
+========
+
+.. toctree::
+   :maxdepth: 2
+   
+   howto/howto
+
 Facts Modules
 =============
 
