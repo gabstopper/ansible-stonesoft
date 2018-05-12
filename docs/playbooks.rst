@@ -29,7 +29,7 @@ parameter to a playbook. The logging level is a valid int value per the standard
     network_element_facts:
       smc_logging:
         level: 10
-        path: /Users/davidlepage/Downloads/ansible-smc.log
+        path: ansible-smc.log
       element: group
       filter: mygroup
       exact_match: yes

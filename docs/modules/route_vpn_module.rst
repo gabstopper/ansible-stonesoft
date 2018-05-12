@@ -421,7 +421,7 @@ Examples
       route_vpn:
         smc_logging:
           level: 10
-          path: /Users/davidlepage/Downloads/ansible-smc.log
+          path: ansible-smc.log
         enabled: true
         local_gw:
             address: 50.50.50.1
@@ -456,7 +456,7 @@ Examples
       route_vpn:
         smc_logging:
           level: 10
-          path: /Users/davidlepage/Downloads/ansible-smc.log
+          path: ansible-smc.log
         name: myrbvpn
         type: ipsec
         local_gw:

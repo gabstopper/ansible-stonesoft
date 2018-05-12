@@ -117,7 +117,7 @@ EXAMPLES = '''
   external_gateway:
     smc_logging:
       level: 10
-      path: /Users/davidlepage/Downloads/ansible-smc.log
+      path: ansible-smc.log
     external_endpoint:
     -   address: 33.33.33.41
         enabled: true

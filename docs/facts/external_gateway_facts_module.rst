@@ -293,7 +293,7 @@ Examples
         engine_facts:
           smc_logging:
             level: 10
-            path: /Users/davidlepage/Downloads/ansible-smc.log
+            path: ansible-smc.log
           filter: newcluster
           as_yaml: true
     

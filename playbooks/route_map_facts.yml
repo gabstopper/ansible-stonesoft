@@ -15,7 +15,11 @@
       smc_logging:
         level: 10
         path: ansible-smc.log
+<<<<<<< HEAD
       #filter: newroutemap
+=======
+      filter: newroutemap
+>>>>>>> branch 'master' of https://github.com/gabstopper/ansible-stonesoft
       as_yaml: true
 
   - name: Write the yaml using a jinja template
