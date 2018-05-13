@@ -35,13 +35,6 @@ options:
         I(policy) parameter. You can operate on rules within a firewall policy or
         firewall sub policy.
     type: str
-  template:
-    description:
-      - Read only view of the policy or sub policies template. This is returned
-        by the facts module when retrieving rules
-  inspection_policy:
-    description:
-      - Read only view of the inspection policy for this policy
   rules:
     description:
       - Source elements to add to the rule. Elements need to specify the type of
@@ -733,7 +726,6 @@ class FirewallRule(StonesoftModuleBase):
         self.module_args = dict(
             policy=dict(type='str'),
             sub_policy=dict(type='str'),
-            template=dict(type='str'),
             rules=dict(type='list', default=[]),
             inspection_policy=dict(type='str'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
@@ -744,7 +736,6 @@ class FirewallRule(StonesoftModuleBase):
         self.template = None
         self.rules = None
         self.inspection_policy = None
-        self.use_search_hints = None
         
         mutually_exclusive = [
             ['policy', 'sub_policy'],

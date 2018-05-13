@@ -3,25 +3,11 @@
   hosts: localhost
   gather_facts: no
   tasks:
-<<<<<<< HEAD
   - name: Layer 3 FW template
     engine:
       smc_logging:
           level: 10
           path: ansible-smc.log
-=======
-  - name: Create a single layer 3 firewall
-  {% if 'single_fw' in results.engine_type %}
-  engine:
-      type: single_fw
-  {% elif 'cluster' in results.engine_type %}
-  engine:
-      type: cluster
-  {% endif %}
-    smc_logging:
-        level: 10
-        path: ansible-smc.log
->>>>>>> branch 'master' of https://github.com/gabstopper/ansible-stonesoft
 {% for engine in results.ansible_facts.engines %}
 {{- engine | to_nice_yaml | indent(6, True) }}
 {% endfor %}
