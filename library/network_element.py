@@ -183,7 +183,9 @@ options:
           members:
             description:
               - A list of dict with the key being the type of element and the value is
-                a list of members by name.
+                a list of members by name. Members for a group can be any one of the
+                valid elements defined in this playbook. In addition, you can add
+                read-only element types engine, alias, and expression
             type: list
           append_lists:
             description:
@@ -330,6 +332,9 @@ EXAMPLES = '''
                 - hostb
                 network:
                 - networka
+                engine:
+                - myfw
+                - myfw2
         - group:
             name: emptyregulargrp
             members:
@@ -416,7 +421,7 @@ import copy
 import traceback
 from ansible.module_utils.stonesoft_util import (
     StonesoftModuleBase, Cache, element_type_dict,
-    update_or_create, delete_element)
+    ro_element_type_dict, update_or_create, delete_element)
 
 
 try:
@@ -449,6 +454,8 @@ class NetworkElement(StonesoftModuleBase):
             setattr(self, name, value)
         
         ELEMENT_TYPES = element_type_dict()
+        GROUP_MEMBER_TYPES = ro_element_type_dict(map_only=True)
+        GROUP_MEMBER_TYPES.update(ELEMENT_TYPES)
         
         try:
             if state == 'present':
@@ -456,7 +463,8 @@ class NetworkElement(StonesoftModuleBase):
                 # Validate elements before proceeding.
                 groups, netlinks = [], []
                 for element in self.elements:
-                    self.is_element_valid(element, ELEMENT_TYPES)
+                    self.is_element_valid(element, ELEMENT_TYPES if 'group' not in\
+                        element else GROUP_MEMBER_TYPES)
                     if 'group' in element:
                         groups.append(element)
                     elif 'netlink' in element:
