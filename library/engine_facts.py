@@ -118,20 +118,104 @@ engines:
     type: list
     sample: [
         {
-        "alias_value": [], 
-        "allow_email_upn_lookup": false, 
-        "antivirus": {
-            "antivirus_enabled": false, 
-            "antivirus_http_proxy_enabled": false, 
-            "antivirus_proxy_password": "*****", 
-            "antivirus_proxy_port": 0, 
-            "antivirus_update": "never", 
-            "antivirus_update_day": "mo", 
-            "antivirus_update_time": 0, 
-            "virus_log_level": "undefined"
+        "antivirus": true, 
+        "bgp": {
+            "announced_network": [
+                {
+                    "network": {
+                        "name": "network-1.1.1.0/24", 
+                        "route_map": "myroutemap"
+                    }
+                }
+            ], 
+            "antispoofing_network": {
+                "network": [
+                    "network-1.1.1.0/24"
+                ]
+            }, 
+            "autonomous_system": {
+                "as_number": 200, 
+                "comment": null, 
+                "name": "as-200"
+            }, 
+            "bgp_peering": [
+                {
+                    "interface_id": "1000", 
+                    "name": "bgppeering"
+                }
+            ], 
+            "bgp_profile": "Default BGP Profile", 
+            "enabled": true, 
+            "router_id": "1.1.1.1"
         }, 
-        "auto_reboot_timeout": 10,
-        ...
+        "default_nat": true, 
+        "domain_server_address": [
+            "8.8.8.8"
+        ], 
+        "file_reputation": true, 
+        "interfaces": [
+            {
+                "interface_id": "0", 
+                "interfaces": [
+                    {
+                        "nodes": [
+                            {
+                                "address": "1.1.1.1", 
+                                "network_value": "1.1.1.0/24", 
+                                "nodeid": 1
+                            }
+                        ]
+                    }
+                ]
+            }, 
+            {
+                "interface_id": "1000", 
+                "interfaces": [
+                    {
+                        "nodes": [
+                            {
+                                "address": "10.10.10.1", 
+                                "network_value": "10.10.10.1/32", 
+                                "nodeid": 1
+                            }
+                        ]
+                    }
+                ], 
+                "type": "tunnel_interface"
+            }, 
+            {
+                "interface_id": "1", 
+                "interfaces": [
+                    {
+                        "nodes": [
+                            {
+                                "address": "2.2.2.1", 
+                                "network_value": "2.2.2.0/24", 
+                                "nodeid": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        ], 
+        "name": "myfw3", 
+        "policy_vpn": [
+            {
+                "central_node": true, 
+                "mobile_gateway": false, 
+                "name": "ttesst", 
+                "satellite_node": false
+            }
+        ], 
+        "primary_mgt": "0", 
+        "snmp": {
+            "snmp_agent": "fooagent", 
+            "snmp_interface": [
+                "1"
+            ], 
+            "snmp_location": "test"
+        }, 
+        "type": "single_fw" }]
     }]
 '''
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
