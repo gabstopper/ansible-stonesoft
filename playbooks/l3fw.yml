@@ -5,14 +5,6 @@
   - name: Layer 3 FW template
     engine:
       smc_logging:
-<<<<<<< HEAD
-          level: 10
-          path: ansible-smc.log
-=======
-        level: 10
-        path: ansible-smc.log
->>>>>>> branch 'master' of https://github.com/gabstopper/ansible-stonesoft
-      antivirus: false
       backup_mgt: '1.2'
       bgp:
           bgp_peering:
