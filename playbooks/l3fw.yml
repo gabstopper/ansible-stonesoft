@@ -2,9 +2,12 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Layer 3 FW template
+  - name: Create a single layer 3 firewall
     engine:
       smc_logging:
+        level: 10
+        path: ansible-smc.log
+      antivirus: false
       backup_mgt: '1.2'
       bgp:
           bgp_peering:
@@ -260,6 +263,10 @@
           name: mylink
       -   interface_id: '3.4'
           name: netlink
+      policy_vpn:
+      -   central_node: true
+          name: mynewvpn
+          satellite_node: false
       primary_mgt: '2.8'
       snmp:
           snmp_agent: testsnmp

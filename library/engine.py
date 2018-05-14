@@ -491,6 +491,7 @@ class StonesoftEngine(StonesoftModuleBase):
             primary_mgt=dict(type='str'),
             backup_mgt=dict(type='str'),
             primary_heartbeat=dict(type='str'),
+            policy_vpn=dict(type='list'),
             tags=dict(type='list'),
             skip_interfaces=dict(type='bool', default=False),
             delete_undefined_interfaces=dict(type='bool', default=False),
@@ -512,6 +513,7 @@ class StonesoftEngine(StonesoftModuleBase):
         self.default_nat = None
         self.antivirus = None
         self.file_reputation = None
+        self.policy_vpn = False
         self.skip_interfaces = None
         self.delete_undefined_interfaces = None
         self.tags = None

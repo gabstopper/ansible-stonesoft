@@ -396,7 +396,7 @@ def yaml_cluster(engine):
     policy_vpn = get_policy_vpn(engine)
     if policy_vpn:
         yaml_engine.update(policy_vpn=policy_vpn)
-    
+     
     # Lastly, get tags
     tags = [tag.name for tag in engine.categories]
     if tags:
@@ -411,9 +411,10 @@ def get_policy_vpn(engine):
     _seen = []
     if vpn_mappings:
         for mapping in vpn_mappings:
-            if mapping.name not in _seen:
-                _vpn = {'name': mapping.name}
-                vpn = PolicyVPN(mapping.name)
+            mapped_vpn = mapping.vpn
+            if mapped_vpn.name not in _seen:
+                _vpn = {'name': mapped_vpn.name}
+                vpn = PolicyVPN(mapped_vpn.name)
                 vpn.open()
                 nodes = vpn.central_gateway_node
                 node_central = nodes.get_contains(engine_internal_gw)
@@ -429,9 +430,9 @@ def get_policy_vpn(engine):
                 
                 policy_vpn.append(_vpn)
                 vpn.close()
-                _seen.append(mapping.name)
+                _seen.append(mapped_vpn.name)
     return policy_vpn
-    
+
     
 def to_yaml(engine):
     if 'single_fw' in engine.type or 'cluster' in engine.type:

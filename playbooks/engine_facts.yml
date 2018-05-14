@@ -24,11 +24,11 @@
       smc_logging:
        level: 10
        path: ansible-smc.log
-      filter: newcluster
+      filter: myfw
       as_yaml: true
 
   - name: Write the yaml using a jinja template
-    template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+    template: src=templates/engine_yaml.j2 dest=./l3fw.yml
   
     
   

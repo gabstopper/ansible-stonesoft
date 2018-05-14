@@ -2,9 +2,11 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Layer 3 FW template
+  - name: Create a single layer 3 firewall
     engine:
       smc_logging:
+        level: 10
+        path: ansible-smc.log
       antivirus: false
       bgp:
           enabled: false
@@ -265,10 +267,9 @@
       name: newcluster
       policy_vpn:
       -   central_node: true
-          mobile_gateway: false
+          mobile_gateway: true
           name: ttesst
           satellite_node: false
-          vpn_profile: VPN-A Suite
       primary_heartbeat: '4.14'
       primary_mgt: '68'
       tags:
