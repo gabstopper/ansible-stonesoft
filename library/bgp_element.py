@@ -22,7 +22,7 @@ description:
 version_added: '2.5'
 
 options:
-  element:
+  elements:
     description:
       - List of device hashes/dictionaries with custom configurations based on the element type
       - >
@@ -277,7 +277,7 @@ class StonesoftBGPElement(StonesoftModuleBase):
                         changed = True
                 
                 if deferrals:
-                    empty, bgp_peers = self.resolve_references(deferrals)
+                    _, bgp_peers = self.resolve_references(deferrals)
                     for element in bgp_peers:
                         if self.create_or_update_element(element):
                             changed = True

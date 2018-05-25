@@ -8,36 +8,104 @@
       smc_logging:
         level: 10
         path: ansible-smc.log
-      policy: TestPolicy
+      policy: TestPolicy3
       rules:
-      -   action: continue
-          comment: logging rule
-          log_options:
-            log_accounting_info_mode: true
-            log_closing_mode: true
-            log_level: stored
-          is_disabled: false
-          name: Log all continue rule
-      -   action: enforce_vpn
-          comment: my comment
-          destinations:
-              any: true
-          is_disabled: false
-          log_options:
-              application_logging: default
-              eia_executable_logging: default
-              log_accounting_info_mode: true
-              log_closing_mode: true
-              log_compression: 'off'
-              log_level: stored
-              log_payload_additionnal: false
-              log_payload_excerpt: false
-              log_payload_record: false
-              log_severity: -1
-              user_logging: default
-          name: ruletest2
-          services:
-              any: true
-          sources:
-              any: true
-          vpn_policy: MOBILE CLIENT VPN
+      - action: allow
+        authentication_options:
+          methods: []
+          require_auth: false
+        comment: null
+        connection_tracking:
+          mss_enforced: false
+          mss_enforced_max: 0
+          mss_enforced_min: 0
+          timeout: -1
+        destinations:
+          any: true
+        inspection_options:
+          decrypting: null
+          deep_inspection: null
+          file_filtering: null
+        is_disabled: false
+        log_options:
+          log_accounting_info_mode: false
+          log_closing_mode: true
+          log_level: undefined
+          log_payload_additionnal: false
+          log_payload_excerpt: false
+          log_payload_record: false
+          log_severity: -1
+        name: foo2
+        services:
+          application_situation:
+          - 100Bao
+        sources:
+          any: true
+        tag: '2097490.2'
+      - action: allow
+        authentication_options:
+          methods: []
+          require_auth: false
+        comment: null
+        connection_tracking:
+          mss_enforced: false
+          mss_enforced_max: 0
+          mss_enforced_min: 0
+          timeout: -1
+        destinations:
+          none: true
+        inspection_options:
+          decrypting: null
+          deep_inspection: null
+          file_filtering: null
+        is_disabled: false
+        log_options:
+          log_accounting_info_mode: false
+          log_closing_mode: true
+          log_level: undefined
+          log_payload_additionnal: false
+          log_payload_excerpt: false
+          log_payload_record: false
+          log_severity: -1
+        name: my
+        services:
+          none: true
+        sources:
+          none: true
+        tag: '2097489.2'
+      - action: enforce_vpn
+        authentication_options:
+          methods: []
+          require_auth: false
+        comment: null
+        connection_tracking:
+          mss_enforced: false
+          mss_enforced_max: 0
+          mss_enforced_min: 0
+          timeout: -1
+        destinations:
+          any: true
+        inspection_options:
+          decrypting: null
+          deep_inspection: null
+          file_filtering: null
+        is_disabled: false
+        log_options:
+          log_accounting_info_mode: false
+          log_closing_mode: true
+          log_level: undefined
+          log_payload_additionnal: false
+          log_payload_excerpt: false
+          log_payload_record: false
+          log_severity: -1
+        mobile_vpn: true
+        name: mobilevpn
+        services:
+          any: true
+        sources:
+          any: true
+        tag: '2097494.0'
+      - comment: mysection
+        is_disabled: false
+        name: Rule @2097492.0
+        tag: '2097492.0'

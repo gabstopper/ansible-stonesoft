@@ -10,6 +10,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 try:
     from smc import session
+    from smc.base.model import lookup_class
     import smc.elements.network as network
     import smc.elements.netlink as netlink
     import smc.elements.group as group
@@ -114,6 +115,11 @@ class Cache(object):
                 dict(msg='Cannot find specified element',
                      name=name,type=typeof))
     
+    def get_href(self, typeof, name):
+        result = self.get(typeof, name)
+        if result:
+            return result.href
+    
     def get(self, typeof, name):
         """
         Get element by type and name
@@ -151,6 +157,20 @@ def required_args(clazz):
     if argspec.defaults:
         args = argspec.args[:-len(argspec.defaults)]
         return args[1:]
+    return argspec.args[1:]
+
+
+def allowed_args(class_typeof):
+    """
+    Return the allowed arguments (and kwargs) by name based on the
+    classes typeof attribute. You should validate that the typeof is
+    actually valid before calling this method
+    
+    :return: list of argument names
+    :rtype: list
+    """
+    clazz = lookup_class(class_typeof)
+    argspec = inspect.getargspec(clazz.create)
     return argspec.args[1:]
 
     

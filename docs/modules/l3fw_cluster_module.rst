@@ -1,8 +1,8 @@
-.. _engine:
+.. _l3fw_cluster:
 
 
-engine - Operations on single or cluster layer 3 firewalls
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+l3fw_cluster - Create or delete Stonesoft FW clusters
++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -13,12 +13,20 @@ engine - Operations on single or cluster layer 3 firewalls
    :local:
    :depth: 2
 
+DEPRECATED
+----------
+
+:In: version: 
+:Why: Replaced with single module
+:Alternative: :ref:`engine <engine>`
+
+
 
 Synopsis
 --------
 
 
-* Create or delete a Stonesoft Layer 3 Firewall on the Stonesoft Management Center.
+* Firewall clusters can be created with up to 16 nodes per cluster. Each cluster_node specified will define a unique cluster member and dictate the number of cluster nodes. You can fetch an existing engine using engine_facts and optionally save this as YAML to identify differences between runs. Interfaces and VLANs can be added, modified or removed. By default if the interface is not defined in the YAML, but exists on the engine, it will be deleted. To change an interface ID or VLAN id, you must delete the old and recreate the new interface definition. In addition, it is not possible to modify interfaces that have multiple IP addresses defined (they will be skipped).
 
 
 
@@ -348,74 +356,6 @@ Options
 	</tr>
     </td>
     </tr>
-    <tr>
-    <td rowspan="2">policy_vpn<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-    <td>
-        <div>Defines any policy based VPN membership for thie engine. You can specify multiple and whether the engine should be a central gateway or satellite gateway and whether it should be enabled for mobile gateway. Updating policy VPN on the engine directly requires SMC version &gt;= 6.3.x</div>
-    </tr>
-
-    <tr>
-    <td colspan="5">
-        <table border=1 cellpadding=4>
-        <caption><b>Dictionary object policy_vpn</b></caption>
-
-        <tr>
-        <th class="head">parameter</th>
-        <th class="head">required</th>
-        <th class="head">default</th>
-        <th class="head">choices</th>
-        <th class="head">comments</th>
-        </tr>
-
-        <tr>
-        <td>central_gateway<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>yes</li><li>no</li></ul></td>
-        <td>
-            <div>Whether this engine should be a central gateway. Mutually exclusive with <em>satellite_gateway</em></div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>name<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The name of the policy VPN.</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>mobile_gateway<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>yes</li><li>no</li></ul></td>
-        <td>
-            <div>Whether this engine should be enabled for remote VPN for mobile gateways (client VPN)</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>satellite_gateway<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>yes</li><li>no</li></ul></td>
-        <td>
-            <div>Whether this engine should be a satellite gateway. Mutually exclusive with <em>central_gateway</em></div>
-        </td>
-        </tr>
-
-        </table>
-
-    </td>
-    </tr>
-    </td>
-    </tr>
 
     <tr>
     <td>primary_heartbeat<br/><div style="font-size: small;"></div></td>
@@ -716,79 +656,139 @@ Examples
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Layer 3 FW template
-        engine:
+      - name: Create a single layer 3 firewall
+        l3fw_cluster:
           smc_logging:
             level: 10
             path: ansible-smc.log
-          antivirus: true
+          antivirus: false
+          backup_mgt: '2.34'
           bgp:
               announced_network:
               -   network:
-                      name: network-1.1.1.0/24
-                      route_map: myroutemap
+                      name: foonet
+                      route_map: newroutemap
               antispoofing_network:
+                  group:
+                  - group1
+                  host:
+                  - 2.2.2.3
                   network:
-                  - network-1.1.1.0/24
+                  - foo
               autonomous_system:
-                  as_number: 200
-                  comment: null
-                  name: as-200
-              bgp_peering:
-              -   interface_id: '1000'
-                  name: bgppeering
+                  as_number: 4261608949
+                  comment: optional
+                  name: myas
               bgp_profile: Default BGP Profile
               enabled: true
-              router_id: 1.1.1.1
-          default_nat: true
+              router_id: 1.2.3.4
+          cluster_mode: balancing
+          comment: my new firewall
+          default_nat: false
           domain_server_address:
           - 8.8.8.8
-          file_reputation: true
+          file_reputation: false
           interfaces:
-          -   interface_id: '2'
-              interfaces:
-              -   nodes:
-                  -   address: 21.21.21.21
-                      network_value: 21.21.21.0/24
-                      nodeid: 1
-                  vlan_id: '1'
-          -   interface_id: '0'
-              interfaces:
-              -   nodes:
-                  -   address: 1.1.1.1
-                      network_value: 1.1.1.0/24
-                      nodeid: 1
           -   interface_id: '1000'
               interfaces:
               -   nodes:
-                  -   address: 10.10.10.1
-                      network_value: 10.10.10.1/32
+                  -   address: 100.100.100.1
+                      network_value: 100.100.100.0/24
                       nodeid: 1
+                  -   address: 100.100.100.2
+                      network_value: 100.100.100.0/24
+                      nodeid: 2
               type: tunnel_interface
-          -   interface_id: '1'
+              zone_ref: AWSTunnel
+          -   cvi_mode: packetdispatch
+              interface_id: '21'
+              interfaces:
+              -   cluster_virtual: 22.22.22.254
+                  network_value: 22.22.22.0/24
+                  nodes:
+                  -   address: 22.22.22.1
+                      network_value: 22.22.22.0/24
+                      nodeid: 1
+                  -   address: 22.22.22.2
+                      network_value: 22.22.22.0/24
+                      nodeid: 2
+                  vlan_id: '21'
+              -   cluster_virtual: 21.21.21.254
+                  network_value: 21.21.21.0/24
+                  nodes:
+                  -   address: 21.21.21.2
+                      network_value: 21.21.21.0/24
+                      nodeid: 2
+                  -   address: 21.21.21.1
+                      network_value: 21.21.21.0/24
+                      nodeid: 1
+                  vlan_id: '20'
+              macaddress: 02:02:02:20:20:22
+          -   interface_id: '4'
               interfaces:
               -   nodes:
-                  -   address: 2.2.2.1
-                      network_value: 2.2.2.0/24
+                  -   address: 5.5.5.2
+                      network_value: 5.5.5.0/24
                       nodeid: 1
-          name: myfw3
-          policy_vpn:
-          -   central_node: true
-              mobile_gateway: false
-              name: ttesst
-              satellite_node: false
+                  -   address: 5.5.5.3
+                      network_value: 5.5.5.0/24
+                      nodeid: 2
+              zone_ref: heartbeat
+          -   cvi_mode: packetdispatch
+              interface_id: '0'
+              interfaces:
+              -   cluster_virtual: 1.1.1.1
+                  network_value: 1.1.1.0/24
+                  nodes:
+                  -   address: 1.1.1.2
+                      network_value: 1.1.1.0/24
+                      nodeid: 1
+                  -   address: 1.1.1.3
+                      network_value: 1.1.1.0/24
+                      nodeid: 2
+              macaddress: 02:02:02:02:02:02
+          -   comment: foocomment
+              interface_id: '2'
+              interfaces:
+              -   comment: vlan comment
+                  nodes:
+                  -   address: 34.34.34.35
+                      network_value: 34.34.34.0/24
+                      nodeid: 2
+                  -   address: 34.34.34.34
+                      network_value: 34.34.34.0/24
+                      nodeid: 1
+                  vlan_id: '34'
+              -   nodes:
+                  -   address: 35.35.35.35
+                      network_value: 35.35.35.0/24
+                      nodeid: 1
+                  -   address: 35.35.35.36
+                      network_value: 35.35.35.0/24
+                      nodeid: 2
+                  vlan_id: '35'
+          location: foolocation
+          name: newcluster2
+          primary_heartbeat: '4'
           primary_mgt: '0'
           snmp:
-              snmp_agent: fooagent
+              snmp_agent: myagent
               snmp_interface:
-              - '1'
-              snmp_location: test
-          type: single_fw
-    # Delete a layer 3 firewall, using environment variables for credentials
-    - name: delete firewall by name
-      l3fw:
-        name: myfirewall
-        state: 'absent'
+              - '2.35'
+              - '2.34'
+              - '0'
+              snmp_location: snmplocation
+          tags:
+          - footag
+          #skip_interfaces: false
+          #delete_undefined_interfaces: false
+          #state: absent
+    
+    # Delete a cluster
+    - name: layer 3 cluster with 3 members
+      l3fw_cluster:
+        name: mycluster
+        state: absent
 
 Return Values
 -------------
@@ -810,9 +810,9 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     <tr>
     <td>state</td>
     <td>
-        <div>The current state of the element</div>
+        <div>Full json definition of NGFW</div>
     </td>
-    <td align=center></td>
+    <td align=center>always</td>
     <td align=center>dict</td>
     <td align=center></td>
     </tr>
@@ -830,24 +830,9 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </br></br>
 
 
-Notes
------
-
-.. note::
-    - Login credential information is either obtained by providing them directly to the task/play, specifying an alt_filepath to read the credentials from to the play, or from environment variables (in that order). See http://smc-python.readthedocs.io/en/latest/pages/session.html for more information.
-
-
 Author
 ~~~~~~
 
     * David LePage (@gabstopper)
-
-
-
-
-Status
-~~~~~~
-
-This module is flagged as **preview** which means that it is not guaranteed to have a backwards compatible interface.
 
 

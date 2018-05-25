@@ -481,6 +481,17 @@ EXAMPLES = '''
     -   tag: '2097203.0'
     state: absent
 '''
+
+RETURN = '''
+changed:
+  description: Whether or not the change succeeded
+  returned: always
+  type: bool
+state:
+  description: The current state of the element
+  return: always
+  type: dict
+'''
 import traceback
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.six import string_types
@@ -510,7 +521,7 @@ cxn_tracking = ('no', 'loose', 'normal', 'strict')
 
 inspection_options = ('decrypting', 'deep_inspection', 'file_filtering')
 
-rule_targets = ('adress_range', 'country', 'domain_name', 'expression', 'group', 'host',
+rule_targets = ('address_range', 'country', 'domain_name', 'expression', 'group', 'host',
     'ip_list', 'network', 'engine', 'router', 'netlink', 'interface_zone', 'alias')
 
 service_targets = ('service_group', 'tcp_service_group', 'udp_service_group', 'ip_service_group',
@@ -727,15 +738,12 @@ class FirewallRule(StonesoftModuleBase):
             policy=dict(type='str'),
             sub_policy=dict(type='str'),
             rules=dict(type='list', default=[]),
-            inspection_policy=dict(type='str'),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
         
         self.policy = None
         self.sub_policy = None
-        self.template = None
         self.rules = None
-        self.inspection_policy = None
         
         mutually_exclusive = [
             ['policy', 'sub_policy'],

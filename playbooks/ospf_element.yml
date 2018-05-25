@@ -1,0 +1,56 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: OSPF Elements
+    register: result
+    ospf_element:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      elements:
+      - ospfv2_area:
+          area_type: normal
+          comment: null
+          inbound_filters:
+            ip_access_list:
+            - myacl22
+            ip_prefix_list:
+            - mylist2
+          interface_settings_ref: Default OSPFv2 Interface Settings
+          name: myarea2
+          outbound_filters:
+            ip_access_list:
+            - myservice
+      - ospfv2_profile:
+          comment: added by ansible
+          default_metric: 123
+          domain_settings_ref: Default OSPFv2 Domain Settings
+          external_distance: 110
+          inter_distance: 130
+          intra_distance: 110
+          name: myprofile
+          redistribution_entry:
+          - enabled: true
+            metric_type: external_1
+            type: bgp
+          - enabled: true
+            filter: 
+               route_map:
+               - myroutemap
+            metric: 2
+            metric_type: external_1
+            type: static
+          - enabled: true
+            filter:
+              ip_access_list:
+              - myacl
+            metric_type: external_2
+            type: connected
+          - enabled: false
+            metric_type: external_1
+            type: kernel
+          - enabled: false
+            metric_type: external_1
+            type: default_originate
+      #state: absent

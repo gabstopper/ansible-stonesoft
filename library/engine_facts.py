@@ -215,7 +215,7 @@ engines:
             ], 
             "snmp_location": "test"
         }, 
-        "type": "single_fw" }]
+        "type": "single_fw"
     }]
 '''
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
@@ -229,6 +229,7 @@ try:
     from smc.elements.network import Zone
     from smc.vpn.policy import PolicyVPN
     from smc.core.sub_interfaces import ClusterVirtualInterface
+    from smc.api.exceptions import UnsupportedEngineFeature
     from smc.core.interfaces import Layer3PhysicalInterface, TunnelInterface, \
         ClusterPhysicalInterface
 except ImportError:
@@ -412,6 +413,45 @@ def yaml_cluster(engine):
         yaml_engine.update(cluster_mode=engine.cluster_mode)
     
     # BGP Data
+    yaml_engine.update(bgp=get_bgp(engine))
+    
+    # OSPF Data
+    yaml_engine.update(ospf=get_ospf(engine))
+    
+    # Netlinks
+    netlinks = []
+    for netlink in engine.routing.netlinks:
+        interface, network, link = netlink
+        netlink = {'interface_id': interface.nicid,
+                   'name': link.name}
+            
+        for gw in link:
+            gateway = gw.routing_node_element
+            netlink.setdefault('destination', []).append(
+                {'name': gateway.name, 'type': gateway.typeof})
+        
+        netlinks.append(netlink)
+    if netlinks:
+        yaml_engine.update(netlinks=netlinks)
+    
+    # Policy VPN
+    policy_vpn = get_policy_vpn(engine)
+    if policy_vpn:
+        yaml_engine.update(policy_vpn=policy_vpn)
+     
+    # Lastly, get tags
+    tags = [tag.name for tag in engine.categories]
+    if tags:
+        yaml_engine.update(tags=tags)
+    return yaml_engine
+
+
+def get_bgp(engine):
+    """
+    Get BGP settings for the engine if any
+    
+    :return: dict of BGP settings
+    """
     bgp = engine.bgp
     data = dict(enabled=bgp.status,
                 router_id=bgp.router_id)
@@ -443,7 +483,6 @@ def yaml_cluster(engine):
             announced_network.append(d)
         data.update(announced_network=announced_network)
         
-    yaml_engine.update(bgp=data)
     bgp_peering = []
     for interface, network, peering in engine.routing.bgp_peerings:
         peer_data = {}
@@ -459,37 +498,46 @@ def yaml_cluster(engine):
         bgp_peering.append(peer_data)
     if bgp_peering:
         data.update(bgp_peering=bgp_peering)
+    return data
     
-    # Netlinks
-    netlinks = []
-    for netlink in engine.routing.netlinks:
-        interface, network, link = netlink
-        netlink = {'interface_id': interface.nicid,
-                   'name': link.name}
-            
-        for gw in link:
-            gateway = gw.routing_node_element
-            netlink.setdefault('destination', []).append(
-                {'name': gateway.name, 'type': gateway.typeof})
-        
-        netlinks.append(netlink)
-    if netlinks:
-        yaml_engine.update(netlinks=netlinks)
     
-    # Policy VPN
-    policy_vpn = get_policy_vpn(engine)
-    if policy_vpn:
-        yaml_engine.update(policy_vpn=policy_vpn)
-     
-    # Lastly, get tags
-    tags = [tag.name for tag in engine.categories]
-    if tags:
-        yaml_engine.update(tags=tags)
-    return yaml_engine
+def get_ospf(engine):
+    """
+    Get OSPF settings for the engine
+    
+    :return: dict of entries only if OSPF is enabled
+    """
+    ospf = engine.ospf
+    data = dict(
+        enabled=ospf.is_enabled,
+        router_id=ospf.router_id)
+    if ospf.is_enabled:
+        data.update(ospf_profile=ospf.profile.name)
 
+    ospf_areas = []
+    for interface, network, peering in engine.routing.ospf_areas:
+        area_data = {}
+        area_data.update(interface_id=interface.nicid,
+                         name=peering.name)
+        if network:
+            area_data.update(network=network.ip)
+        ospf_areas.append(area_data)
+    if ospf_areas:
+        data.update(ospf_areas=ospf_areas)
+    return data
+    
 
 def get_policy_vpn(engine):
-    vpn_mappings = engine.vpn_mappings
+    """
+    Policy VPN settings for the engine. This can be modified to leverage
+    SMC 6.3.4 optimizations under engine.vpn_mappings
+    
+    :return: dict of policy VPN settings
+    """
+    try:
+        vpn_mappings = engine.vpn_mappings
+    except UnsupportedEngineFeature:
+        return
     engine_internal_gw = engine.vpn.internal_gateway.name
     policy_vpn = []
     _seen = []

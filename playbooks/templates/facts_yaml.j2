@@ -10,6 +10,6 @@
         path: ansible-smc.log
 {% for k, v in results.ansible_facts.items() %}
 {% for field in v %}
-  {{- field | to_nice_yaml | indent(6, True) }}
+{{- field | to_nice_yaml(indent=2) | indent(6, True) }}
 {% endfor %}
 {% endfor %}

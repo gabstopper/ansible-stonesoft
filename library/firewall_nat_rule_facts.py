@@ -135,7 +135,6 @@ firewall_rule:
     sample: [
     {
         "comment": null, 
-        "inspection_policy": "High-Security Inspection Template", 
         "policy": "TestPolicy", 
         "rules": [
             {
@@ -158,10 +157,10 @@ firewall_rule:
                 "pos": 4, 
                 "type": "fw_ipv4_access_rule"
             }
-        ], 
-        "template": "Firewall Inspection Template"
+        ],
     }]
 '''
+
 import traceback
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
@@ -181,9 +180,8 @@ def to_yaml(rule, expand=None):
         'name': rule.name, 'tag': rule.tag,
         'is_disabled': rule.is_disabled,
         'comment': rule.comment}
-        
-    if rule.is_rule_section:
-        return _rule 
+    
+    _rule.update(used_on=rule.used_on.name)
     
     for field in ('sources', 'destinations', 'services'):
         if getattr(rule, field).is_any:
@@ -204,42 +202,14 @@ def to_yaml(rule, expand=None):
             else:
                 tmp = getattr(rule, field).all_as_href()
             _rule[field] = tmp
-
-    inspection_options = {
-        'decrypting': rule.action.decrypting,
-        'deep_inspection': rule.action.deep_inspection,
-        'file_filtering': rule.action.file_filtering}
-
-    _rule.update(inspection_options=inspection_options)
-    _rule.update(log_options=rule.data.get('options'),
-                 action=rule.action.action)
     
-    auth_options = {
-        'require_auth': rule.authentication_options.require_auth,
-        'methods': [m.name for m in rule.authentication_options.methods]}
-    for user in rule.authentication_options.users:
-        if 'user_group' in user.typeof:
-            auth_options.setdefault('groups', []).append(user.unique_id)
-        else:
-            auth_options.setdefault('users', []).append(user.unique_id)
-    
-    _rule.update(authentication_options=auth_options)
-    
-    if rule.action.action in ('enforce_vpn', 'forward_vpn', 'apply_vpn'):
-        if rule.action.vpn:
-            _rule.update(vpn_policy=rule.action.vpn.name)
-        else:
-            _rule.update(mobile_vpn=rule.action.mobile_vpn)
-    elif rule.action.action == 'jump':
-        _rule.update(sub_policy=rule.action.sub_policy.name)
-    _rule.update(connection_tracking=rule.action.connection_tracking_options.data)
     return _rule
 
 
 expands = ('sources', 'destinations', 'services')
 
-        
-class FirewallRuleFacts(StonesoftModuleBase):
+
+class FirewallNATRuleFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
@@ -263,10 +233,10 @@ class FirewallRuleFacts(StonesoftModuleBase):
         
         self.results = dict(
             ansible_facts=dict(
-                firewall_rule=[]
+                firewall_nat_rule=[]
             )
         )
-        super(FirewallRuleFacts, self).__init__(self.module_args, is_fact=True,
+        super(FirewallNATRuleFacts, self).__init__(self.module_args, is_fact=True,
             mutually_exclusive=mutually_exclusive)
 
     def exec_module(self, **kwargs):
@@ -295,21 +265,22 @@ class FirewallRuleFacts(StonesoftModuleBase):
             elif self.rule_range:
                 try:
                     start, end = map(int, self.rule_range.split('-'))
-                    result= [x for x in policy.fw_ipv4_access_rules][start-1:end]
+                    result= [x for x in policy.fw_ipv4_nat_rules][start-1:end]
                 except ValueError:
                     raise SMCException('Value of rule range was invalid. Rule ranges '
                         'must be a string with numeric only values, got: %s' %
                         self.rule_range)
             else:
-                result = policy.fw_ipv4_access_rules
+                result = policy.fw_ipv4_nat_rules
             
             if self.as_yaml:
                 rules = [to_yaml(rule, self.expand) for rule in result
-                         if rule.typeof == 'fw_ipv4_access_rule']
+                         if rule.typeof == 'fw_ipv4_nat_rule']
             else:
                 # No order for since rules could be sliced or searched
                 if self.search or self.rule_range:
-                    rules = [{'name': rule.name, 'type': rule.typeof} for rule in result]
+                    rules = [{'name': rule.name, 'type': rule.typeof} for rule in result
+                             if rule.typeof == 'fw_ipv4_nat_rule']
                 else:
                     rules = [{'name': rule.name, 'type': rule.typeof, 'pos': num}
                               for num, rule in enumerate(result, 1)]
@@ -321,12 +292,12 @@ class FirewallRuleFacts(StonesoftModuleBase):
             'policy': policy.name,
             'rules': rules}
     
-        self.results['ansible_facts']['firewall_rule'].append(firewall_rule)
+        self.results['ansible_facts']['firewall_nat_rule'].append(firewall_rule)
         return self.results
         
         
 def main():
-    FirewallRuleFacts()
+    FirewallNATRuleFacts()
     
 if __name__ == '__main__':
     main()

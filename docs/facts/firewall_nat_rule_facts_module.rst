@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _firewall_rule_facts:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+firewall_rule_facts - Facts about firewall rules based on specified policy
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* Retrieve rule specific information based on the policy specified in the facts module run. Specifying the policy is a required field. In addition, you can choose to expand fields like source, destination and services from href to their native element type and name by using the expand list with specified fields to expand. There are other search capabilities such as finding a rule based on partial match and rules within specific ranges.
 
 
 
@@ -44,24 +44,24 @@ Options
     </tr>
 
     <tr>
-    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
+    <td>as_yaml<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>True</td>
     <td></td>
+    <td><ul><li>yes</li><li>no</li></ul></td>
 	<td>
-        <p>Whether to do a case sensitive match on the filter specified</p>
+        <p>Set this boolean to true if the output should be exported into yaml format. By default the output format is actually dict, but using this field allows you to also use the provided jinja templates to format into yaml and reuse for playbook runs.</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
+    <td>True</td>
+    <td></td>
 	<td>
-        <p>Type of engine to search for</p>
+        <p>Whether to do a case sensitive match on the filter specified</p>
 	</td>
 	</tr>
     </td>
@@ -80,12 +80,24 @@ Options
     </tr>
 
     <tr>
-    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>expand<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>*</td>
+    <td></td>
+    <td><ul><li>source</li><li>destination</li><li>services</li></ul></td>
+	<td>
+        <p>Specifying fields which should be expanded from href into their native elements. Expanded fields will be returned as a dict of lists with the key being the element type and list being the name values for that element type</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
+    <td></td>
     <td></td>
 	<td>
-        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+        <p>The name of the FW Policy for which to retrieve rules</p>
 	</td>
 	</tr>
     </td>
@@ -98,6 +110,30 @@ Options
     <td></td>
 	<td>
         <p>Limit the number of results. Set to 0 to remove limit.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>rule_range<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide a rule range to retrieve. Firewall rules will be displayed based on the ranges provided in a top down fashion.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>search<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide a search string for which to use as a match against a rule/s name or comments field. Mutually exclusive with <em>rule_range</em></p>
 	</td>
 	</tr>
     </td>
@@ -274,37 +310,56 @@ Examples
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
+      - name: Show rules for policy 'TestPolicy' (only shows name, type)
+        firewall_rule_facts:
+          filter: TestPolicy
     
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
-      
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
+      - name: Search for specific rule/s using search value (partial searching supported)
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
     
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
-          smc_logging:
-            level: 10
-            path: ansible-smc.log
-          filter: newcluster
+      - name: Dump the results in yaml format, showing details of rule
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
           as_yaml: true
     
+      - name: Resolve the source, destination and services fields
+        firewall_rule_facts:
+          filter: TestPolicy
+          search: rulet
+          as_yaml: true
+          expand:
+          - sources
+          - destinations
+          - services
+    
+      - name: Get specific rules based on range order (rules 1-10)
+        firewall_rule_facts:
+          filter: TestPolicy
+          rule_range: 1-3
+          as_yaml: true
+      
+      - name: Get firewall rule as yaml
+        register: results
+        firewall_rule_facts:
+          smc_logging:
+           level: 10
+           path: ansible-smc.log
+          filter: TestPolicy
+          search: rulet
+          #rule_range: 1-3
+          as_yaml: true
+          expand:
+          - services
+          - destinations
+          - sources
+      
       - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+        template: src=templates/facts_yaml.j2 dest=./firewall_rules_test.yml
+        vars:
+          playbook: firewall_rule
 
 Return Values
 -------------
@@ -324,13 +379,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>engines</td>
+    <td>firewall_rule</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>Obtain metadata through a simple rule search</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>[{'comment': None, 'policy': 'TestPolicy', 'rules': [{'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097166.2', 'pos': 1}, {'type': 'fw_ipv4_access_rule', 'name': 'ruletest', 'pos': 2}, {'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097168.0', 'pos': 3}, {'type': 'fw_ipv4_access_rule', 'name': 'nested', 'pos': 4}]}]</td>
     </tr>
     </table>
     </br></br>

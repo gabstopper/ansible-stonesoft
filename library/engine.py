@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+from ansible.modules.cloud.misc.rhevm import changed
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -140,6 +141,31 @@ options:
             '2.3' syntax. If omitted, snmp is enabled on all interfaces
         type: list
         required: false
+  policy_vpn:
+    description:
+      - Defines any policy based VPN membership for thie engine. You can specify
+        multiple and whether the engine should be a central gateway or satellite
+        gateway and whether it should be enabled for mobile gateway. Updating policy
+        VPN on the engine directly requires SMC version >= 6.3.x
+    type: list
+    suboptions:
+      name:
+        description:
+          - The name of the policy VPN.
+        required: true
+        type: str
+      central_gateway:
+        description:
+          - Whether this engine should be a central gateway. Mutually exclusive with I(satellite_gateway)
+        type: bool
+      satellite_gateway:
+        description:
+          - Whether this engine should be a satellite gateway. Mutually exclusive with I(central_gateway)
+        type: bool
+      mobile_gateway:
+        description:
+          - Whether this engine should be enabled for remote VPN for mobile gateways (client VPN)
+        type: bool
   bgp:
     description:
       - If enabling BGP on the engine, provide BGP related settings
@@ -288,40 +314,78 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Create a single layer 3 firewall
-  register: result
-  l3fw:
-    smc_logging:
-      level: 10
-      path: ansible-smc.log
-    name: myfw
-    mgmt_interface: 10
-    interfaces:
-      - interface_id: 0
-        address: 1.1.1.2
-        network_value: 1.1.1.0/16
-        zone_ref: management
-      - interface_id: 10
-        address: 10.10.10.1
-        network_value: 10.10.10.0/24
-        zone_ref: external
-        enable_vpn: yes
-      - interface_id: 11
-      - interface_id: 1000
-        address: 11.11.11.1
-        network_value: 11.11.11.0/24
-        zone_ref: awsvpn
-        type: tunnel_interface 
-    domain_server_address:
-      - 10.0.0.1
-      - 10.0.0.2
-    default_nat: yes
-    enable_antivirus: yes
-    enable_gti: yes
-    enable_sidewinder_proxy: yes
-    tags: 
-      - footag
-
+- name: Firewall Template
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Layer 3 FW template
+    engine:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      antivirus: true
+      bgp:
+          announced_network:
+          -   network:
+                  name: network-1.1.1.0/24
+                  route_map: myroutemap
+          antispoofing_network:
+              network:
+              - network-1.1.1.0/24
+          autonomous_system:
+              as_number: 200
+              comment: null
+              name: as-200
+          bgp_peering:
+          -   interface_id: '1000'
+              name: bgppeering
+          bgp_profile: Default BGP Profile
+          enabled: true
+          router_id: 1.1.1.1
+      default_nat: true
+      domain_server_address:
+      - 8.8.8.8
+      file_reputation: true
+      interfaces:
+      -   interface_id: '2'
+          interfaces:
+          -   nodes:
+              -   address: 21.21.21.21
+                  network_value: 21.21.21.0/24
+                  nodeid: 1
+              vlan_id: '1'
+      -   interface_id: '0'
+          interfaces:
+          -   nodes:
+              -   address: 1.1.1.1
+                  network_value: 1.1.1.0/24
+                  nodeid: 1
+      -   interface_id: '1000'
+          interfaces:
+          -   nodes:
+              -   address: 10.10.10.1
+                  network_value: 10.10.10.1/32
+                  nodeid: 1
+          type: tunnel_interface
+      -   interface_id: '1'
+          interfaces:
+          -   nodes:
+              -   address: 2.2.2.1
+                  network_value: 2.2.2.0/24
+                  nodeid: 1
+      name: myfw3
+      policy_vpn:
+      -   central_node: true
+          mobile_gateway: false
+          name: ttesst
+          satellite_node: false
+      primary_mgt: '0'
+      snmp:
+          snmp_agent: fooagent
+          snmp_interface:
+          - '1'
+          snmp_location: test
+      type: single_fw
 # Delete a layer 3 firewall, using environment variables for credentials
 - name: delete firewall by name
   l3fw:
@@ -347,7 +411,8 @@ try:
     from smc.core.engines import Layer3Firewall, FirewallCluster
     from smc.core.engine import Engine
     from smc.routing.bgp import AutonomousSystem, BGPPeering
-    from smc.api.exceptions import SMCException
+    from smc.api.exceptions import SMCException, PolicyCommandFailed, \
+        UnsupportedEngineFeature
     from smc.core.interfaces import TunnelInterface, Layer3PhysicalInterface, \
         Layer2PhysicalInterface, ClusterPhysicalInterface
 except ImportError:
@@ -470,6 +535,114 @@ def engine_types():
     return ['single_fw', 'fw_cluster']
 
 
+def compat_pre643_update_policy_vpn(policy, internal_gw, vpn_def):
+    """
+    Compatible call for SMC version < 6.3.4. This is a far less optimal
+    set of instructions as it generates many more possible queries to
+    SMC. It is recommended to require SMC 6.3.4 as VPN references can
+    be obtained from the engine json versus having to open an search
+    a given VPN policy.
+    
+    :param PolicyVPN policy: policy as element
+    :param InternalGateway internal_gw: the engines internal (VPN) gateway
+        reference
+    :param dict vpn_def: vpn def in the native yaml provided
+    :rtype: bool
+    """
+    changed = False
+    policy.open()
+    # Find the central or satellite gateway that should be enabled first, and
+    # remove the other gateway side if it exists
+    if vpn_def.get('central_gateway') is not None:
+        if vpn_def['central_gateway']:
+            for gateway in policy.satellite_gateway_node:
+                if gateway.name == internal_gw.name:
+                    gateway.delete()
+                    changed = True
+                    break
+            try:
+                policy.add_central_gateway(internal_gw)
+            except PolicyCommandFailed as e:
+                if 'already exists' in str(e):
+                    pass
+        else: # Policy VPN should be disabled on central gateway
+            for gateway in policy.central_gateway_node:
+                if gateway.name == internal_gw.name:
+                    gateway.delete()
+                    changed = True
+                    break
+    
+    if vpn_def.get('satellite_gateway') is not None:
+        # If central gateway was provided, we would have already deleted it
+        # so check for non-existence before reiterating the gw's
+        if vpn_def['satellite_gateway']:
+            # Only check central gateway if it's not defined as it would
+            # not have been matched above
+            if vpn_def.get('central_gateway') is None:
+                for gateway in policy.central_gateway_node:
+                    if gateway.name == internal_gw.name:
+                        gateway.delete()
+                        changed = True
+                        break
+            try:
+                policy.add_satellite_gateway(internal_gw)
+            except PolicyCommandFailed as e:
+                if 'already exists' in str(e):
+                    pass
+        else: # Satellite gateway should be disabled
+            for gateway in policy.satellite_gateway_node:
+                if gateway.name == internal_gw.name:
+                    gateway.delete()
+                    changed = True
+                    break
+    
+    if vpn_def.get('mobile_gateway') is not None:
+        pass #Requires version 6.3.4 SMC to add mobile gateway
+            
+    policy.save()
+    policy.close()
+    return changed
+
+
+def open_policy(policy, internal_gw, vpn_def, delete_first=None):
+    """
+    Operate on the VPN policy. The vpn_def defines a dict
+    specifying how to operate on the relevant VPN site types.
+    Example:
+    {'satellite_gateway': False, 'central_gateway': True, mobile_gateway: True}
+    Any one of these types can be out if no operations are required.
+    True will require an add operation, whereas False will perform
+    a delete.
+    
+    :param PolicyVPN policy: policy vpn element
+    :param InternalGateway internal_gw: NGFW interface gateway ref
+    :param dict vpn_def: vpn def as provided by yaml
+    :param list delete_first: if using 6.3.4, delete first will have
+        gateway elements retrieved from engine json that should be
+        deleted before potentially changing the VPN policy but the
+        policy must first be opened first
+    :rtype: bool
+    """
+    changed = False
+    policy.open()
+    if delete_first:
+        for gateway in delete_first:
+            gateway.delete()
+        policy.save()
+    if vpn_def.get('central_gateway'):
+        policy.add_central_gateway(internal_gw)
+        changed = True
+    elif vpn_def.get('satellite_gateway'):
+        policy.add_satellite_gateway(internal_gw)
+        changed = True
+    if vpn_def.get('mobile_gateway'):
+        policy.add_mobile_gateway(internal_gw)
+        changed = True
+    policy.save()
+    policy.close()
+    return changed
+    
+    
 class StonesoftEngine(StonesoftModuleBase):
     def __init__(self):
         
@@ -481,6 +654,7 @@ class StonesoftEngine(StonesoftModuleBase):
             domain_server_address=dict(type='list', default=[]),
             location=dict(type='str'),
             bgp=dict(type='dict'),
+            ospf=dict(type='dict'),
             netlinks=dict(type='list', default=[]),
             comment=dict(type='str'),
             log_server=dict(type='str'),
@@ -506,6 +680,7 @@ class StonesoftEngine(StonesoftModuleBase):
         self.interfaces = None
         self.domain_server_address = None
         self.bgp = None
+        self.ospf = None
         self.netlinks = None
         self.log_server = None
         self.snmp = None
@@ -590,6 +765,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     if 'name' not in peer or 'interface_id' not in peer:
                         self.fail(msg='BGP Peering requires a name and interface_id for the '
                             'BGP Peering element. Info provided: %s' % peer)
+                    
                     # The specified interface ID must exist for the BGP Peering to succeed. If
                     # the interface is defined in yaml, we'll assume it will be created. If the
                     # engine exists, check if it's defined or if it already exists
@@ -637,6 +813,50 @@ class StonesoftEngine(StonesoftModuleBase):
                 if cache.missing:
                     self.fail(msg='Missing elements in announced configuration: %s' % cache.missing)
             
+            # Only validate OSPF if it's specifically set to enabled    
+            if self.ospf and self.ospf.get('enabled', True):
+                # OSPF Profile if specified
+                if self.ospf.get('ospf_profile', None):
+                    cache._add_entry('ospfv2_profile', self.ospf['ospf_profile'])
+                    if cache.missing:
+                        self.fail(msg='A OSPF Profile was specified that does not exist: '
+                            '%s' % self.ospf['ospf_profile'])
+                
+                # Get OSPF Areas assigned. These are optional but if they exist, the
+                # OSPF area must already exist
+                for area in self.ospf.get('ospf_areas', []):
+                    if 'interface_id' not in area or 'name' not in area:
+                        self.fail(msg='An OSPF area must have a name and an interface_id '
+                            'value identifying the interface to attach to: %s' % area)
+                    
+                    cache._add_entry('ospfv2_area', area.get('name'))
+                    if cache.missing:
+                        self.fail(msg='OSPF area referenced in configuration must pre-exist. OSPF '
+                            'referenced was: %s' % area.get('name'))
+                    
+                    peer_id = str(area['interface_id'])
+                    if peer_id not in itf and not engine:
+                        self.fail(msg='Interface ID: %s specified for OSPF Area does not '
+                            'exist. You must specify a valid interface to bind the peer '
+                            % peer_id)
+                    elif engine and (peer_id not in engine.interface and peer_id not in itf):
+                        self.fail(msg='OSPF Area interface id: %s specified does not exist '
+                            'on the current engine: %s' % (peer_id, engine.name))
+                 
+            if self.policy_vpn:
+                # Policy VPN requires at least a name in order to be configured. Set the
+                # gateway types on the element to set or unset the engine from the specified
+                # VPN. Setting an existing Policy VPN to False on a gateway where it was set
+                # to True will remove it from the gateway. Make setting the gateways optional
+                for vpn in self.policy_vpn:
+                    if vpn.get('central_gateway') and vpn.get('satellite_gateway'):
+                        self.fail(msg='When specifying policy vpn you must choose either '
+                            'a central gateway or satellite gateway, not both')
+                    cache._add_entry('vpn', vpn.get('name'))
+            
+                if cache.missing:
+                    self.fail(msg='Missing elements in Policy VPN configuration: %s' % cache.missing)
+                    
             if self.netlinks:
                 # Netlinks can be specified on an interface along with destination elements
                 # 'behind' these netlinks. Netlinks can only be placed on physical interface
@@ -645,6 +865,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     if 'name' not in netlink or 'interface_id' not in netlink:
                         self.fail(msg='Netlink requires a name and interface_id for the '
                             'Netlink element. Info provided: %s' % netlink)
+                    
                     int_id = str(netlink['interface_id'])
                     if int_id not in itf and not engine:
                         self.fail(msg='Interface ID: %s specified for netlink does not '
@@ -748,8 +969,11 @@ class StonesoftEngine(StonesoftModuleBase):
                         self.check_for_deletes(engine)
                     
                 ######                
-                # Check for BGP configuration on either newly created engine
-                # or on the existing
+                # Check for configurations that are not fed into the engine during creation
+                # and would require a post create modification because the settings are
+                # nested outside of the core engine blob
+                #
+                # Start with dynamic routing 
                 ######
                 if self.bgp:
                     bgp = engine.bgp
@@ -798,8 +1022,28 @@ class StonesoftEngine(StonesoftModuleBase):
                                 if self.update_bgp_peering(engine, peering, peer):
                                     changed = True
                 
+                if self.ospf:
+                    if self.update_ospf(engine):
+                        changed = True
+                        engine.update()
+                    
+                    if engine.ospf.status:    
+                        for ospf_area in self.ospf.get('ospf_areas', []):
+                            iface = engine.routing.get(ospf_area.get('interface_id'))
+                            if iface.add_ospf_area(
+                                self.cache.get('ospfv2_area', ospf_area.get('name'))):
+                                
+                                self.results['state'].append(
+                                    {'interface_id': ospf_area.get('interface_id'),
+                                     'type': 'ospfv2_area', 'action': 'updated'})
+                                changed = True
+            
                 if self.netlinks:
                     if self.update_netlinks(engine):
+                        changed = True
+                
+                if self.policy_vpn:
+                    if self.update_policy_vpn(engine):
                         changed = True
                     
                 if self.tags:
@@ -973,7 +1217,58 @@ class StonesoftEngine(StonesoftModuleBase):
                      'type': 'netlink', 'action': 'created'})
                 changed = True
         return changed
-            
+    
+    def update_policy_vpn(self, engine):
+        """
+        Update the policy VPN. Requires version 6.3.x SMC or skipped
+        
+        :param engine Engine: engine reference
+        :rtype: bool
+        """
+        changed = False
+        try:
+            vpn_mappings = engine.vpn_mappings
+        except UnsupportedEngineFeature:
+            return changed
+        
+        internal_gw = engine.vpn.internal_gateway
+        for vpn_def in self.policy_vpn:
+            policy_element = self.cache.get('vpn', vpn_def.get('name'))
+            vpn = vpn_mappings.get(vpn_ref=policy_element.href) # VPNMapping
+            if vpn:
+                if not vpn.gateway_nodes_usage: # pre-6.3.4
+                    if compat_pre643_update_policy_vpn(
+                        policy_element, internal_gw, vpn_def):
+                        changed = True
+                else:
+                    delete_first = [] #Track gateways that might need to be deleted
+                    if vpn_def.get('central_gateway') is not None:
+                        if vpn_def['central_gateway']:
+                            if not vpn.is_central_gateway:
+                                if vpn.is_satellite_gateway:
+                                    delete_first.append(vpn._satellite_gateawy)
+                        elif vpn.is_central_gateway:
+                            delete_first.append(vpn._central_gateway)
+                            
+                    if vpn_def.get('satellite_gateway') is not None:
+                        if vpn_def['satellite_gateway']:
+                            if not vpn.is_satellite_gateway:
+                                if vpn.is_central_gateway:
+                                    delete_first.append(vpn._central_gateway)
+                        elif vpn.is_satellite_gateway:
+                            delete_first.append(vpn._satellite_gateawy)
+                    
+                    if vpn_def.get('mobile_gateway') is not None:
+                        pass
+                    
+                    if open_policy(policy_element, internal_gw, vpn_def, delete_first):
+                        changed = True
+            else:
+                if open_policy(policy_element, internal_gw, vpn_def):
+                    changed = True
+                
+        return changed
+
     def update_snmp(self, engine):
         """
         Check for updates to SNMP on the engine
@@ -1108,6 +1403,33 @@ class StonesoftEngine(StonesoftModuleBase):
         if cmp(current_dict, new_dict) != 0:
             return True
         return False
+    
+    def update_ospf(self, engine):
+        """
+        Update OSPF on the engine
+        
+        :param Engine engine: engine reference
+        :rtype: bool
+        """
+        changed = False
+        ospf = engine.ospf
+        enabled = self.ospf.get('enabled', True)
+        if not enabled and ospf.status:
+            ospf.disable()
+            changed = True
+            return changed
+        
+        elif enabled:
+            if not ospf.status or (ospf.profile.name != self.ospf.get('ospf_profile') \
+                or ospf.router_id != self.ospf.get('router_id')):
+                
+                ospf.disable()
+                ospf.enable(
+                    ospf_profile=self.cache.get('ospfv2_profile', self.ospf.get('ospf_profile')),
+                    router_id=self.ospf.get('router_id'))
+                changed = True
+        
+        return changed
     
     def update_bgp_peering(self, engine, bgp_peering, peering_dict):
         """

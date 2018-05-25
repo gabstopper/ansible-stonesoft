@@ -56,7 +56,7 @@ Options
     </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>elements<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
     <td></td>

@@ -39,18 +39,6 @@ Options
     </tr>
 
     <tr>
-    <td>inspection_policy<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Read only view of the inspection policy for this policy</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>policy<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
@@ -254,18 +242,6 @@ Options
     </td>
     </tr>
 
-    <tr>
-    <td>template<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td></td>
-    <td></td>
-	<td>
-        <p>Read only view of the policy or sub policies template. This is returned by the facts module when retrieving rules</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
     </table>
     </br>
 
@@ -411,6 +387,44 @@ Examples
         -   tag: '2097203.0'
         state: absent
 
+Return Values
+-------------
+
+Common return values are documented `Return Values <http://docs.ansible.com/ansible/latest/common_return_values.html>`_, the following are the fields unique to this module:
+
+.. raw:: html
+
+    <table border=1 cellpadding=4>
+
+    <tr>
+    <th class="head">name</th>
+    <th class="head">description</th>
+    <th class="head">returned</th>
+    <th class="head">type</th>
+    <th class="head">sample</th>
+    </tr>
+
+    <tr>
+    <td>state</td>
+    <td>
+        <div>The current state of the element</div>
+    </td>
+    <td align=center></td>
+    <td align=center>dict</td>
+    <td align=center></td>
+    </tr>
+
+    <tr>
+    <td>changed</td>
+    <td>
+        <div>Whether or not the change succeeded</div>
+    </td>
+    <td align=center>always</td>
+    <td align=center>bool</td>
+    <td align=center></td>
+    </tr>
+    </table>
+    </br></br>
 
 
 Author

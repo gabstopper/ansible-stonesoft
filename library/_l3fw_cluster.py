@@ -26,6 +26,10 @@ description:
     interfaces that have multiple IP addresses defined (they will be skipped).
 
 version_added: '2.5'
+deprecated:
+  removed_in: "current"
+  why: Replaced with single module
+  alternative: M(engine)
 
 options:
   name:

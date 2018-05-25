@@ -2,36 +2,37 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  # - name: Show rules for policy 'TestPolicy' (only shows name, type)
-  #   firewall_rule_facts:
-  #     filter: TestPolicy
+  - name: Show rules for policy 'TestPolicy' (only shows name, type)
+    firewall_rule_facts:
+      filter: TestPolicy
 
-  # - name: Search for specific rule/s using search value (partial searching supported)
-  #   firewall_rule_facts:
-  #     filter: TestPolicy
-  #     search: rulet
+  - name: Search for specific rule/s using search value (partial searching supported)
+    firewall_rule_facts:
+      filter: TestPolicy
+      search: rulet
 
-  # - name: Dump the results in yaml format, showing details of rule
-  #   firewall_rule_facts:
-  #     filter: TestPolicy
-  #     search: rulet
-  #     as_yaml: true
+  - name: Dump the results in yaml format, showing details of rule
+    firewall_rule_facts:
+      filter: TestPolicy
+      exact_match: false
+      search: my
+      as_yaml: true
 
-  # - name: Resolve the source, destination and services fields
-  #   firewall_rule_facts:
-  #     filter: TestPolicy
-  #     search: rulet
-  #     as_yaml: true
-  #     expand:
-  #     - sources
-  #     - destinations
-  #     - services
+  - name: Resolve the source, destination and services fields
+    firewall_rule_facts:
+      filter: TestPolicy
+      search: rulet
+      as_yaml: true
+      expand:
+      - sources
+      - destinations
+      - services
 
-  # - name: Get specific rules based on range order (rules 1-10)
-  #   firewall_rule_facts:
-  #     filter: TestPolicy
-  #     rule_range: 1-3
-  #     as_yaml: true
+  - name: Get specific rules based on range order (rules 1-10)
+    firewall_rule_facts:
+      filter: TestPolicy
+      rule_range: 1-3
+      as_yaml: true
   
   - name: Get firewall rule as yaml
     register: results
@@ -49,6 +50,6 @@
       - sources
   
   - name: Write the yaml using a jinja template
-    template: src=templates/facts_yaml.j2 dest=./firewall_rules_test.yml
+    template: src=templates/facts_yaml.j2 dest=./firewall_rule.yml
     vars:
       playbook: firewall_rule

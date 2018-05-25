@@ -1,0 +1,24 @@
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Task output
+    register: result
+    firewall_nat_rule:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      policy: TestPolicy3
+      rules:
+      -   comment: null
+          destinations:
+              any: true
+          is_disabled: false
+          name: mynat
+          services:
+              any: true
+          sources:
+              engine:
+              - myfw
+          tag: '2097497.4'
+          used_on: ANY

@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _ospf_element:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+ospf_element - OSPF Elements used in engine configurations
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,14 +18,14 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* OSPF elements are the building blocks to building an OSPF configuration on a layer 3 engine. Use this module to obtain available elements and their values.
 
 
 
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python >= 0.6.0
+  * smc-python
 
 
 Options
@@ -54,16 +54,54 @@ Options
 	</tr>
     </td>
     </tr>
+    <tr>
+    <td rowspan="2">elements<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>List of OSPF related elements to create within the SMC. The list contain dicts representing valid OSPF element types as the key, and nested dict should be valid attributes of that OSPF element type.</div>
+        <div>Valid elements include: ospfv2_area, ospf_profile  <a href='http://smc-python.readthedocs.io/en/latest/pages/reference.html#module-smc.routing.ospf'>http://smc-python.readthedocs.io/en/latest/pages/reference.html#module-smc.routing.ospf</a>
+    </div>
+    </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
-	<td>
-        <p>Type of engine to search for</p>
-	</td>
-	</tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object elements</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>ospvfv2_area<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Create an OSPFv2 area element to be used on an routing interface to advertise OSPF. Suboptions describe key value pairs for area dict</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>ospfv2_profile<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>An OSPF profile defines how an OSPF area should behave with respects to redistributing routes between adjacent areas</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
     </td>
     </tr>
 
@@ -261,6 +299,18 @@ Options
     </td>
     </tr>
 
+    <tr>
+    <td>state<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td>present</td>
+    <td><ul><li>present</li><li>absent</li></ul></td>
+	<td>
+        <p>Create or delete an OSPF Element. If <em>state=absent</em>, the element dict must have at least the type of element and name field as a valid value.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
     </table>
     </br>
 
@@ -270,41 +320,68 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Facts about all engines within SMC
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
-    
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
-      
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
-    
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
-          smc_logging:
-            level: 10
-            path: ansible-smc.log
-          filter: newcluster
-          as_yaml: true
-    
-      - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+    - name: OSPF Elements
+      register: result
+      ospf_element:
+        elements:
+        - ospfv2_area:
+            area_type: normal
+            comment: null
+            inbound_filters:
+              ip_access_list:
+              - myacl22
+              ip_prefix_list:
+              - mylist2
+            interface_settings_ref: Default OSPFv2 Interface Settings
+            name: myarea2
+            outbound_filters:
+              ip_access_list:
+              - myservice
+        - ospfv2_profile:
+            comment: added by ansible
+            default_metric: 123
+            domain_settings_ref: Default OSPFv2 Domain Settings
+            external_distance: 110
+            inter_distance: 130
+            intra_distance: 110
+            name: myprofile
+            redistribution_entry:
+            - enabled: true
+              metric_type: external_1
+              type: bgp
+            - enabled: true
+              filter:
+                route_map:
+                - myroutemap
+              metric: 2
+              metric_type: external_1
+              type: static
+            - enabled: true
+              filter:
+                ip_access_list:
+                - myacl
+              metric_type: external_2
+              type: connected
+            - enabled: false
+              metric_type: external_1
+              type: kernel
+            - enabled: false
+              metric_type: external_1
+              type: default_originate
+        #state: absent
+     
+    - name: Unset an existing redistributed route ip access list or route map
+      register: result
+      ospf_element:
+        elements:   
+        - ospfv2_profile:
+          name: myprofile
+          redistribution_entry:
+          - enabled: true
+            metric_type: external_1
+            type: bgp
+          - enabled: true
+            filter: {}
 
 Return Values
 -------------
@@ -324,13 +401,23 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>engines</td>
+    <td>state</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>Full json definition of NGFW</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>[{'action': 'created', 'type': 'ospfv2_area', 'name': 'myarea2'}, {'action': 'created', 'type': 'ospfv2_profile', 'name': 'myprofile'}, {'action': 'deleted', 'type': 'ospfv2_area', 'name': 'myarea2'}, {'action': 'failed to delete with reason: Cannot find specified element: myprofile, type: ospfv2_profile', 'type': 'ospfv2_profile', 'name': 'myprofile'}]</td>
+    </tr>
+
+    <tr>
+    <td>changed</td>
+    <td>
+        <div>Whether or not the change succeeded</div>
+    </td>
+    <td align=center>always</td>
+    <td align=center>bool</td>
+    <td align=center></td>
     </tr>
     </table>
     </br></br>

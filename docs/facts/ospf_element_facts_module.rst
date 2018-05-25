@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _ospf_element_facts:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+ospf_element_facts - Facts about OSPF based elements in the SMC
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,14 +18,14 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* BGP elements are the building blocks to building a BGP configuration on a layer 3 engine. Use this module to obtain available elements and their values.
 
 
 
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python >= 0.6.0
+  * smc-python
 
 
 Options
@@ -57,11 +57,11 @@ Options
 
     <tr>
     <td>element<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
+    <td>yes</td>
+    <td></td>
+    <td><ul><li>ospfv2_area</li><li>ospfv2_profile</li></ul></td>
 	<td>
-        <p>Type of engine to search for</p>
+        <p>Type of OSPF element to retrieve</p>
 	</td>
 	</tr>
     </td>
@@ -270,41 +270,39 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Facts about all engines within SMC
+    - name: Facts about OSPF elements
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
+      - name: Find all OSPF v2 areas
+        ospf_element_facts:
+          element: ospfv2_area
     
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
+      - name: Find a specific OSPF area with details
+        ospf_element_facts:
+          element: ospfv2_area
+          filter: myarea
       
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
+      - name: Find an OSPF profile containing name 'Default'
+        ospf_element_facts:
+          element: ospfv2_profile
+          filter: Default
     
-      - name: Get engine details for 'myfw' and save in editable YAML format
+      - name: Get details for autonomous system myas and save as yaml
         register: results
-        engine_facts:
+        ospf_element_facts:
           smc_logging:
             level: 10
             path: ansible-smc.log
-          filter: newcluster
+          element: ospfv2_profile
+          filter: myprofile
+          exact_match: false
           as_yaml: true
     
       - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+        template: src=templates/facts_yaml.j2 dest=./ospf_element.yml
+        vars:
+          playbook: ospf_element
 
 Return Values
 -------------
@@ -324,13 +322,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>engines</td>
+    <td>elements</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>List a specific OSPF profile</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>[{'comment': 'added by ansible', 'external_distance': 110, 'name': 'myprofile', 'default_metric': 123, 'domain_settings_ref': 'Default OSPFv2 Domain Settings', 'inter_distance': 130, 'intra_distance': 110, 'redistribution_entry': [{'metric_type': 'external_1', 'enabled': True, 'type': 'bgp'}, {'filter': {'route_map': ['myroutemap']}, 'metric_type': 'external_1', 'metric': 2, 'enabled': True, 'type': 'static'}, {'filter': {'ip_access_list': ['myacl']}, 'metric_type': 'external_2', 'enabled': True, 'type': 'connected'}, {'metric_type': 'external_1', 'enabled': False, 'type': 'kernel'}, {'metric_type': 'external_1', 'enabled': False, 'type': 'default_originate'}]}]</td>
     </tr>
     </table>
     </br></br>

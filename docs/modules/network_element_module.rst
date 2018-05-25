@@ -407,6 +407,9 @@ Examples
                     - hostb
                     network:
                     - networka
+                    engine:
+                    - myfw
+                    - myfw2
             - group:
                 name: emptyregulargrp
                 members:
