@@ -118,7 +118,12 @@ engines:
     type: list
     sample: [
         {
-        "antivirus": true, 
+        "antivirus": true,
+        "antispoofing_network": {
+            "network": [
+                "network-1.1.1.0/24"
+            ]
+        },
         "bgp": {
             "announced_network": [
                 {
@@ -128,11 +133,6 @@ engines:
                     }
                 }
             ], 
-            "antispoofing_network": {
-                "network": [
-                    "network-1.1.1.0/24"
-                ]
-            }, 
             "autonomous_system": {
                 "as_number": 200, 
                 "comment": null, 
@@ -265,7 +265,7 @@ def yaml_cluster(engine):
     """
     # Prefetch all zones to reduce queries
     zone_cache = list(Zone.objects.all())
-    management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat')
+    management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat', 'backup_heartbeat')
     yaml_engine = {'name': engine.name, 'type': engine.type}
     interfaces = []
     
@@ -388,9 +388,12 @@ def yaml_cluster(engine):
         interfaces=interfaces,
         default_nat=engine.default_nat.status,
         antivirus=engine.antivirus.status,
-        file_reputation=engine.file_reputation.status,
-        domain_server_address=[dns.value for dns in engine.dns
-                               if dns.element is None])
+        file_reputation=engine.file_reputation.status)
+    
+    if engine.dns:
+        yaml_engine.update(
+            domain_server_address=get_engine_dns(engine))
+    
     if engine.comment:
         yaml_engine.update(comment=engine.comment)
 
@@ -418,10 +421,15 @@ def yaml_cluster(engine):
     # OSPF Data
     yaml_engine.update(ospf=get_ospf(engine))
     
+    # Antispoofing, only if dynamic routing is enabled
+    antispoofing = get_antispoofing(engine)
+    if antispoofing:
+        yaml_engine.update(antispoofing_network=antispoofing)
+    
     # Netlinks
     netlinks = []
     for netlink in engine.routing.netlinks:
-        interface, network, link = netlink
+        interface, _network, link = netlink
         netlink = {'interface_id': interface.nicid,
                    'name': link.name}
             
@@ -446,13 +454,45 @@ def yaml_cluster(engine):
     return yaml_engine
 
 
+def get_engine_dns(engine):
+    """
+    Engine DNS entries
+    
+    :rtype: list
+    """
+    entries = []
+    for val in engine.dns:
+        if val.value:
+            entries.append({'name': val.value, 'type': 'ipaddress'})
+        else:
+            ne_ref = val.element
+            entries.append({'name': ne_ref.name, 'type': ne_ref.typeof})
+    return entries
+
+
+def get_antispoofing(engine):
+    """
+    Get antispoofing networks for configuration where BGP or
+    OSPF are enabled
+    
+    :rtype: dict
+    """
+    dyn_routing = engine.dynamic_routing
+    antispoofing_map = {}
+    if dyn_routing.bgp.status or dyn_routing.ospf.status: 
+        for net in dyn_routing.antispoofing_networks:
+            antispoofing_map.setdefault(net.typeof, []).append(
+                net.name)
+    return antispoofing_map
+    
+    
 def get_bgp(engine):
     """
     Get BGP settings for the engine if any
     
     :return: dict of BGP settings
     """
-    bgp = engine.bgp
+    bgp = engine.dynamic_routing.bgp
     data = dict(enabled=bgp.status,
                 router_id=bgp.router_id)
     
@@ -466,16 +506,9 @@ def get_bgp(engine):
         bgp_profile = bgp.profile
         if bgp_profile:
             data.update(bgp_profile=bgp_profile.name)
-        
-        antispoofing_map = {}
-        for net in bgp.antispoofing_networks:
-            antispoofing_map.setdefault(net.typeof, []).append(
-                net.name)
-        antispoofing_network = antispoofing_map if antispoofing_map else {}
-        data.update(antispoofing_network=antispoofing_network)
             
         announced_network = []
-        for announced in bgp.advertisements:
+        for announced in bgp.announced_networks:
             element, route_map = announced
             d = {element.typeof: {'name': element.name}}
             if route_map:
@@ -507,11 +540,11 @@ def get_ospf(engine):
     
     :return: dict of entries only if OSPF is enabled
     """
-    ospf = engine.ospf
+    ospf = engine.dynamic_routing.ospf
     data = dict(
-        enabled=ospf.is_enabled,
+        enabled=ospf.status,
         router_id=ospf.router_id)
-    if ospf.is_enabled:
+    if ospf.status:
         data.update(ospf_profile=ospf.profile.name)
 
     ospf_areas = []
@@ -529,8 +562,8 @@ def get_ospf(engine):
 
 def get_policy_vpn(engine):
     """
-    Policy VPN settings for the engine. This can be modified to leverage
-    SMC 6.3.4 optimizations under engine.vpn_mappings
+    Policy VPN settings for the engine. This should be modified to leverage
+    SMC 6.3.4 optimizations under engine.vpn_mappings.
     
     :return: dict of policy VPN settings
     """
@@ -550,10 +583,10 @@ def get_policy_vpn(engine):
                 vpn.open()
                 nodes = vpn.central_gateway_node
                 node_central = nodes.get_contains(engine_internal_gw)
-                _vpn.update(central_node=True if node_central else False)
+                _vpn.update(central_gateway=True if node_central else False)
                 if not node_central: # If it's a central node it can't be a satellite node
                     nodes = vpn.satellite_gateway_node
-                    _vpn.update(satellite_node=True if nodes.get_contains(engine_internal_gw) else False)
+                    _vpn.update(satellite_gateway=True if nodes.get_contains(engine_internal_gw) else False)
                 else:
                     _vpn.update(satellite_node=False)
                 if vpn.mobile_vpn_topology != 'None':

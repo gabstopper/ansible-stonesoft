@@ -39,6 +39,8 @@ Where:
 
 **limit**: Limit the number of results to return
 
+**as_yaml**: Return the data in yaml format. Use a jinja template from the templates directory to format the yaml into a file of choice
+
 Some modules may also support the **expand** option which can be used to expand attributes that are returned and only have an href
 as value. Each fact module that supports expand also has a list of supported attributes that can be expanded.
 

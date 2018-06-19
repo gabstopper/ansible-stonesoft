@@ -1,8 +1,8 @@
-.. _firewall_rule_facts:
+.. _firewall_nat_rule_facts:
 
 
-firewall_rule_facts - Facts about firewall rules based on specified policy
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+firewall_nat_rule_facts - Facts about firewall rules based on specified policy
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 

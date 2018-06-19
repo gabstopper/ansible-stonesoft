@@ -19,9 +19,13 @@ cd ansible-stonesoft
 pip install -r requirements.txt
 ```
 
-* Enable the SMC API within the management center
+Once installed, there is a helper script `install.py` that will copy the ansible-stonesoft docs and module_util into the ansible directories:
 
-Once you have installed ansible and the stonesoft libraries, you can run the helper `install.py` which will copy the ansible library dependencies into your respective ansible paths (docs and module_utils).
+```
+python install.py
+```
+
+* Enable the SMC API within the management center
 
 ### Usage
 
@@ -65,6 +69,12 @@ All modules provide doc snippets when run from the ansible client:
 ```
 ansible-doc -s engine
 ```
+
+#### About this repo
+
+The latest master branch is considered the 'current' release and the develop branch is used for ongoing feature development.
+Releases published on the master branch are considered stable, however all develop branch code is also unit tested before
+being posted.
 
 #### Contributions
 

@@ -11,6 +11,7 @@
       elements:
       - ospfv2_area:
           area_type: normal
+          area_id: 100
           comment: null
           inbound_filters:
             ip_access_list:
@@ -53,4 +54,25 @@
           - enabled: false
             metric_type: external_1
             type: default_originate
+      - ospfv2_domain_settings:
+          abr_type: cisco
+          auto_cost_bandwidth: 100
+          deprecated_algorithm: false
+          initial_delay: 203
+          initial_hold_time: 1000
+          max_hold_time: 10000
+          name: mydomain2
+          shutdown_max_metric_lsa: 0
+          startup_max_metric_lsa: 0
+      - ospfv2_interface_settings:
+          authentication_type: none
+          dead_interval: 40
+          hello_interval: 10
+          hello_interval_type: normal
+          mtu_mismatch_detection: true
+          name: myinterface
+          password: ''
+          retransmit_interval: 5
+          router_priority: 1
+          transmit_delay: 1
       #state: absent

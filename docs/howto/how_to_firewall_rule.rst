@@ -442,7 +442,6 @@ This results in the following output::
         "firewall_rule": [
             {
                 "comment": null, 
-                "inspection_policy": "High-Security Inspection Template", 
                 "policy": "TestPolicy", 
                 "rules": [
                     {
@@ -474,7 +473,6 @@ Resulting in the following output::
         "firewall_rule": [
             {
                 "comment": null, 
-                "inspection_policy": "High-Security Inspection Template", 
                 "policy": "TestPolicy", 
                 "rules": [
                     {
@@ -489,8 +487,7 @@ Resulting in the following output::
                         "name": "Rule @2097168.0", 
                         "type": "fw_ipv4_access_rule"
                     }
-                ], 
-                "template": "Firewall Inspection Template"
+                ]
             }
         ]
     }
@@ -519,15 +516,13 @@ This results in the following output::
         "firewall_rule": [
             {
                 "comment": null, 
-                "inspection_policy": "High-Security Inspection Template", 
                 "policy": "TestPolicy", 
                 "rules": [
                     {
                         "name": "ruletest", 
                         "type": "fw_ipv4_access_rule"
                     }
-                ], 
-                "template": "Firewall Inspection Template"
+                ]
             }
         ]
     }
@@ -555,7 +550,6 @@ The output from the run now contains must more data and the specifics about the 
         "firewall_rule": [
             {
                 "comment": null, 
-                "inspection_policy": "High-Security Inspection Template", 
                 "policy": "TestPolicy", 
                 "rules": [
                     {
@@ -607,8 +601,7 @@ The output from the run now contains must more data and the specifics about the 
                         }, 
                         "tag": "2097164.14"
                     }
-                ], 
-                "template": "Firewall Inspection Template"
+                ]
             }
         ]
     }
@@ -641,7 +634,6 @@ Running this task results in the following::
         "firewall_rule": [
             {
                 "comment": null, 
-                "inspection_policy": "High-Security Inspection Template", 
                 "policy": "TestPolicy", 
                 "rules": [
                     {
@@ -705,8 +697,7 @@ Running this task results in the following::
                         }, 
                         "tag": "2097164.14"
                     }
-                ], 
-                "template": "Firewall Inspection Template"
+                ]
             }
         ]
     }

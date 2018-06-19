@@ -13,7 +13,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: firewall_rule_facts
+module: firewall_nat_rule_facts
 short_description: Facts about firewall rules based on specified policy
 description:
   - Retrieve rule specific information based on the policy specified in the

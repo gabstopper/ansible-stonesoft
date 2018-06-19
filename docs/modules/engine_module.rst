@@ -44,6 +44,18 @@ Options
     </tr>
 
     <tr>
+    <td>antispoofing_network<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
+	<td>
+        <p>Antispoofing networks are automatically added to the route antispoofing configuration. The dict should have a key specifying the element type from SMC. The dict key value should be a list of the element types by name.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>antivirus<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -56,12 +68,24 @@ Options
     </tr>
 
     <tr>
+    <td>backup_heartbeat<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Specify an interface by ID that will be the backup heartbeat. If the interface is a VLAN, specify in '2.4' format. If the interface cannot be used as this management type, operation is skipped.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>backup_mgt<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
 	<td>
-        <p>Specify an interface by ID that will be the backup management. If the interface is a VLAN, specify in '2.4' format (interface 2, vlan 4).</p>
+        <p>Specify an interface by ID that will be the backup management. If the interface is a VLAN, specify in '2.4' format (interface 2, vlan 4). If the interface cannot be used as this management type, operation is skipped.</p>
 	</td>
 	</tr>
     </td>
@@ -109,26 +133,6 @@ Options
         </tr>
 
         <tr>
-        <td>announced_network<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
-        <td>
-            <div>Announced networks identify the network and optional route map for internal networks announced over BGP. The list should be a dict with the key identifying the announced network type from SMC. The key should have a dict with name and route_map (optional) if the element should have an associated route_map.</div>
-        </td>
-        </tr>
-
-        <tr>
-        <td>antispoofing_network<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
-        <td>
-            <div>Antispoofing networks are automatically added to the route antispoofing configuration. The dict should have a key specifying the element type from SMC. The dict key value should be a list of the element types by name.</div>
-        </td>
-        </tr>
-
-        <tr>
         <td>enabled<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
@@ -145,6 +149,16 @@ Options
         <td></td>
         <td>
             <div>The autonomous system for this engine. Provide additional arguments to allow for get or create logic</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>announced_network<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td><ul><li>network</li><li>group</li><li>host</li></ul></td>
+        <td>
+            <div>Announced networks identify the network and optional route map for internal networks announced over BGP. The list should be a dict with the key identifying the announced network type from SMC. The key should have a dict with name and route_map (optional) if the element should have an associated route_map.</div>
         </td>
         </tr>
 
@@ -202,16 +216,52 @@ Options
 	</tr>
     </td>
     </tr>
-
     <tr>
-    <td>domain_server_address<br/><div style="font-size: small;"></div></td>
+    <td rowspan="2">domain_server_address<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
     <td></td>
-	<td>
-        <p>A list of IP addresses to use as DNS resolvers for the FW. Required to enable Antivirus, GTI and URL Filtering on the NGFW.</p>
-	</td>
-	</tr>
+    <td>
+        <div>A list of IP addresses to use as DNS resolvers for the FW. Required to enable Antivirus, GTI and URL Filtering on the NGFW.</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object domain_server_address</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>type<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Type of element. Valid entries are ipaddress, host, dns_server. If using element that is not ipaddress, it must pre-exist in the SMC</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Name of the element, can be IP address or element</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
     </td>
     </tr>
 
@@ -349,6 +399,63 @@ Options
     </td>
     </tr>
     <tr>
+    <td rowspan="2">netlinks<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+    <td>
+        <div>Netlinks are a list of dicts defining where to place netlinks and any destinations on a given routing interface. Suboptions define the dict structure for each list dict</div>
+    </tr>
+
+    <tr>
+    <td colspan="5">
+        <table border=1 cellpadding=4>
+        <caption><b>Dictionary object netlinks</b></caption>
+
+        <tr>
+        <th class="head">parameter</th>
+        <th class="head">required</th>
+        <th class="head">default</th>
+        <th class="head">choices</th>
+        <th class="head">comments</th>
+        </tr>
+
+        <tr>
+        <td>destination<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>Destination elements specifying the networks, hosts, groups behind this netlink. Suboptions define the dict format for each list member</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>name<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+        </td>
+        </tr>
+
+        <tr>
+        <td>interface_id<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The interface ID which to bind the netlink to. For VLAN, should be in dot syntax, i.e. 1.2, indicating interface 1, VLAN 2</div>
+        </td>
+        </tr>
+
+        </table>
+
+    </td>
+    </tr>
+    </td>
+    </tr>
+    <tr>
     <td rowspan="2">policy_vpn<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -423,7 +530,7 @@ Options
     <td></td>
     <td></td>
 	<td>
-        <p>Specify an interface for the primary heartbeat interface. This will default to the same interface as primary_mgt if not specified.</p>
+        <p>Specify an interface for the primary heartbeat interface. This will default to the same interface as primary_mgt if not specified. If the interface cannot be used as this management type, operation is skipped.</p>
 	</td>
 	</tr>
     </td>
@@ -435,7 +542,7 @@ Options
     <td></td>
     <td></td>
 	<td>
-        <p>Identify the interface to be specified as management. When creating a new cluster, the primary mgt must be a non-VLAN interface. You can move it to a VLAN interface after creation.</p>
+        <p>Identify the interface to be specified as management. When creating a new cluster, the primary mgt must be a non-VLAN interface. You can move it to a VLAN interface after creation. If the interface cannot be used as this management type, operation is skipped.</p>
 	</td>
 	</tr>
     </td>
@@ -721,72 +828,97 @@ Examples
           smc_logging:
             level: 10
             path: ansible-smc.log
+          antispoofing_network:
+            group:
+            - group1
+            host:
+            - 2.2.2.23
+            network:
+            - gateway_129.47.0.0/16
+            - gateway_129.48.0.0/16
           antivirus: true
           bgp:
-              announced_network:
-              -   network:
-                      name: network-1.1.1.0/24
-                      route_map: myroutemap
-              antispoofing_network:
-                  network:
-                  - network-1.1.1.0/24
-              autonomous_system:
-                  as_number: 200
-                  comment: null
-                  name: as-200
-              bgp_peering:
-              -   interface_id: '1000'
-                  name: bgppeering
-              bgp_profile: Default BGP Profile
-              enabled: true
-              router_id: 1.1.1.1
+            announced_network:
+            - network:
+                name: network-1.1.1.0/24
+                route_map: myroutemap
+            autonomous_system:
+              as_number: 200
+              comment: null
+              name: as-200
+            bgp_peering:
+            - external_bgp_peer: bgppeer
+              interface_id: '1000'
+              name: bgppeering
+            bgp_profile: Default BGP Profile
+            enabled: true
+            router_id: 2.3.4.5
           default_nat: true
           domain_server_address:
-          - 8.8.8.8
+          - name: 8.8.8.8
+            type: ipaddress
+          - name: Localhost
+            type: host
           file_reputation: true
           interfaces:
-          -   interface_id: '2'
-              interfaces:
-              -   nodes:
-                  -   address: 21.21.21.21
-                      network_value: 21.21.21.0/24
-                      nodeid: 1
-                  vlan_id: '1'
-          -   interface_id: '0'
-              interfaces:
-              -   nodes:
-                  -   address: 1.1.1.1
-                      network_value: 1.1.1.0/24
-                      nodeid: 1
-          -   interface_id: '1000'
-              interfaces:
-              -   nodes:
-                  -   address: 10.10.10.1
-                      network_value: 10.10.10.1/32
-                      nodeid: 1
-              type: tunnel_interface
-          -   interface_id: '1'
-              interfaces:
-              -   nodes:
-                  -   address: 2.2.2.1
-                      network_value: 2.2.2.0/24
-                      nodeid: 1
+          - interface_id: '1000'
+            interfaces:
+            - nodes:
+              - address: 10.10.10.1
+                network_value: 10.10.10.1/32
+                nodeid: 1
+            type: tunnel_interface
+          - interface_id: '2'
+            interfaces:
+            - nodes:
+              - address: 21.21.21.21
+                network_value: 21.21.21.0/24
+                nodeid: 1
+              vlan_id: '1'
+          - interface_id: '1'
+            interfaces:
+            - nodes:
+              - address: 2.2.2.1
+                network_value: 2.2.2.0/24
+                nodeid: 1
+          - interface_id: '0'
+            interfaces:
+            - nodes:
+              - address: 1.1.1.1
+                network_value: 1.1.1.0/24
+                nodeid: 1
           name: myfw3
+          netlinks:
+          - destination:
+            - name: IP_10.3.3.1
+              type: host
+            interface_id: '2.1'
+            name: netlink-21.21.21.0
+          ospf:
+            enabled: true
+            ospf_areas:
+            - interface_id: '2.1'
+              name: myarea
+              network: 21.21.21.0/24
+            ospf_profile: Default OSPFv2 Profile
+            router_id: 1.1.1.1
           policy_vpn:
-          -   central_node: true
-              mobile_gateway: false
-              name: ttesst
-              satellite_node: false
+          - central_gateway: true
+            mobile_gateway: false
+            name: myvpn
+            satellite_gateway: false
           primary_mgt: '0'
           snmp:
-              snmp_agent: fooagent
-              snmp_interface:
-              - '1'
-              snmp_location: test
+            snmp_agent: fooagent
+            snmp_interface:
+            - '1'
+            snmp_location: test
           type: single_fw
+    
+    
     # Delete a layer 3 firewall, using environment variables for credentials
     - name: delete firewall by name
-      l3fw:
+      engine:
         name: myfirewall
         state: 'absent'
 

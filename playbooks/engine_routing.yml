@@ -1,0 +1,45 @@
+- name: Engine routing elements
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Add routing elements to engine sg_vm
+    engine_routing:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      name: myfw4
+      bgp_peering:
+      - destination:
+        - name: bgppeer
+          type: external_bgp_peer
+        interface_id: '1000'
+        name: bgppeering
+      ospfv2_area:
+      - interface_id: '2.1'
+        name: myarea
+        network: 21.21.21.0/24
+        destination:
+        - name: myinterface
+          type: ospfv2_interface_settings
+      - name: myarea2
+        interface_id: 1
+      netlink:
+      - destination:
+        - name: IP_10.3.3.1
+          type: host
+        interface_id: '2.1'
+        name: netlink-21.21.21.0
+      static_route:
+      - destination:
+        - name: Any network
+          type: network
+        interface_id: 0
+        network: '1.1.1.0/24'
+        name: myrouter # Must be element of type Router
+      antispoofing_network:
+      - destination:
+        - name: foonet
+          type: network
+        interface_id: 0
+      state: absent
+

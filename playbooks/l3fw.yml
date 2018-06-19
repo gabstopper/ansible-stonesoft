@@ -7,15 +7,20 @@
       smc_logging:
         level: 10
         path: ansible-smc.log
+      antispoofing_network:
+        group:
+        - group1
+        host:
+        - 2.2.2.23
+        network:
+        - gateway_129.47.0.0/16
+        - gateway_129.48.0.0/16
       antivirus: true
       bgp:
         announced_network:
         - network:
             name: network-1.1.1.0/24
             route_map: myroutemap
-        antispoofing_network:
-          network:
-          - network-1.1.1.0/24
         autonomous_system:
           as_number: 200
           comment: null
@@ -26,25 +31,15 @@
           name: bgppeering
         bgp_profile: Default BGP Profile
         enabled: true
-        router_id: 1.1.1.1
+        router_id: 2.3.4.5
       default_nat: true
       domain_server_address:
-      - 8.8.8.8
+      - name: 8.8.8.8
+        type: ipaddress
+      - name: Localhost
+        type: host
       file_reputation: true
       interfaces:
-      - interface_id: '2'
-        interfaces:
-        - nodes:
-          - address: 21.21.21.21
-            network_value: 21.21.21.0/24
-            nodeid: 1
-          vlan_id: '1'
-      - interface_id: '0'
-        interfaces:
-        - nodes:
-          - address: 1.1.1.1
-            network_value: 1.1.1.0/24
-            nodeid: 1
       - interface_id: '1000'
         interfaces:
         - nodes:
@@ -52,26 +47,45 @@
             network_value: 10.10.10.1/32
             nodeid: 1
         type: tunnel_interface
+      - interface_id: '2'
+        interfaces:
+        - nodes:
+          - address: 21.21.21.21
+            network_value: 21.21.21.0/24
+            nodeid: 1
+          vlan_id: '1'
       - interface_id: '1'
         interfaces:
         - nodes:
           - address: 2.2.2.1
             network_value: 2.2.2.0/24
             nodeid: 1
+      - interface_id: '0'
+        interfaces:
+        - nodes:
+          - address: 1.1.1.1
+            network_value: 1.1.1.0/24
+            nodeid: 1
       name: myfw3
+      netlinks:
+      - destination:
+        - name: IP_10.3.3.1
+          type: host
+        interface_id: '2.1'
+        name: netlink-21.21.21.0
       ospf:
         enabled: true
         ospf_areas:
         - interface_id: '2.1'
           name: myarea
-          #network: 21.21.21.0/24
+          network: 21.21.21.0/24
         ospf_profile: Default OSPFv2 Profile
         router_id: 1.1.1.1
       policy_vpn:
-      - central_node: true
+      - central_gateway: true
         mobile_gateway: false
         name: ttesst
-        satellite_node: false
+        satellite_gateway: false
       primary_mgt: '0'
       snmp:
         snmp_agent: fooagent
@@ -79,4 +93,3 @@
         - '1'
         snmp_location: test
       type: single_fw
-      #state: absent

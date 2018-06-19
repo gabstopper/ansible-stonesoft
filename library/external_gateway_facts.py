@@ -12,7 +12,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: external_gw_facts
+module: external_gateway_facts
 short_description: Facts about external VPN gateways
 description:
   - An external vpn gateway is a non-SMC managed endpoint used for

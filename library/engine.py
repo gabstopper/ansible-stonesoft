@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-from ansible.modules.cloud.misc.rhevm import changed
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -33,19 +32,27 @@ options:
     description:
       - Identify the interface to be specified as management. When creating a new
         cluster, the primary mgt must be a non-VLAN interface. You can move it to
-        a VLAN interface after creation.
+        a VLAN interface after creation. If the interface cannot be used as this
+        management type, operation is skipped.
     type: str
     required: true
   backup_mgt:
     description:
       - Specify an interface by ID that will be the backup management. If the
-        interface is a VLAN, specify in '2.4' format (interface 2, vlan 4).
+        interface is a VLAN, specify in '2.4' format (interface 2, vlan 4). If the interface
+        cannot be used as this management type, operation is skipped.
     type: str
   primary_heartbeat:
     description:
       - Specify an interface for the primary heartbeat interface. This will
-        default to the same interface as primary_mgt if not specified.
+        default to the same interface as primary_mgt if not specified. If the interface
+        cannot be used as this management type, operation is skipped.
     type: str
+  backup_heartbeat:
+    description:
+      - Specify an interface by ID that will be the backup heartbeat. If the interface
+        is a VLAN, specify in '2.4' format. If the interface cannot be used as this management
+        type, operation is skipped.
   location:
     description:
       - Location identifier for the engine. Used when engine is behind NAT. If
@@ -115,6 +122,16 @@ options:
         traffic
     type: bool
     default: false
+  antispoofing_network:
+    description:
+      - Antispoofing networks are automatically added to the route antispoofing
+        configuration. The dict should have a key specifying the element type from
+        SMC. The dict key value should be a list of the element types by name.
+    type: dict
+    choices:
+    - network
+    - group
+    - host
   snmp:
     description:
       - SNMP settings for the engine
@@ -166,6 +183,40 @@ options:
         description:
           - Whether this engine should be enabled for remote VPN for mobile gateways (client VPN)
         type: bool
+  netlinks:
+    description:
+      - Netlinks are a list of dicts defining where to place netlinks and any destinations on a
+        given routing interface. Suboptions define the dict structure for each list dict
+    type: list
+    suboptions:
+      name:
+        decscription:
+          - Name of the netlink. The netlink must pre-exist. Create using network_elements playbook
+        type: str
+        required: true
+      interface_id:
+        description:
+          - The interface ID which to bind the netlink to. For VLAN, should be in dot syntax, i.e. 1.2,
+            indicating interface 1, VLAN 2
+        type: str
+        required: true
+      destination:
+        description:
+          - Destination elements specifying the networks, hosts, groups behind this netlink. Suboptions
+            define the dict format for each list member
+        type: list
+        suboptions:
+          name:
+            description:
+              - Name of the element
+            type: str
+            required: true
+          type:
+            description:
+              - Type of element. Element type specifies the element type to look up. Element types are
+                defined in network_elements module
+            type: str
+            required: true
   bgp:
     description:
       - If enabling BGP on the engine, provide BGP related settings
@@ -210,16 +261,6 @@ options:
             - network
             - group
             - host
-      antispoofing_network:
-        description:
-          - Antispoofing networks are automatically added to the route antispoofing
-            configuration. The dict should have a key specifying the element type from
-            SMC. The dict key value should be a list of the element types by name.
-        type: dict
-        choices:
-            - network
-            - group
-            - host
       bgp_peering:
         description:
           - BGP Peerings to add to specified interfaces.
@@ -255,6 +296,17 @@ options:
     description:
       - A list of IP addresses to use as DNS resolvers for the FW. Required to enable
         Antivirus, GTI and URL Filtering on the NGFW.
+    type: list
+    suboptions:
+      name:
+        description:
+          - Name of the element, can be IP address or element
+        type: str
+      type:
+        description:
+          - Type of element. Valid entries are ipaddress, host, dns_server. If using element
+            that is not ipaddress, it must pre-exist in the SMC
+        type: str
   antivirus:
     description:
       - Enable Anti-Virus engine on the FW
@@ -323,72 +375,97 @@ EXAMPLES = '''
       smc_logging:
         level: 10
         path: ansible-smc.log
+      antispoofing_network:
+        group:
+        - group1
+        host:
+        - 2.2.2.23
+        network:
+        - gateway_129.47.0.0/16
+        - gateway_129.48.0.0/16
       antivirus: true
       bgp:
-          announced_network:
-          -   network:
-                  name: network-1.1.1.0/24
-                  route_map: myroutemap
-          antispoofing_network:
-              network:
-              - network-1.1.1.0/24
-          autonomous_system:
-              as_number: 200
-              comment: null
-              name: as-200
-          bgp_peering:
-          -   interface_id: '1000'
-              name: bgppeering
-          bgp_profile: Default BGP Profile
-          enabled: true
-          router_id: 1.1.1.1
+        announced_network:
+        - network:
+            name: network-1.1.1.0/24
+            route_map: myroutemap
+        autonomous_system:
+          as_number: 200
+          comment: null
+          name: as-200
+        bgp_peering:
+        - external_bgp_peer: bgppeer
+          interface_id: '1000'
+          name: bgppeering
+        bgp_profile: Default BGP Profile
+        enabled: true
+        router_id: 2.3.4.5
       default_nat: true
       domain_server_address:
-      - 8.8.8.8
+      - name: 8.8.8.8
+        type: ipaddress
+      - name: Localhost
+        type: host
       file_reputation: true
       interfaces:
-      -   interface_id: '2'
-          interfaces:
-          -   nodes:
-              -   address: 21.21.21.21
-                  network_value: 21.21.21.0/24
-                  nodeid: 1
-              vlan_id: '1'
-      -   interface_id: '0'
-          interfaces:
-          -   nodes:
-              -   address: 1.1.1.1
-                  network_value: 1.1.1.0/24
-                  nodeid: 1
-      -   interface_id: '1000'
-          interfaces:
-          -   nodes:
-              -   address: 10.10.10.1
-                  network_value: 10.10.10.1/32
-                  nodeid: 1
-          type: tunnel_interface
-      -   interface_id: '1'
-          interfaces:
-          -   nodes:
-              -   address: 2.2.2.1
-                  network_value: 2.2.2.0/24
-                  nodeid: 1
+      - interface_id: '1000'
+        interfaces:
+        - nodes:
+          - address: 10.10.10.1
+            network_value: 10.10.10.1/32
+            nodeid: 1
+        type: tunnel_interface
+      - interface_id: '2'
+        interfaces:
+        - nodes:
+          - address: 21.21.21.21
+            network_value: 21.21.21.0/24
+            nodeid: 1
+          vlan_id: '1'
+      - interface_id: '1'
+        interfaces:
+        - nodes:
+          - address: 2.2.2.1
+            network_value: 2.2.2.0/24
+            nodeid: 1
+      - interface_id: '0'
+        interfaces:
+        - nodes:
+          - address: 1.1.1.1
+            network_value: 1.1.1.0/24
+            nodeid: 1
       name: myfw3
+      netlinks:
+      - destination:
+        - name: IP_10.3.3.1
+          type: host
+        interface_id: '2.1'
+        name: netlink-21.21.21.0
+      ospf:
+        enabled: true
+        ospf_areas:
+        - interface_id: '2.1'
+          name: myarea
+          network: 21.21.21.0/24
+        ospf_profile: Default OSPFv2 Profile
+        router_id: 1.1.1.1
       policy_vpn:
-      -   central_node: true
-          mobile_gateway: false
-          name: ttesst
-          satellite_node: false
+      - central_gateway: true
+        mobile_gateway: false
+        name: myvpn
+        satellite_gateway: false
       primary_mgt: '0'
       snmp:
-          snmp_agent: fooagent
-          snmp_interface:
-          - '1'
-          snmp_location: test
+        snmp_agent: fooagent
+        snmp_interface:
+        - '1'
+        snmp_location: test
       type: single_fw
+
+
 # Delete a layer 3 firewall, using environment variables for credentials
 - name: delete firewall by name
-  l3fw:
+  engine:
     name: myfirewall
     state: 'absent'
 '''
@@ -410,11 +487,12 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache
 try:
     from smc.core.engines import Layer3Firewall, FirewallCluster
     from smc.core.engine import Engine
+    from smc.vpn.policy import GatewayNode
     from smc.routing.bgp import AutonomousSystem, BGPPeering
     from smc.api.exceptions import SMCException, PolicyCommandFailed, \
-        UnsupportedEngineFeature
+        UnsupportedEngineFeature, InterfaceNotFound
     from smc.core.interfaces import TunnelInterface, Layer3PhysicalInterface, \
-        Layer2PhysicalInterface, ClusterPhysicalInterface
+        Layer2PhysicalInterface, ClusterPhysicalInterface, PhysicalInterface
 except ImportError:
     pass
 
@@ -627,7 +705,8 @@ def open_policy(policy, internal_gw, vpn_def, delete_first=None):
     policy.open()
     if delete_first:
         for gateway in delete_first:
-            gateway.delete()
+            node = GatewayNode(href=gateway)
+            node.delete()
         policy.save()
     if vpn_def.get('central_gateway'):
         policy.add_central_gateway(internal_gw)
@@ -642,7 +721,7 @@ def open_policy(policy, internal_gw, vpn_def, delete_first=None):
     policy.close()
     return changed
     
-    
+   
 class StonesoftEngine(StonesoftModuleBase):
     def __init__(self):
         
@@ -655,6 +734,7 @@ class StonesoftEngine(StonesoftModuleBase):
             location=dict(type='str'),
             bgp=dict(type='dict'),
             ospf=dict(type='dict'),
+            antispoofing_network=dict(type='dict'),
             netlinks=dict(type='list', default=[]),
             comment=dict(type='str'),
             log_server=dict(type='str'),
@@ -665,13 +745,14 @@ class StonesoftEngine(StonesoftModuleBase):
             primary_mgt=dict(type='str'),
             backup_mgt=dict(type='str'),
             primary_heartbeat=dict(type='str'),
+            backup_heartbeat=dict(type='str'),
             policy_vpn=dict(type='list'),
             tags=dict(type='list'),
             skip_interfaces=dict(type='bool', default=False),
             delete_undefined_interfaces=dict(type='bool', default=False),
             state=dict(default='present', type='str', choices=['present', 'absent'])
         )
-
+        
         self.name = None
         self.type = None
         self.cluster_mode = None
@@ -681,6 +762,7 @@ class StonesoftEngine(StonesoftModuleBase):
         self.domain_server_address = None
         self.bgp = None
         self.ospf = None
+        self.antispoofing_network = None
         self.netlinks = None
         self.log_server = None
         self.snmp = None
@@ -699,7 +781,8 @@ class StonesoftEngine(StonesoftModuleBase):
             state=[]
         )
         super(StonesoftEngine, self).__init__(self.module_args, supports_check_mode=True)
-    
+        
+           
     def exec_module(self, **kwargs):
         state = kwargs.pop('state', 'present')
         for name, value in kwargs.items():
@@ -742,6 +825,21 @@ class StonesoftEngine(StonesoftModuleBase):
 
             cache = Cache()
             
+            #TODO: Remove DNS entries
+            for dns in self.domain_server_address:
+                if not isinstance(dns, dict):
+                    self.fail(msg='DNS entries must be in dict format with keys name and type, '
+                        'received: %s' % dns)
+                element_type = dns.get('type')
+                if element_type not in ('ipaddress', 'host', 'dns_server'):
+                    self.fail(msg='DNS server entries can only be of type ipaddress, '
+                        'host or dns_server. Specified: %s' % dns)
+                if element_type in ('host', 'dns_server'):
+                    cache._add_entry(element_type, dns.get('name'))
+            
+            if cache.missing:
+                self.fail(msg='DNS entries specified are missing: %s' % cache.missing)
+            
             # SNMP settings
             if self.snmp and self.snmp.get('enabled', True):
                 cache._add_entry('snmp_agent', self.snmp.get('snmp_agent', None))
@@ -783,7 +881,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     if 'external_bgp_peer' in peer:
                         cache._add_entry('external_bgp_peer', peer['external_bgp_peer'])
                     elif 'engine' in peer:
-                        cache._add_entry('fw_cluster', peer['engine'])
+                        cache._add_entry('engine', peer['engine'])
         
                 if cache.missing:
                     self.fail(msg='Missing external BGP Peering elements: %s' % cache.missing)
@@ -799,13 +897,6 @@ class StonesoftEngine(StonesoftModuleBase):
                     if 'name' not in as_system or 'as_number' not in as_system:
                         self.fail(msg='Autonomous System requires a name and and '
                             'as_number value.')
-
-                spoofing = self.bgp.get('antispoofing_network', {})
-                self.validate_antispoofing_network(spoofing)
-                cache.add(spoofing)
-                if cache.missing:
-                    self.fail(msg='Missing elements in antispoofing configuration: %s' %
-                        cache.missing)
                     
                 networks = self.bgp.get('announced_network', [])
                 announced_networks = self.validate_and_extract_announced(networks)
@@ -842,18 +933,31 @@ class StonesoftEngine(StonesoftModuleBase):
                     elif engine and (peer_id not in engine.interface and peer_id not in itf):
                         self.fail(msg='OSPF Area interface id: %s specified does not exist '
                             'on the current engine: %s' % (peer_id, engine.name))
-                 
+            
+            # Validate antispoofing networks if dynamic routing is enabled
+            if self.antispoofing_network and ((self.ospf and self.ospf.get('enabled')) \
+                or (self.bgp and self.bgp.get('enabled'))):
+            
+                self.validate_antispoofing_network(self.antispoofing_network)
+                cache.add(self.antispoofing_network)
+                if cache.missing:
+                    self.fail(msg='Missing elements in antispoofing configuration: %s' %
+                        cache.missing)
+                         
             if self.policy_vpn:
                 # Policy VPN requires at least a name in order to be configured. Set the
                 # gateway types on the element to set or unset the engine from the specified
                 # VPN. Setting an existing Policy VPN to False on a gateway where it was set
                 # to True will remove it from the gateway. Make setting the gateways optional
                 for vpn in self.policy_vpn:
+                    if 'name' not in vpn:
+                        self.fail(msg='Policy VPN name is not defined')
+                    
                     if vpn.get('central_gateway') and vpn.get('satellite_gateway'):
                         self.fail(msg='When specifying policy vpn you must choose either '
                             'a central gateway or satellite gateway, not both')
                     cache._add_entry('vpn', vpn.get('name'))
-            
+
                 if cache.missing:
                     self.fail(msg='Missing elements in Policy VPN configuration: %s' % cache.missing)
                     
@@ -874,9 +978,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     elif engine and (int_id not in engine.physical_interface and int_id not in itf):
                         self.fail(msg='Netlink interface id: %s specified does not exist '
                             'on the current engine: %s' % (int_id, engine.name))
-                    
-                    # Get required elements specified for configuration
-                    cache._add_entry('netlink', netlink['name'])
+
                     # Destination elements for netlink are optional
                     if netlink.get('destination', []) and isinstance(netlink['destination'], list):
                         for dest in netlink['destination']:
@@ -884,11 +986,15 @@ class StonesoftEngine(StonesoftModuleBase):
                                 self.fail(msg='Netlink destination element reference must '
                                     'contain name and type key values. Provided: %s' % dest)
                             cache._add_entry(dest['type'], dest['name'])
+
+                    # Add the netlink
+                    cache._add_entry('netlink', netlink['name'])
+                    
                 if cache.missing:
                     self.fail(msg='Missing elements in netlink configuration: %s' % cache.missing)
             
             self.cache = cache
-            
+
         try:
             
             if state == 'present':
@@ -902,7 +1008,7 @@ class StonesoftEngine(StonesoftModuleBase):
                         primary_mgt=self.primary_mgt,
                         backup_mgt=self.backup_mgt,
                         log_server_ref=self.log_server,
-                        domain_server_address=self.domain_server_address,
+                        domain_server_address=self.get_dns_entries(),
                         default_nat=self.default_nat,
                         enable_antivirus=self.antivirus,
                         enable_gti=self.file_reputation,
@@ -971,73 +1077,42 @@ class StonesoftEngine(StonesoftModuleBase):
                 ######                
                 # Check for configurations that are not fed into the engine during creation
                 # and would require a post create modification because the settings are
-                # nested outside of the core engine blob
+                # nested outside of the core engine blob by reference
                 #
                 # Start with dynamic routing 
                 ######
-                if self.bgp:
-                    bgp = engine.bgp
-                    enabled = self.bgp.get('enabled', True)
-                    if not enabled and bgp.status:
-                        bgp.disable()
-                        changed = True
-                    
-                    elif enabled:
-                        
-                        if self.update_bgp(bgp):
-
-                            autonomous_system, created = get_or_create_asystem(
-                                self.bgp.get('autonomous_system'))
-                            
-                            if created:
-                                changed = True
-                            
-                            bgp.disable() # Reset BGP configuration
-                            bgp.enable(
-                                autonomous_system,
-                                announced_networks=[],
-                                antispoofing_networks=self.antispoofing_format(),
-                                router_id=self.bgp.get('router_id', ''),
-                                bgp_profile=self.cache.get('bgp_profile',
-                                    self.bgp.get('bgp_profile', None)))
-                            
-                            for network in self.announced_network_format():
-                                bgp.advertise_network(**network)
-                            changed = True
-                    
-                    if changed:
-                        engine.update()
+                engine_needs_update = False
                 
-                    if enabled:
-                        # BGP Peering is last since the BGP configuration may be placed
-                        # on interfaces that might have been modified or added.
-                        peerings = self.bgp.get('bgp_peering', None)
-                        if peerings:
-                            for peer in peerings:
-                                peering, created = get_or_create_bgp_peering(
-                                    peer.pop('name'))
-                                if created:
-                                    changed = True
-                                # Update the peering on the interface
-                                if self.update_bgp_peering(engine, peering, peer):
-                                    changed = True
+                if self.bgp:
+                    if self.update_bgp(engine.dynamic_routing.bgp):
+                        changed = True
+                        engine_needs_update = True
+                    
+                    if engine.dynamic_routing.bgp.status:
+                        if self.update_bgp_peering(engine):
+                            changed = True
                 
                 if self.ospf:
-                    if self.update_ospf(engine):
+                    if self.update_ospf(engine.dynamic_routing.ospf):
                         changed = True
-                        engine.update()
+                        engine_needs_update = True
                     
-                    if engine.ospf.status:    
-                        for ospf_area in self.ospf.get('ospf_areas', []):
-                            iface = engine.routing.get(ospf_area.get('interface_id'))
-                            if iface.add_ospf_area(
-                                self.cache.get('ospfv2_area', ospf_area.get('name'))):
-                                
-                                self.results['state'].append(
-                                    {'interface_id': ospf_area.get('interface_id'),
-                                     'type': 'ospfv2_area', 'action': 'updated'})
-                                changed = True
-            
+                    if engine.dynamic_routing.ospf.status:
+                        if self.update_ospf_area(engine):
+                            changed = True
+                
+                # Check if antispoofing networks are defined
+                if self.antispoofing_network and (engine.dynamic_routing.ospf.status \
+                    or engine.dynamic_routing.bgp.status):
+                    if self.update_antispoofing(engine):
+                        changed = True
+                        engine_needs_update = True
+                    
+                if engine_needs_update:
+                    engine.update()
+                
+                # Remainder of updates are done through references and
+                # therefore the core engine no longer needs updates
                 if self.netlinks:
                     if self.update_netlinks(engine):
                         changed = True
@@ -1045,7 +1120,7 @@ class StonesoftEngine(StonesoftModuleBase):
                 if self.policy_vpn:
                     if self.update_policy_vpn(engine):
                         changed = True
-                    
+                
                 if self.tags:
                     if self.add_tags(engine, self.tags):
                         changed = True
@@ -1057,7 +1132,7 @@ class StonesoftEngine(StonesoftModuleBase):
                 if engine:
                     engine.delete()
                     self.results['state'].append(
-                        {'name': engine.name, 'type': engine.type, 'action': 'deleted'})
+                        {'name': engine.name, 'type': engine.type, 'action': 'delete'})
                     changed = True
 
         except SMCException as err:
@@ -1073,27 +1148,35 @@ class StonesoftEngine(StonesoftModuleBase):
         Before deleting old interfaces, check the primary management
         interface setting and reset if necessary. This is done last
         in case primary management is moved to a new interface that
-        was just created.
+        was just created. If the management interface is not valid for
+        the engine type or cannot be found, it is skipped.
         
         :param Engine engine: engine ref
         :rtype: bool
         """
         changed = False
-        if self.primary_mgt:
-            management = engine.interface.get(self.primary_mgt)
-            if not management.is_primary_mgt:
-                engine.interface_options.set_primary_mgt(self.primary_mgt)
-                changed = True
-        
-        if self.backup_mgt:
-            if engine.interface_options.backup_mgt != self.backup_mgt:
-                engine.interface_options.set_backup_mgt(self.backup_mgt)
-                changed = True
-        
-        if 'fw_cluster' in self.type and self.primary_heartbeat:
-            if engine.interface_options.primary_heartbeat != self.primary_heartbeat:
-                engine.interface_options.set_primary_heartbeat(self.primary_heartbeat)
-                changed = True
+        mgt = ('primary_mgt', 'backup_mgt', 'primary_heartbeat', 'backup_heartbeat')
+        interface_options = engine.interface_options
+        try:
+            for option in mgt:
+                if getattr(self, option):
+                    if option in ('primary_heartbeat', 'backup_heartbeat') and \
+                        not 'fw_cluster' in self.type:
+                        continue
+                    management = engine.interface.get(getattr(self, option))
+                    if not isinstance(management, PhysicalInterface):
+                        continue
+                    if not getattr(management, 'is_%s' % option):
+                        getattr(interface_options, 'set_%s' % option)(getattr(self, option))
+                        # Check to see if it now matches
+                        if getattr(management, 'is_%s' % option):
+                            changed = True
+                            self.results['state'].append({
+                                'name': 'interface %s' % getattr(self, option),
+                                'type': option,
+                                'action': 'updated'})
+        except InterfaceNotFound:
+            pass
         
         return changed
     
@@ -1111,7 +1194,7 @@ class StonesoftEngine(StonesoftModuleBase):
             defined = yaml.get(interface.interface_id)
             if defined is None:
                 self.results['state'].append({
-                    'interface_id': interface.interface_id,
+                    'name': 'interface %s' % interface.interface_id,
                     'type': interface.typeof,
                     'action': 'delete'})
                 interface.delete()
@@ -1126,7 +1209,7 @@ class StonesoftEngine(StonesoftModuleBase):
                         else:
                             vlan_updated = True
                             self.results['state'].append({
-                                'interface_id': vlan.interface_id,
+                                'name': 'interface %s' % vlan.interface_id,
                                 'type': 'vlan_interface',
                                 'action': 'delete'})
                     if vlan_updated:
@@ -1149,7 +1232,7 @@ class StonesoftEngine(StonesoftModuleBase):
             
             if updated or created:
                 self.results['state'].append({
-                    'interface_id': interface.interface_id,
+                    'name': 'interface %s' % interface.interface_id,
                     'type': interface.typeof,
                     'action': 'created' if created else 'updated'})        
 
@@ -1160,40 +1243,26 @@ class StonesoftEngine(StonesoftModuleBase):
         :rtype: bool
         """
         changed = False
-        if self.default_nat is not None:
-            status = engine.default_nat.status
-            if not status and self.default_nat:
-                engine.default_nat.enable()
-                changed = True
-            elif status and not self.default_nat: # False or None
-                engine.default_nat.disable()
-                changed = True
-        
-        if self.file_reputation is not None:
-            status = engine.file_reputation.status
-            if not status and self.file_reputation:
-                engine.file_reputation.enable()
-                changed = True
-            elif status and not self.file_reputation:
-                engine.file_reputation.disable()
-                changed = True
-        
-        if self.antivirus is not None:
-            status = engine.antivirus.status
-            if not status and self.antivirus:
-                engine.antivirus.enable()
-                changed = True
-            elif status and not self.antivirus:
-                engine.antivirus.disable()
-                changed = True
+        for feature in ('default_nat', 'file_reputation', 'antivirus'):
+            if getattr(self, feature, None) is not None:
+                status = getattr(engine, feature).status
+                if not status and getattr(self, feature):
+                    getattr(engine, feature).enable()
+                    changed = True
+                elif status and not getattr(self, feature):
+                    getattr(engine, feature).disable()
+                    changed = True
         
         if self.domain_server_address:
-            dns = [d.value for d in engine.dns]
-            # DNS changes, wipe old and add new
-            if set(dns) ^ set(self.domain_server_address):
+            dns_elements = [d.value if d.value else d.element
+                for d in engine.dns]
+            entries = self.get_dns_entries() # From yaml
+            
+            if len(dns_elements) != len(entries) or set(dns_elements) ^ set(entries):
                 engine.data.update(domain_server_address=[])
-                engine.dns.add(self.domain_server_address)
+                engine.dns.add(entries)
                 changed = True
+
         return changed
     
     def update_netlinks(self, engine):
@@ -1213,7 +1282,7 @@ class StonesoftEngine(StonesoftModuleBase):
                 static_netlink, netlink_gw)
             if result:
                 self.results['state'].append(
-                    {'interface_id': netlink['interface_id'],
+                    {'name': 'interface %s' % netlink['interface_id'],
                      'type': 'netlink', 'action': 'created'})
                 changed = True
         return changed
@@ -1241,32 +1310,39 @@ class StonesoftEngine(StonesoftModuleBase):
                         policy_element, internal_gw, vpn_def):
                         changed = True
                 else:
-                    delete_first = [] #Track gateways that might need to be deleted
+                    delete_first = set([]) #Track gateways that might need to be deleted
+                    change_needed = False
                     if vpn_def.get('central_gateway') is not None:
                         if vpn_def['central_gateway']:
                             if not vpn.is_central_gateway:
+                                change_needed = True
                                 if vpn.is_satellite_gateway:
-                                    delete_first.append(vpn._satellite_gateawy)
+                                    delete_first.add(vpn._satellite_gateway)
                         elif vpn.is_central_gateway:
-                            delete_first.append(vpn._central_gateway)
+                            delete_first.add(vpn._central_gateway)
                             
                     if vpn_def.get('satellite_gateway') is not None:
                         if vpn_def['satellite_gateway']:
                             if not vpn.is_satellite_gateway:
+                                change_needed = True
                                 if vpn.is_central_gateway:
-                                    delete_first.append(vpn._central_gateway)
+                                    delete_first.add(vpn._central_gateway)
                         elif vpn.is_satellite_gateway:
-                            delete_first.append(vpn._satellite_gateawy)
+                            delete_first.add(vpn._satellite_gateway)
                     
                     if vpn_def.get('mobile_gateway') is not None:
                         pass
-                    
-                    if open_policy(policy_element, internal_gw, vpn_def, delete_first):
-                        changed = True
+
+                    if change_needed or delete_first:
+                        if open_policy(policy_element, internal_gw, vpn_def, delete_first):
+                            changed = True
             else:
                 if open_policy(policy_element, internal_gw, vpn_def):
                     changed = True
-                
+        
+        if changed:
+            self.results['state'].append(
+                {'name': engine.name, 'type': 'policy_vpn', 'action': 'updated'})     
         return changed
 
     def update_snmp(self, engine):
@@ -1276,34 +1352,33 @@ class StonesoftEngine(StonesoftModuleBase):
         :rtype: bool
         """
         changed = False
-        if self.snmp:
-            snmp = engine.snmp
-            enable = self.snmp.pop('enabled', True)
-            if not enable:
-                if snmp.status:
-                    snmp.disable()
-                    changed = True
-            else:
-                if not snmp.status:
-                    agent = self.cache.get('snmp_agent', self.snmp.pop('snmp_agent'))
-                    snmp.enable(snmp_agent=agent, **self.snmp)
-                    changed = True
-                else: # Enabled check for changes
-                    update_snmp = False
-                    if snmp.agent.name != self.snmp.get('snmp_agent', ''):
-                        update_snmp = True
-                    if snmp.location != self.snmp.get('snmp_location', ''):
-                        update_snmp = True
-                    
-                    snmp_interfaces = [interface.interface_id for interface in snmp.interface]
-                    yaml_snmp_interfaces = map(str, self.snmp.get('snmp_interface', []))
-                    if not set(snmp_interfaces) == set(yaml_snmp_interfaces):
-                        update_snmp = True
-                    
-                    if update_snmp:
-                        agent = self.cache.get('snmp_agent', self.snmp.pop('snmp_agent'))
-                        snmp.enable(snmp_agent=agent, **self.snmp)
-                        changed = True
+        
+        if not self.snmp:
+            return changed
+        
+        snmp = engine.snmp
+        enable = self.snmp.pop('enabled', True)
+        if not enable:
+            if snmp.status:
+                snmp.disable()
+                changed = True
+            return changed
+        
+        cfg = dict()
+        if 'snmp_agent' in self.snmp:
+            cfg.update(snmp_agent=self.cache.get(
+                'snmp_agent', self.snmp.get('snmp_agent')))
+        if 'snmp_location' in self.snmp:
+            cfg.update(snmp_location=self.snmp.get('snmp_location'))
+        if 'snmp_interface' in self.snmp:
+            cfg.update(snmp_interface=self.snmp.get('snmp_interface'))
+        
+        modified = snmp.update_configuration(**cfg)
+        if modified:
+            self.results['state'].append(
+                {'name': 'snmp', 'type': 'configuration', 'action': 'updated'})
+            changed = True
+
         return changed
     
     def update_location(self, engine):
@@ -1330,6 +1405,164 @@ class StonesoftEngine(StonesoftModuleBase):
                 changed = True
         return changed
 
+    def update_bgp(self, bgp):
+        """
+        Check for BGP update
+        
+        :param bgp BGP: reference from engine
+        :rtype: bool
+        """
+        changed = False
+        
+        enabled = self.bgp.get('enabled', True)
+        if not enabled:
+            if bgp.status:
+                bgp.disable()
+                changed = True
+            return changed
+                        
+        autonomous_system, created = get_or_create_asystem(
+            self.bgp.get('autonomous_system'))
+        if created:
+            changed = True
+        
+        announced_network = self.bgp.get('announced_network')
+        if announced_network is not None:
+            announced_ne_setting = []
+            for entry in announced_network:
+                for typeof, dict_value in entry.items():
+                    name = self.cache.get(typeof, dict_value.get('name'))
+                    route_map = self.cache.get('route_map', dict_value.get('route_map'))
+                    announced_ne_setting.append(
+                        (name, route_map))
+        
+        cfg = dict()
+        if autonomous_system:
+            cfg.update(autonomous_system=autonomous_system)
+        if announced_network is not None:
+            cfg.update(announced_networks=announced_ne_setting)
+        if 'bgp_profile' in self.bgp:
+            cfg.update(bgp_profile=self.cache.get(
+                'bgp_profile', self.bgp.get('bgp_profile', None)))
+        if 'router_id' in self.bgp:
+            cfg.update(router_id=self.bgp.get('router_id'))
+        
+        updated = bgp.update_configuration(
+            enabled=True, **cfg)
+    
+        if updated:
+            self.results['state'].append(
+                {'name': 'bgp', 'type': 'configuration', 'action': 'updated'})
+            changed = True
+        return changed
+    
+    def update_ospf(self, ospf):
+        """
+        Update OSPF on the engine
+        
+        :param OSPF ospf: engine OSPF reference
+        :rtype: bool
+        """
+        changed = False
+        
+        enabled = self.ospf.get('enabled', True)
+        if not enabled:
+            if ospf.status:
+                ospf.disable()
+                changed = True
+            return changed
+        
+        cfg = dict()
+        if 'ospf_profile' in self.ospf:
+            cfg.update(ospf_profile=self.cache.get(
+                'ospfv2_profile', self.ospf.get('ospf_profile')))
+        if 'router_id' in self.ospf:
+            cfg.update(router_id=self.ospf.get('router_id'))
+        
+        updated = ospf.update_configuration(
+            enabled=True, **cfg)
+        
+        if updated:
+            self.results['state'].append(
+                {'name': 'ospf', 'type': 'configuration', 'action': 'updated'})
+            changed = True
+        return changed
+
+    def update_ospf_area(self, engine):
+        """
+        Update the OSPF area on the interface
+        
+        :param Engine engine: engine reference
+        :rtype: bool
+        """
+        changed = False
+        for ospf_area in self.ospf.get('ospf_areas', []):
+            iface = engine.routing.get(ospf_area.get('interface_id'))
+            if iface.add_ospf_area(
+                self.cache.get('ospfv2_area', ospf_area.get('name'))):
+                
+                self.results['state'].append(
+                    {'name': 'interface %s' % ospf_area.get('interface_id'),
+                     'type': 'ospfv2_area', 'action': 'updated'})
+                changed = True
+        return changed
+    
+    def update_bgp_peering(self, engine):
+        """
+        Update BGP Peering on the interface. Updates only occur if
+        BGP peering does not already exist on interface
+        
+        :param Engine engine: engine ref
+        :rtype: bool
+        """
+        changed = False
+        peerings = self.bgp.get('bgp_peering', None)
+        if not peerings:
+            return changed
+        
+        for peer in peerings:
+            bgp_peering, created = get_or_create_bgp_peering(peer.pop('name'))
+            if created:
+                changed = True
+            
+            if 'external_bgp_peer' in peer:
+                extpeer = self.cache.get('external_bgp_peer', peer.get('external_bgp_peer'))
+            elif 'engine' in peer:
+                extpeer = self.cache.get('engine', peer.get('engine'))
+        
+            interface_id = peer.get('interface_id')
+            network = peer.get('network') # Optionally bind to network
+            routing = engine.routing.get(interface_id)
+            
+            modified = routing.add_bgp_peering(
+                bgp_peering, extpeer, network)
+            if modified:
+                self.results['state'].append(
+                    {'name': 'interface %s' % interface_id,
+                     'type': 'bgp_peering', 'action': 'updated'})
+                changed = True
+        
+        return changed
+    
+    def update_antispoofing(self, engine):
+        """
+        Update any antispoofing networks. 
+        
+        :param Engine engine: engine reference
+        :rtype: bool
+        """
+        changed = False
+        elements = [self.cache.get(typeof, _element)
+            for typeof, element in self.antispoofing_network.items()
+            for _element in element]
+        
+        if engine.dynamic_routing.update_antispoofing(elements):
+            self.results['state'].append(
+                {'name': 'dynamic routing', 'type': 'antispoofing',
+                 'action': 'updated'})
+            changed = True
+        return changed
+    
     def check_interfaces(self):
         """
         Check interfaces to validate node settings
@@ -1369,97 +1602,23 @@ class StonesoftEngine(StonesoftModuleBase):
                             list(node_values)))
         return itf
     
-    def update_bgp(self, bgp):
+    def get_dns_entries(self):
         """
-        Check for BGP update
+        Get the DNS entries in the required format.
         
-        :param bgp BGP: reference from engine.bgp
-        :rtype: bool (needs update)
+        :return: return a list of IP and Element types to be used for DNS
+            on the engine
+        :rtype: list
         """
-        if bgp.router_id != self.bgp.get('router_id', None):
-            return True
-        
-        if self.bgp.get('bgp_profile', None):
-            # Only changed BGP Profile if specified, BGP Profile. Policy is cache
-            bgp_profile = self.cache.get('bgp_profile', self.bgp['bgp_profile'])
-            if not bgp.profile:
-                return True
-            elif bgp.profile.name != bgp_profile.name:
-                return True
-        
-        if set(bgp.data.get('antispoofing_ne_ref', [])) ^ \
-            set(self.antispoofing_format()):
-            return True
-        
-        # Announced networks
-        current = bgp.data.get('bgp', {}).get('announced_ne_setting', [])
-        current_dict = {entry.get('announced_ne_ref'): entry.get('announced_rm_ref')
-            for entry in current}
-        
-        # Put the specified dict into a format to compare
-        new_dict = {entry.get('network'): entry.get('route_map')
-            for entry in self.announced_network_format()}
-        
-        if cmp(current_dict, new_dict) != 0:
-            return True
-        return False
-    
-    def update_ospf(self, engine):
-        """
-        Update OSPF on the engine
-        
-        :param Engine engine: engine reference
-        :rtype: bool
-        """
-        changed = False
-        ospf = engine.ospf
-        enabled = self.ospf.get('enabled', True)
-        if not enabled and ospf.status:
-            ospf.disable()
-            changed = True
-            return changed
-        
-        elif enabled:
-            if not ospf.status or (ospf.profile.name != self.ospf.get('ospf_profile') \
-                or ospf.router_id != self.ospf.get('router_id')):
-                
-                ospf.disable()
-                ospf.enable(
-                    ospf_profile=self.cache.get('ospfv2_profile', self.ospf.get('ospf_profile')),
-                    router_id=self.ospf.get('router_id'))
-                changed = True
-        
-        return changed
-    
-    def update_bgp_peering(self, engine, bgp_peering, peering_dict):
-        """
-        Update BGP Peering on the interface. Only update if the
-        peering isn't already there.
-        
-        :param Engine engine: engine ref
-        :param BGPPeering bgp_peering: peering ref
-        :param dict peering_dict: list of interfaces to add to
-        :rtype: bool
-        """
-        if 'external_bgp_peer' in peering_dict:
-            extpeer = self.cache.get('external_bgp_peer', peering_dict.get('external_bgp_peer'))
-        elif 'engine' in peering_dict:
-            extpeer = self.cache.get('fw_cluster', peering_dict.get('engine'))
-        
-        changed = False
-        interface_id = peering_dict.get('interface_id')
-        network = peering_dict.get('network')
-        routing = engine.routing.get(interface_id)
-        
-        modified = routing.add_bgp_peering(
-            bgp_peering, extpeer, network)
-        if modified:
-            self.results['state'].append(
-                {'interface_id':interface_id,
-                 'type': 'bgp_peering', 'action': 'updated'})
-            changed = True
-       
-        return changed
+        elements = []
+        for dns in self.domain_server_address:
+            element_type = dns.get('type')
+            if element_type in ('host', 'dns_server'):
+                elements.append(
+                    self.cache.get(element_type, dns.get('name')))
+                continue
+            elements.append(dns.get('name'))
+        return elements
         
     def validate_antispoofing_network(self, s):
         """
@@ -1472,9 +1631,6 @@ class StonesoftEngine(StonesoftModuleBase):
         :return: None
         """
         valid = ('network', 'group', 'host')
-        if not isinstance(s, dict):
-            self.fail(msg='Antispoofing networks should be defined as a dict of '
-            'element types with a list of values, received: %s' % s)
         for typeof, values in s.items():
             if typeof not in valid:
                 self.fail(msg='Antispoofing network definition used an invalid '
@@ -1515,35 +1671,9 @@ class StonesoftEngine(StonesoftModuleBase):
                 if 'route_map' in sub_dict:
                     for_cache.setdefault('route_map', []).append(
                         sub_dict['route_map'])
-                for_cache.setdefault(typeof, []).append(
-                    sub_dict['name'])
+                for_cache.setdefault(typeof, []).append(sub_dict['name'])
         return for_cache
-        
-    def antispoofing_format(self):
-        """
-        Get the antispoofing format
-        
-        :rtype: list of href
-        """
-        return [self.cache.get(typeof, value).href
-            for typeof, v in self.bgp.get('antispoofing_network', {}).items()
-            for value in v]
-    
-    def announced_network_format(self):
-        """
-        Get the announced network format
-        
-        :rtype: list(dict)
-        """
-        announced_ne_setting = []
-        for entry in self.bgp.get('announced_network', []):
-            for typeof, dict_value in entry.items():
-                name = self.cache.get(typeof, dict_value.get('name'))
-                route_map = self.cache.get('route_map', dict_value.get('route_map'))
-                announced_ne_setting.append(
-                    {'network': name.href, 'route_map': route_map if not route_map else route_map.href})
-        return announced_ne_setting
-    
+
     
 def main():
     StonesoftEngine()

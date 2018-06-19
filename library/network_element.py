@@ -619,6 +619,7 @@ class NetworkElement(StonesoftModuleBase):
             if not isinstance(gateway, dict) or 'name' not in gateway or 'type' not in gateway:
                 self.fail(msg='Netlink gateway must be a dict with a name and type key value: %s'
                     % gateway)
+            
             if gateway.get('type') not in ('engine', 'router'):
                 self.fail(msg='Netlink types can only be of type engine or router, got: %s' %
                     gateway.get('type'))
@@ -633,6 +634,10 @@ class NetworkElement(StonesoftModuleBase):
             for network in networks:
                 if network not in pending_elements.get('network', set()):
                     self.cache._add_entry('network', network)
+            
+            for attr in ('probe_address', 'domain_server_address'):
+                if attr in values and not isinstance(values.get(attr), list):
+                    self.fail(msg='%s must be in list format' % attr)
 
 
 def main():

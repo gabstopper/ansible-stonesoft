@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _engine_appliance_facts:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+engine_appliance_facts - Facts about engine appliances such as hardware and interface status
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,7 +18,7 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* Retrieve specific information about a particular engine node or all nodes of an engine. Information that can be obtained is general information about the node itself as well as general information such as filesystem utilization, interfaces and statuses and current routing table.
 
 
 
@@ -56,18 +56,6 @@ Options
     </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
-	<td>
-        <p>Type of engine to search for</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>exact_match<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -81,11 +69,23 @@ Options
 
     <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>*</td>
+    <td>yes</td>
+    <td></td>
     <td></td>
 	<td>
-        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+        <p>Provide the name of the engine as a filter</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>items<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td><ul><li>status</li><li>interfaces</li><li>filesystem</li></ul></td>
+	<td>
+        <p>If it is preferable to view only specific node level items you can provide a list of those individually. If items is omitted all items will be returned</p>
 	</td>
 	</tr>
     </td>
@@ -98,6 +98,18 @@ Options
     <td></td>
 	<td>
         <p>Limit the number of results. Set to 0 to remove limit.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
+    <td>nodeid<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Only return the details of a specific node by ID. If not provided, all node info is returned</p>
 	</td>
 	</tr>
     </td>
@@ -270,41 +282,23 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Facts about all engines within SMC
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
+    - name: Retrieve all stats (hardware, interface, info) for engine sg_vm
+      engine_appliance_facts:
+        filter: sg_vm
     
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
-      
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
+    - name: Retrieve all stats (hardware, interface, info) on for node 1
+      engine_appliance_facts:
+        filter: sg_vm
+        nodeid: 1
     
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
-          smc_logging:
-            level: 10
-            path: ansible-smc.log
-          filter: newcluster
-          as_yaml: true
-    
-      - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+    - name: Retrieve all stats (hardware, interface, info) for node 1 using items
+      engine_appliance_facts:
+        filter: sg_vm
+        nodeid: 1
+        items:
+        - status
+        - filesystem
+        - interfaces
 
 Return Values
 -------------
@@ -326,11 +320,11 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     <tr>
     <td>engines</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>List of nodes and statuses</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>[{'status': {'status': 'Online', 'initial_license_remaining_days': 0, 'software_version': '5.7', 'cloud_id': 'N/A', 'installed_policy': 'Standard Firewall Policy with Inspection', 'first_upload_time': 0, 'proof_of_serial': 'xxxxxxxx-xxxxxxxxxx', 'name': 'ngf-1035', 'software_features': 'SECNODE+ALLOWX64=YES+ANTISPAM=YES+ANTIVIRUS=YES+DYNAMIC_ROUTING=YES+USERS=YES+URL_SERVICE2=YES+DEVICECLASS=100+VPN=YES', 'cloud_type': 'NONE', 'dyn_up': '1070', 'hardware_version': '79.1', 'configuration_status': 'Installed', 'platform': 'x86-64-small', 'state': 'READY', 'version': 'version 6.4.1 #20056', 'product_name': '1035-1-C1', 'initial_contact_time': '2016-03-08T21:28:02.263000'}, 'interfaces': [{'status': 'Up', 'name': 'eth0_0', 'mtu': 1500, 'capability': 'Normal Interface', 'flow_control': 'AutoNeg: off Rx: off Tx: off', 'aggregate_is_active': False, 'interface_id': 0, 'port': 'Copper', 'speed_duplex': '1000 Mb/s / Full / Automatic'}, {'status': 'Up', 'name': 'eth0_1', 'mtu': 1500, 'capability': 'Normal Interface', 'flow_control': 'AutoNeg: off Rx: off Tx: off', 'aggregate_is_active': False, 'interface_id': 1, 'port': 'Copper', 'speed_duplex': '1000 Mb/s / Full / Automatic'}, {'status': 'Up', 'name': 'eth0_2', 'mtu': 1500, 'capability': 'Normal Interface', 'flow_control': 'AutoNeg: off Rx: off Tx: off', 'aggregate_is_active': False, 'interface_id': 2, 'port': 'Copper', 'speed_duplex': '1000 Mb/s / Full / Automatic'}, {'status': 'Down', 'name': 'eth0_3', 'mtu': 1500, 'capability': 'Normal Interface', 'flow_control': 'AutoNeg: off Rx: off Tx: off', 'aggregate_is_active': False, 'interface_id': 3, 'port': 'Copper', 'speed_duplex': 'Half / Automatic'}], 'filesystem': [{'status': -1, 'sub_system': 'File Systems', 'param': 'Partition Size', 'value': '600 MB', 'label': 'Root'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Usage', 'value': '9.8%', 'label': 'Data'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Size', 'value': '1937 MB', 'label': 'Data'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Usage', 'value': '14.2%', 'label': 'Spool'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Size', 'value': '3288 MB', 'label': 'Spool'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Usage', 'value': '0.0%', 'label': 'Tmp'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Size', 'value': '1926 MB', 'label': 'Tmp'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Usage', 'value': '7.4%', 'label': 'Swap'}, {'status': -1, 'sub_system': 'File Systems', 'param': 'Size', 'value': '943 MB', 'label': 'Swap'}, {'status': -1, 'sub_system': 'Logging subsystem', 'param': 'Sending (entries / s)', 'value': '21', 'label': 'Log rates (average over 30 s)'}], 'nodeid': 2, 'name': 'ngf-1035'}]</td>
     </tr>
     </table>
     </br></br>

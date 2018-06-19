@@ -19,7 +19,8 @@ try:
     from smc.base.collection import Search
     from smc.elements.other import Category
     from smc.api.exceptions import ConfigLoadError, SMCException, \
-        UserElementNotFound, ElementNotFound, DeleteElementFailed
+        UserElementNotFound, ElementNotFound, DeleteElementFailed, \
+        UnsupportedEntryPoint
     HAS_LIB = True
 except ImportError:
     HAS_LIB = False
@@ -101,18 +102,23 @@ class Cache(object):
         # Add entry if it doesn't already exist
         if self.get(typeof, name):
             return
-        if typeof == 'engine':
-            result = Search.objects.context_filter('engine_clusters')\
-                .filter(name, exact_match=True).first()
-        else:
-            result = Search.objects.entry_point(typeof)\
-                .filter(name, exact_match=True).first()
-        if result:
-            self.cache.setdefault(typeof, []).append(
-                result)
-        else:
+        try:
+            if typeof == 'engine':
+                result = Search.objects.context_filter('engine_clusters')\
+                    .filter(name, exact_match=True).first()
+            else:
+                result = Search.objects.entry_point(typeof)\
+                    .filter(name, exact_match=True).first()
+            if result:
+                self.cache.setdefault(typeof, []).append(
+                    result)
+            else:
+                self.missing.append(
+                    dict(msg='Cannot find specified element',
+                         name=name,type=typeof))
+        except UnsupportedEntryPoint:
             self.missing.append(
-                dict(msg='Cannot find specified element',
+                dict(msg='An invalid element type was specified',
                      name=name,type=typeof))
     
     def get_href(self, typeof, name):
@@ -152,26 +158,59 @@ class Cache(object):
         return out
 
 
-def required_args(clazz):
-    argspec = inspect.getargspec(clazz.create)
-    if argspec.defaults:
-        args = argspec.args[:-len(argspec.defaults)]
-        return args[1:]
-    return argspec.args[1:]
-
-
-def allowed_args(class_typeof):
+def get_method_argspec(clazz, method=None):
     """
-    Return the allowed arguments (and kwargs) by name based on the
+    Get method argspec. Return a 2-tuple:
+    ([required_args], [valid_args])
+    Each tuple holds a list of the relevant args either
+    required or valid.
+    
+    :rtype: tuple
+    """
+    argspec = inspect.getargspec(getattr(clazz, method if method else 'create'))
+    valid_args = argspec.args[1:]
+    args = []
+    if argspec.defaults:
+        args = argspec.args[:-len(argspec.defaults)][1:]
+    return (args, valid_args)
+    
+
+def required_args(clazz, method=None):
+    """
+    Return only the required arguments for the given class and method.
+    
+    :param Element clazz: class for lookup
+    :param str method: method, default to `create` if None
+    :rtype: list
+    """
+    return get_method_argspec(clazz, method)[0]
+
+   
+def allowed_args(clazz, method=None):
+    """
+    Provide a list of allowed args for the specified method. This will
+    include kwargs as well as args. To find required args, use the
+    required_args function instead.
+    
+    :param Element clazz: class derived from base class Element
+    :param str method: method to check args, or `create` if not provided
+    :rtype: list(str)
+    """
+    return get_method_argspec(clazz, method)[1]
+
+
+def allowed_args_by_lookup(typeof, method=None):
+    """
+    Return the allowed arguments and kwargs by name based on the
     classes typeof attribute. You should validate that the typeof is
-    actually valid before calling this method
+    valid descendent of `smc.base.model.Element` before calling
+    this method
     
     :return: list of argument names
     :rtype: list
     """
-    clazz = lookup_class(class_typeof)
-    argspec = inspect.getargspec(clazz.create)
-    return argspec.args[1:]
+    clazz = lookup_class(typeof)
+    return allowed_args(clazz, method)
 
     
 def element_type_dict(map_only=False):
@@ -195,9 +234,8 @@ def element_type_dict(map_only=False):
     
     for t in types.keys():
         clazz = types.get(t)['type']
-        types[t]['attr'] = inspect.getargspec(clazz.create).args[1:]
-        #types[t]['attr'] = required_args(clazz)
-    
+        types[t]['attr'] = allowed_args(clazz)
+        
     return types
 
 
@@ -217,7 +255,7 @@ def ro_element_type_dict(map_only=False):
     
     for t in types.keys():
         clazz = types.get(t)['type']
-        types[t]['attr'] = inspect.getargspec(clazz.__init__).args[1:]
+        types[t]['attr'] = allowed_args(clazz, '__init__')
     
     return types
 
@@ -244,7 +282,7 @@ def service_type_dict(map_only=False):
     
     for t in types.keys():
         clazz = types.get(t)['type']
-        types[t]['attr'] = inspect.getargspec(clazz.create).args[1:]
+        types[t]['attr'] = allowed_args(clazz)
     
     return types
 
@@ -262,7 +300,7 @@ def ro_service_type_dict():
     
     for t in types.keys():
         clazz = types.get(t)['type']
-        types[t]['attr'] = inspect.getargspec(clazz.__init__).args[1:]
+        types[t]['attr'] = allowed_args(clazz, '__init__')
     
     return types
 
@@ -359,7 +397,7 @@ def format_element(element):
     """
     Format a raw json element doc
     """
-    for key in ('link', 'key', 'system_key'):
+    for key in ('link', 'key', 'system_key', 'system', 'read_only'):
         element.data.pop(key, None)
     return element.data.data
 
@@ -460,7 +498,7 @@ class StonesoftModuleBase(object):
         try:
             if params.get('smc_logging') is not None:
                 if 'path' not in params['smc_logging']:
-                    self.fail(msg='You must specify a path for SMC logging.')
+                    self.fail(msg='You must specify a path parameter for SMC logging.')
         
                 session.set_file_logger(
                     log_level=params['smc_logging'].get('level', 10),

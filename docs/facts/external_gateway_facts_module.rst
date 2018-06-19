@@ -1,8 +1,8 @@
-.. _external_gw_facts:
+.. _external_gateway_facts:
 
 
-external_gw_facts - Facts about external VPN gateways
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
+external_gateway_facts - Facts about external VPN gateways
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 

@@ -2,7 +2,6 @@
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -12,7 +11,7 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: routing_facts
+module: engine_routing_facts
 short_description: Facts about specific routes installed on an engine
 description:
   - Show the current routing table for the given engine. This will show references
@@ -40,7 +39,7 @@ author:
 
 RETURN = '''
 routes: 
-    description: Return all policy VPNs
+    description: Return all engine routes
     returned: always
     type: list
     sample: [{
@@ -50,14 +49,24 @@ routes:
         "route_network": "0.0.0.0", 
         "route_type": "Static", 
         "src_if": -1
-        }, {
+        }, 
+        {
         "dst_if": 0, 
         "route_gateway": "172.18.1.240", 
         "route_netmask": 0, 
         "route_network": "0.0.0.0", 
         "route_type": "Static", 
         "src_if": -1
-    }]
+        },
+        {
+        "dst_if": 1, 
+        "route_gateway": null, 
+        "route_netmask": 24, 
+        "route_network": "10.0.0.0", 
+        "route_type": "Connected", 
+        "src_if": -1
+        }
+    ]
 '''
 
 import traceback
@@ -65,55 +74,47 @@ from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
 
 try:
-    from smc.core.engine import Engine
     from smc.api.exceptions import SMCException
 except ImportError:
     pass
-
-
-def route_dict_from_obj(element):
-    return dict(
-        route_gateway=getattr(element, 'route_gateway', None),
-        route_type=element.route_type,
-        src_if=element.src_if,
-        route_netmask=element.route_netmask,
-        dst_if=element.dst_if,
-        route_network=element.route_network)
     
     
-class RoutingFacts(StonesoftModuleBase):
+class EngineRoutingFacts(StonesoftModuleBase):
     def __init__(self):
         
         self.module_args = dict(
             filter=dict(type='str', required=True)
         )
         
+        self.element = 'engine_clusters'
         self.filter = None
         
         self.results = dict(
             ansible_facts=dict(
-                routes=[]
+                engines=[]
             )
         )
-        super(RoutingFacts, self).__init__(self.module_args)
+        super(EngineRoutingFacts, self).__init__(self.module_args, is_fact=True)
 
     def exec_module(self, **kwargs):
         for name, value in kwargs.items():
             setattr(self, name, value)
         
-        elements = []
+        engine = self.search_by_context()
+        if not engine:
+            self.fail(msg='Specified engine does not exist: %s' % self.filter)
+        
         try:
-            engine = Engine(self.filter)
-            elements = [route_dict_from_obj(element) for element in engine.routing_monitoring]
+            self.results['ansible_facts']['engines'] = [rt._asdict()
+                for rt in engine[0].routing_monitoring]
             
         except SMCException as err:
             self.fail(msg=str(err), exception=traceback.format_exc())
         
-        self.results['ansible_facts'] = {'routes': elements}
         return self.results
 
 def main():
-    RoutingFacts()
+    EngineRoutingFacts()
     
 if __name__ == '__main__':
     main()

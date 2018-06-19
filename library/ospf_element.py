@@ -148,6 +148,101 @@ options:
                     pre-existing element. You can provide empty dict brackets to unset an existing
                     IP access list or route map
                 type: dict
+      ospfv2_domain_settings:
+        description:
+          - OSPF domain settings can be applied on an OSPF profile to provide metrics and cost
+            information for an OSPF profile. Set on the OSPF profile attribute domain_settings_ref
+        type: dict
+        suboptions:
+          abr_type:
+            description:
+              - abr type for this domain
+            choices:
+            - cisco
+            - standard
+            - shortcut
+            type: str
+          auto_cost_bandwidth:
+            description:
+              - bandwidth in Mbits/s
+            type: int
+            default: 100
+          deprecated_algorithm:
+            description:
+              - RFC 1518 compatibility
+            type: bool
+            default: false
+          initial_delay:
+            description:
+              - initial delay in milliseconds
+            type: int
+            default: 200
+          max_hold_time:
+            description:
+              - Max hold timer in milliseconds
+            type: int
+            default: 1000
+          shutdown_max_metric_lsa:
+            description:
+              - max metric for LSA in seconds
+            type: int
+            default: 0
+          startup_max_metric_lsa:
+            description:
+              - startup max metric for LSA in seconds
+            type: int
+            default: 0
+      ospfv2_interface_settings:
+        description:
+          - OSPF settings that can be applied directly to the interface that OSPF is
+            attached to
+        type: dict
+        suboptions:
+          authentication_type:
+            description:
+              - Whether to use authentication, default none. Authentication not currently
+                configurable in this module
+          dead_interval:
+            description:
+              - Dead interval timer in seconds
+            type: int
+            default: 40
+          hello_interval:
+            description:
+              - hello interval in seconds
+            type: int
+            default: 10
+          hello_interval_type:
+            description:
+              - Type for hello intervals
+            type: str
+            choices:
+            - normal
+            - fast_hello
+            default: normal
+          mtu_mismatch_detection:
+            description:
+              - Whether to use MTU mismatch detection
+            type: bool
+            default: true
+          password:
+            description:
+              - Unused field for authentication  
+          retransmit_interval:
+            description:
+              - interval for retransmits in seconds
+            type: int
+            default: 5
+          router_priority:
+            description:
+              - priority setting
+            type: int
+            default: 1
+          transmit_delay:
+            description:
+              - transmit delay in seconds
+            type: int
+            default: 1
   state:
     description:
       - Create or delete an OSPF Element. If I(state=absent), the element dict must have at least the
@@ -171,55 +266,83 @@ author:
 
 
 EXAMPLES = '''
-- name: OSPF Elements
-  register: result
-  ospf_element:
-    elements:
-    - ospfv2_area:
-        area_type: normal
-        comment: null
-        inbound_filters:
-          ip_access_list:
-          - myacl22
-          ip_prefix_list:
-          - mylist2
-        interface_settings_ref: Default OSPFv2 Interface Settings
-        name: myarea2
-        outbound_filters:
-          ip_access_list:
-          - myservice
-    - ospfv2_profile:
-        comment: added by ansible
-        default_metric: 123
-        domain_settings_ref: Default OSPFv2 Domain Settings
-        external_distance: 110
-        inter_distance: 130
-        intra_distance: 110
-        name: myprofile
-        redistribution_entry:
-        - enabled: true
-          metric_type: external_1
-          type: bgp
-        - enabled: true
-          filter:
-            route_map:
-            - myroutemap
-          metric: 2
-          metric_type: external_1
-          type: static
-        - enabled: true
-          filter:
+- name: 
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: OSPF Elements
+    register: result
+    ospf_element:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      elements:
+      - ospfv2_area:
+          area_type: normal
+          comment: null
+          inbound_filters:
             ip_access_list:
-            - myacl
-          metric_type: external_2
-          type: connected
-        - enabled: false
-          metric_type: external_1
-          type: kernel
-        - enabled: false
-          metric_type: external_1
-          type: default_originate
-    #state: absent
+            - myacl22
+            ip_prefix_list:
+            - mylist2
+          interface_settings_ref: Default OSPFv2 Interface Settings
+          name: myarea2
+          outbound_filters:
+            ip_access_list:
+            - myservice
+      - ospfv2_profile:
+          comment: added by ansible
+          default_metric: 123
+          domain_settings_ref: Default OSPFv2 Domain Settings
+          external_distance: 110
+          inter_distance: 130
+          intra_distance: 110
+          name: myprofile
+          redistribution_entry:
+          - enabled: true
+            metric_type: external_1
+            type: bgp
+          - enabled: true
+            filter: 
+               route_map:
+               - myroutemap
+            metric: 2
+            metric_type: external_1
+            type: static
+          - enabled: true
+            filter:
+              ip_access_list:
+              - myacl
+            metric_type: external_2
+            type: connected
+          - enabled: false
+            metric_type: external_1
+            type: kernel
+          - enabled: false
+            metric_type: external_1
+            type: default_originate
+      - ospfv2_domain_settings:
+          abr_type: cisco
+          auto_cost_bandwidth: 100
+          deprecated_algorithm: false
+          initial_delay: 203
+          initial_hold_time: 1000
+          max_hold_time: 10000
+          name: mydomain2
+          shutdown_max_metric_lsa: 0
+          startup_max_metric_lsa: 0
+      - ospfv2_interface_settings:
+          authentication_type: none
+          dead_interval: 40
+          hello_interval: 10
+          hello_interval_type: normal
+          mtu_mismatch_detection: true
+          name: myinterface
+          password: ''
+          retransmit_interval: 5
+          router_priority: 1
+          transmit_delay: 1
+      #state: absent
  
 - name: Unset an existing redistributed route ip access list or route map
   register: result
@@ -270,8 +393,8 @@ state:
 
 import copy
 import traceback
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase, allowed_args, Cache
-
+from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache, \
+    allowed_args_by_lookup
 
 try:
     from smc.base.model import lookup_class
@@ -310,6 +433,7 @@ class StonesoftOSPFElement(StonesoftModuleBase):
             if state == 'present':
                 
                 self.cache = Cache()
+                
                 self.check_elements()
                 
                 # Any missing dependencies..
@@ -450,6 +574,7 @@ class StonesoftOSPFElement(StonesoftModuleBase):
                         self.cache._add_entry('ospfv2_domain_settings', profile['domain_settings_ref'])
                     else:
                         deferrals.append(element)
+                        continue
 
             elements.append(element)
         return deferrals, elements
@@ -500,7 +625,7 @@ class StonesoftOSPFElement(StonesoftModuleBase):
                         'modifying an element. Missing on definition: %s' % ospf_element)
                 
                 # Check each value against what the constructor requires
-                allowed = allowed_args(ospf_element)
+                allowed = allowed_args_by_lookup(ospf_element)
                 for value in values:
                     if value not in allowed:
                         self.fail(msg='Provided an argument that is not valid for this '

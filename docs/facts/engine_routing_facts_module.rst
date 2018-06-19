@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _engine_routing_facts:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+engine_routing_facts - Facts about specific routes installed on an engine
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,14 +18,14 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* Show the current routing table for the given engine. This will show references to the dst_if for the route along with the gateway and route network. Use engine_facts to resolve interface ID's returned by this module.
 
 
 
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python >= 0.6.0
+  * smc-python
 
 
 Options
@@ -56,18 +56,6 @@ Options
     </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
-	<td>
-        <p>Type of engine to search for</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
     <td>exact_match<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -81,11 +69,11 @@ Options
 
     <tr>
     <td>filter<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>*</td>
+    <td>yes</td>
+    <td></td>
     <td></td>
 	<td>
-        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
+        <p>Specify the name of the engine in order to find the routing table</p>
 	</td>
 	</tr>
     </td>
@@ -264,47 +252,7 @@ Options
     </table>
     </br>
 
-Examples
---------
 
-.. code-block:: yaml
-
-    
-    - name: Facts about all engines within SMC
-      hosts: localhost
-      gather_facts: no
-      tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
-    
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
-      
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
-    
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
-          smc_logging:
-            level: 10
-            path: ansible-smc.log
-          filter: newcluster
-          as_yaml: true
-    
-      - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
 
 Return Values
 -------------
@@ -324,13 +272,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>engines</td>
+    <td>routes</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>Return all engine routes</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>[{'route_network': '0.0.0.0', 'route_gateway': '10.0.0.1', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 1}, {'route_network': '0.0.0.0', 'route_gateway': '172.18.1.240', 'src_if': -1, 'route_type': 'Static', 'route_netmask': 0, 'dst_if': 0}, {'route_network': '10.0.0.0', 'route_gateway': None, 'src_if': -1, 'route_type': 'Connected', 'route_netmask': 24, 'dst_if': 1}]</td>
     </tr>
     </table>
     </br></br>

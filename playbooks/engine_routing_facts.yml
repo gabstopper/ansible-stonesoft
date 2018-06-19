@@ -1,0 +1,7 @@
+- name: Routing facts about an engine
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve engine routes from sg_vm
+    engine_routing_facts:
+      filter: sg_vm

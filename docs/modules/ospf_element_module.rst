@@ -79,12 +79,32 @@ Options
         </tr>
 
         <tr>
+        <td>ospfv2_interface_settings<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>OSPF settings that can be applied directly to the interface that OSPF is attached to</div>
+        </td>
+        </tr>
+
+        <tr>
         <td>ospvfv2_area<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
             <div>Create an OSPFv2 area element to be used on an routing interface to advertise OSPF. Suboptions describe key value pairs for area dict</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>ospfv2_domain_settings<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>OSPF domain settings can be applied on an OSPF profile to provide metrics and cost information for an OSPF profile. Set on the OSPF profile attribute domain_settings_ref</div>
         </td>
         </tr>
 
@@ -320,55 +340,83 @@ Examples
 .. code-block:: yaml
 
     
-    - name: OSPF Elements
-      register: result
-      ospf_element:
-        elements:
-        - ospfv2_area:
-            area_type: normal
-            comment: null
-            inbound_filters:
-              ip_access_list:
-              - myacl22
-              ip_prefix_list:
-              - mylist2
-            interface_settings_ref: Default OSPFv2 Interface Settings
-            name: myarea2
-            outbound_filters:
-              ip_access_list:
-              - myservice
-        - ospfv2_profile:
-            comment: added by ansible
-            default_metric: 123
-            domain_settings_ref: Default OSPFv2 Domain Settings
-            external_distance: 110
-            inter_distance: 130
-            intra_distance: 110
-            name: myprofile
-            redistribution_entry:
-            - enabled: true
-              metric_type: external_1
-              type: bgp
-            - enabled: true
-              filter:
-                route_map:
-                - myroutemap
-              metric: 2
-              metric_type: external_1
-              type: static
-            - enabled: true
-              filter:
+    - name: 
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: OSPF Elements
+        register: result
+        ospf_element:
+          smc_logging:
+            level: 10
+            path: ansible-smc.log
+          elements:
+          - ospfv2_area:
+              area_type: normal
+              comment: null
+              inbound_filters:
                 ip_access_list:
-                - myacl
-              metric_type: external_2
-              type: connected
-            - enabled: false
-              metric_type: external_1
-              type: kernel
-            - enabled: false
-              metric_type: external_1
-              type: default_originate
-        #state: absent
+                - myacl22
+                ip_prefix_list:
+                - mylist2
+              interface_settings_ref: Default OSPFv2 Interface Settings
+              name: myarea2
+              outbound_filters:
+                ip_access_list:
+                - myservice
+          - ospfv2_profile:
+              comment: added by ansible
+              default_metric: 123
+              domain_settings_ref: Default OSPFv2 Domain Settings
+              external_distance: 110
+              inter_distance: 130
+              intra_distance: 110
+              name: myprofile
+              redistribution_entry:
+              - enabled: true
+                metric_type: external_1
+                type: bgp
+              - enabled: true
+                filter: 
+                   route_map:
+                   - myroutemap
+                metric: 2
+                metric_type: external_1
+                type: static
+              - enabled: true
+                filter:
+                  ip_access_list:
+                  - myacl
+                metric_type: external_2
+                type: connected
+              - enabled: false
+                metric_type: external_1
+                type: kernel
+              - enabled: false
+                metric_type: external_1
+                type: default_originate
+          - ospfv2_domain_settings:
+              abr_type: cisco
+              auto_cost_bandwidth: 100
+              deprecated_algorithm: false
+              initial_delay: 203
+              initial_hold_time: 1000
+              max_hold_time: 10000
+              name: mydomain2
+              shutdown_max_metric_lsa: 0
+              startup_max_metric_lsa: 0
+          - ospfv2_interface_settings:
+              authentication_type: none
+              dead_interval: 40
+              hello_interval: 10
+              hello_interval_type: normal
+              mtu_mismatch_detection: true
+              name: myinterface
+              password: ''
+              retransmit_interval: 5
+              router_priority: 1
+              transmit_delay: 1
+          #state: absent
      
     - name: Unset an existing redistributed route ip access list or route map
       register: result

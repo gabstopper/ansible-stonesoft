@@ -151,7 +151,7 @@ elements:
 
 '''
 
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase
+from ansible.module_utils.stonesoft_util import StonesoftModuleBase, format_element
 
 
 try:
@@ -162,8 +162,8 @@ except ImportError:
     pass
 
 
-ospf_elements = (
-    'ospfv2_area', 'ospfv2_profile')
+ospf_elements = ('ospfv2_area', 'ospfv2_interface_settings', 'ospfv2_key_chain',
+    'ospfv2_profile', 'ospfv2_domain_settings')
 
 
 def area_to_yaml(area):
@@ -216,6 +216,8 @@ def convert_to_dict(element):
         return {element.typeof: area_to_yaml(element)}
     elif element.typeof == 'ospfv2_profile':
         return {element.typeof: profile_to_yaml(element)}
+    else:
+        return {element.typeof: format_element(element)}
     
 
 class OSPFElementFacts(StonesoftModuleBase):

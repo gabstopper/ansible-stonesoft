@@ -1,0 +1,25 @@
+- name: Facts about an appliance
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Retrieve all stats (hardware, interface, info)
+    engine_appliance_facts:
+      filter: sg_vm
+
+  - name: Retrieve only interface info for all nodes
+    engine_appliance_facts:
+      filter: sg_vm
+      items:
+      - interfaces
+
+  - name: Retrieve all info from node 1 (this is redundant, you can leave items empty)
+    engine_appliance_facts:
+      filter: sg_vm
+      nodeid: 1
+      items:
+      - interfaces
+      - filesystem
+      - status
+
+
+  

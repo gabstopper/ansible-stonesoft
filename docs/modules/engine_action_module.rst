@@ -1,8 +1,8 @@
-.. _engine_facts:
+.. _engine_action:
 
 
-engine_facts - Facts about engines deployed in SMC
-++++++++++++++++++++++++++++++++++++++++++++++++++
+engine_action - Node level actions on an engine
++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. versionadded:: 2.5
 
@@ -18,14 +18,14 @@ Synopsis
 --------
 
 
-* Engines refers to any device that is deployed and managed by the Stonesoft Management Center. More specifically, an engine can be physical or virtual, an IPS, layer 2 firewall, layer 3 or clusters of these types.
+* Perform a node level action on the engine such as go_online, go_offline, generate initial_contact, reboot, etc
 
 
 
 Requirements (on host that executes module)
 -------------------------------------------
 
-  * smc-python >= 0.6.0
+  * smc-python
 
 
 Options
@@ -44,60 +44,48 @@ Options
     </tr>
 
     <tr>
-    <td>case_sensitive<br/><div style="font-size: small;"></div></td>
+    <td>actions<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>True</td>
     <td></td>
+    <td><ul><li>initial_contact</li><li>reboot</li><li>power_off</li><li>reset_to_factory</li><li>sginfo</li><li>ssh</li><li>change_ssh_pwd</li><li>time_sync</li><li>fetch_license</li><li>bind_license</li><li>unbind_license</li><li>cancel_unbind_license</li><li>go_offline</li><li>go_online</li><li>go_standby</li><li>lock_online</li><li>lock_offline</li><li>reset_user_db</li></ul></td>
 	<td>
-        <p>Whether to do a case sensitive match on the filter specified</p>
+        <p>Action to perform against the engine node. Some actions will optionally have additional arguments that can be provided</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>element<br/><div style="font-size: small;"></div></td>
+    <td>extra_args<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>engine_clusters</td>
-    <td><ul><li>engine_clusters</li><li>layer2_clusters</li><li>ips_clusters</li><li>fw_clusters</li></ul></td>
+    <td></td>
+    <td></td>
 	<td>
-        <p>Type of engine to search for</p>
+        <p>Extra arguments to provide to action constructor. Arguments documented only show action choices that have specific extra args that are useful when calling the action Constructor arguments are documented at <a href='http://smc-python.readthedocs.io/en/latest/pages/reference.html#module-smc.core.node'>http://smc-python.readthedocs.io/en/latest/pages/reference.html#module-smc.core.node</a></p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>exact_match<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
+    <td>name<br/><div style="font-size: small;"></div></td>
+    <td>yes</td>
     <td></td>
     <td></td>
 	<td>
-        <p>Whether to do an exact match on the filter specified</p>
+        <p>Provide the name of the engine for which to perform a node operation</p>
 	</td>
 	</tr>
     </td>
     </tr>
 
     <tr>
-    <td>filter<br/><div style="font-size: small;"></div></td>
+    <td>nodeid<br/><div style="font-size: small;"></div></td>
     <td>no</td>
-    <td>*</td>
+    <td>1</td>
     <td></td>
 	<td>
-        <p>String value to match against when making query. Matches all if not specified. A filter will attempt to find a match in the name, primary key field or comment field of a given record.</p>
-	</td>
-	</tr>
-    </td>
-    </tr>
-
-    <tr>
-    <td>limit<br/><div style="font-size: small;"></div></td>
-    <td>no</td>
-    <td>10</td>
-    <td></td>
-	<td>
-        <p>Limit the number of results. Set to 0 to remove limit.</p>
+        <p>Provide a nodeid for the engine node to perform the action. For single FWs this is not required and will default to nodeid 1. For clusters, each node has a nodeid to represent which node to operate on</p>
 	</td>
 	</tr>
     </td>
@@ -270,41 +258,37 @@ Examples
 .. code-block:: yaml
 
     
-    - name: Facts about all engines within SMC
+    - name: Generate an initial contact configuration in base64 format
       hosts: localhost
       gather_facts: no
       tasks:
-      - name: Find all managed engines (IPS, Layer 2, L3FW)
-        engine_facts:
-      
-      - name: Find a cluster FW named mycluster
-        engine_facts:
-          element: fw_clusters
-          filter: mycluster
-      
-      - name: Find only Layer 2 FW's
-        engine_facts:
-          element: layer2_clusters
-    
-      - name: Find only IPS engines
-        engine_facts:
-          element: ips_clusters
-      
-      - name: Get engine details for 'myfirewall'
-        engine_facts:
-          filter: myfirewall
-    
-      - name: Get engine details for 'myfw' and save in editable YAML format
-        register: results
-        engine_facts:
+      - name: Layer 3 FW template
+        register: command_output
+        engine_action:
           smc_logging:
             level: 10
             path: ansible-smc.log
-          filter: newcluster
-          as_yaml: true
+          name: myfw3
+          nodeid: 1
+          action: initial_contact
+          extra_args:
+            enable_ssh: true
+            as_base64: true
+      
+      - debug: msg="{{ command_output.msg }}"
+      
+    - name: Reboot node 1
+      hosts: localhost
+      gather_facts: no
+      tasks:
+      - name: Layer 3 FW template
+        engine_action:
+          name: myfw3
+          nodeid: 1
+          action: reboot
+          extra_args:
+            comment: reboot fw log entry
     
-      - name: Write the yaml using a jinja template
-        template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
 
 Return Values
 -------------
@@ -324,13 +308,23 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>engines</td>
+    <td>msg</td>
     <td>
-        <div>When using a filter match, full engine json is returned</div>
+        <div>message attribute will be empty except for initial contact</div>
     </td>
     <td align=center>always</td>
-    <td align=center>list</td>
-    <td align=center>[{'default_nat': True, 'name': 'myfw3', 'interfaces': [{'interfaces': [{'nodes': [{'address': '1.1.1.1', 'nodeid': 1, 'network_value': '1.1.1.0/24'}]}], 'interface_id': '0'}, {'interfaces': [{'nodes': [{'address': '10.10.10.1', 'nodeid': 1, 'network_value': '10.10.10.1/32'}]}], 'type': 'tunnel_interface', 'interface_id': '1000'}, {'interfaces': [{'nodes': [{'address': '2.2.2.1', 'nodeid': 1, 'network_value': '2.2.2.0/24'}]}], 'interface_id': '1'}], 'snmp': {'snmp_agent': 'fooagent', 'snmp_interface': ['1'], 'snmp_location': 'test'}, 'antivirus': True, 'bgp': {'router_id': '1.1.1.1', 'bgp_peering': [{'name': 'bgppeering', 'interface_id': '1000'}], 'announced_network': [{'network': {'route_map': 'myroutemap', 'name': 'network-1.1.1.0/24'}}], 'enabled': True, 'autonomous_system': {'comment': None, 'as_number': 200, 'name': 'as-200'}, 'bgp_profile': 'Default BGP Profile'}, 'file_reputation': True, 'policy_vpn': [{'mobile_gateway': False, 'satellite_node': False, 'name': 'ttesst', 'central_node': True}], 'primary_mgt': '0', 'antispoofing_network': {'network': ['network-1.1.1.0/24']}, 'type': 'single_fw', 'domain_server_address': ['8.8.8.8']}]</td>
+    <td align=center>str</td>
+    <td align=center></td>
+    </tr>
+
+    <tr>
+    <td>state</td>
+    <td>
+        <div>appliance status after performing the action</div>
+    </td>
+    <td align=center>always</td>
+    <td align=center>dict</td>
+    <td align=center>{'status': 'Not Monitored', 'dyn_up': None, 'configuration_status': 'Declared', 'platform': 'N/A', 'state': 'NO_STATUS', 'installed_policy': None, 'version': 'unknown', 'name': 'myfw3 node 1'}</td>
     </tr>
     </table>
     </br></br>
@@ -340,7 +334,7 @@ Notes
 -----
 
 .. note::
-    - If a filter is not used in the query, this will return all results for the element type specified. The return data in this case will only contain the metadata for the element which will be name and type. To get detailed information about an element, use a filter. When using filters on network or service elements, the filter value will search the element fields, for example, you could use a filter of '1.1.1.1' when searching for hosts and all hosts with this IP will be returned. The same applies for services. If you are unsure of the service name but know the port you require, your filter can be by port.
+    - Login credential information is either obtained by providing them directly to the task/play, specifying an alt_filepath to read the credentials from to the play, or from environment variables (in that order). See http://smc-python.readthedocs.io/en/latest/pages/session.html for more information.
 
 
 Author
