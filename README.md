@@ -1,5 +1,5 @@
 ## ansible-stonesoft
-[![Documentation Status](https://readthedocs.org/projects/ansible-stonesoft/badge/?version=latest)](http://ansible-stonesoft.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/ansible-stonesoft/badge/?version=develop)](http://ansible-stonesoft.readthedocs.io/en/develop/?badge=develop)
 
 This repository provides [Ansible](https://www.ansible.com)  modules for configuration and automation of [Stonesoft Next Generation Firewall](https://www.forcepoint.com/product/network-security/forcepoint-ngfw). It uses the [smc-python](https://github.com/gabstopper/smc-python) for all operations between the ansible client and the Stonesoft Management Center.
 

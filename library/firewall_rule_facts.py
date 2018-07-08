@@ -135,7 +135,6 @@ firewall_rule:
     sample: [
     {
         "comment": null, 
-        "inspection_policy": "High-Security Inspection Template", 
         "policy": "TestPolicy", 
         "rules": [
             {
@@ -158,8 +157,7 @@ firewall_rule:
                 "pos": 4, 
                 "type": "fw_ipv4_access_rule"
             }
-        ], 
-        "template": "Firewall Inspection Template"
+        ],
     }]
 '''
 import traceback

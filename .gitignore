@@ -104,3 +104,5 @@ ENV/
 *.retry
 .DS_Store
 /docs/_*
+#/library/
+/README.md

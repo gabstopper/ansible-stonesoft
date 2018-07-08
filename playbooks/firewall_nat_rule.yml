@@ -8,17 +8,82 @@
       smc_logging:
         level: 10
         path: ansible-smc.log
-      policy: TestPolicy3
+      policy: TestPolicy
       rules:
-      -   comment: null
-          destinations:
-              any: true
-          is_disabled: false
-          name: mynat
-          services:
-              any: true
-          sources:
-              engine:
-              - myfw
-          tag: '2097497.4'
-          used_on: ANY
+      - comment: null
+        destinations:
+          host:
+          - somehost
+        is_disabled: false
+        name: Rule @315.1
+        services:
+          any: true
+        sources:
+          host:
+          - host-3.3.3.3
+        static_dst_nat:
+          automatic_proxy: true
+          translated_value:
+            ip_descriptor: 10.10.10.10
+        static_src_nat:
+          automatic_proxy: true
+          translated_value:
+            ip_descriptor: 3.3.3.10
+        tag: '315.1'
+        used_on: ANY
+      - comment: testcomment
+        destinations:
+          host:
+          - host-3.3.3.3
+        is_disabled: false
+        name: Rule @125.4
+        services:
+          any: true
+        sources:
+          any: true
+        static_dst_nat:
+          automatic_proxy: true
+          original_value:
+            max_port: 90
+            min_port: 90
+          translated_value:
+            ip_descriptor: 1.1.1.1
+            max_port: 9999
+            min_port: 9999
+        tag: '125.4'
+        used_on: ANY
+      - comment: null
+        destinations:
+          any: true
+        is_disabled: false
+        name: Rule @122.5
+        services:
+          any: true
+        sources:
+          host:
+          - host-4.4.4.4
+        static_src_nat:
+          automatic_proxy: true
+          translated_value:
+            ip_descriptor: 1.1.1.1
+        tag: '122.5'
+        used_on: NONE
+      - comment: null
+        destinations:
+          any: true
+        dynamic_src_nat:
+          automatic_proxy: true
+          translated_value:
+            max_port: 65535
+            min_port: 1024
+            name: host-4.4.4.4
+            type: host
+        is_disabled: false
+        name: Rule @121.4
+        services:
+          any: true
+        sources:
+          host:
+          - host-3.3.3.3
+        tag: '121.4'
+        used_on: NONE

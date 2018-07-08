@@ -41,7 +41,6 @@ options:
         element to add. If source is not provided, the rule source cell will be
         set to none and the rule will effectively be disabled.
     type: list
-    default: 'none'
     suboptions:
       action:
         description:
@@ -492,6 +491,7 @@ state:
   return: always
   type: dict
 '''
+
 import traceback
 from ansible.module_utils.six import integer_types
 from ansible.module_utils.six import string_types
@@ -531,7 +531,7 @@ service_targets = ('service_group', 'tcp_service_group', 'udp_service_group', 'i
 sentinel = object()
 
 
-def validate_rule(rule):
+def validate_rule_syntax(rule):
     """
     Validate the rule by checking fields that do not require a call
     to the SMC. Sources, Destinations and Services are not validated
@@ -780,7 +780,7 @@ class FirewallRule(StonesoftModuleBase):
                 
                 for rule in self.rules:
                     try:
-                        validate_rule(rule)
+                        validate_rule_syntax(rule)
                     except Exception as e:
                         self.fail(msg=str(e))
         
@@ -955,10 +955,10 @@ class FirewallRule(StonesoftModuleBase):
         :rtype: Rule or None
         """
         resolved_tag = get_tag(tag)
-        rule = policy.search_rule('@{}'.format(resolved_tag))
-        if rule:
-            return rule[0]
-        
+        if resolved_tag:
+            rule = policy.search_rule('@{}'.format(resolved_tag))
+            return rule[0] if rule else None
+    
     def field_resolver(self, elements, types):
         """
         Field resolver, specific to retrieving network or service level
@@ -1006,7 +1006,7 @@ class FirewallRule(StonesoftModuleBase):
 
         elif isinstance(elements, list):
             for entry in elements:
-                if not entry.startswith('http'):
+                if not isinstance(entry, string_types) or not entry.startswith('http'):
                     self.fail(msg='List entry is expected to be the raw href of '
                         'the element. Received: %s' % entry)
     

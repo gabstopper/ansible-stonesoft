@@ -311,22 +311,22 @@ Examples
       gather_facts: no
       tasks:
       - name: Show rules for policy 'TestPolicy' (only shows name, type)
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           filter: TestPolicy
     
       - name: Search for specific rule/s using search value (partial searching supported)
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           filter: TestPolicy
           search: rulet
     
       - name: Dump the results in yaml format, showing details of rule
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           filter: TestPolicy
           search: rulet
           as_yaml: true
     
       - name: Resolve the source, destination and services fields
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           filter: TestPolicy
           search: rulet
           as_yaml: true
@@ -336,14 +336,13 @@ Examples
           - services
     
       - name: Get specific rules based on range order (rules 1-10)
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           filter: TestPolicy
           rule_range: 1-3
           as_yaml: true
       
       - name: Get firewall rule as yaml
-        register: results
-        firewall_rule_facts:
+        firewall_nat_rule_facts:
           smc_logging:
            level: 10
            path: ansible-smc.log
@@ -357,7 +356,7 @@ Examples
           - sources
       
       - name: Write the yaml using a jinja template
-        template: src=templates/facts_yaml.j2 dest=./firewall_rules_test.yml
+        template: src=templates/facts_yaml.j2 dest=./firewall_nat_rules_test.yml
         vars:
           playbook: firewall_rule
 
@@ -379,13 +378,13 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </tr>
 
     <tr>
-    <td>firewall_rule</td>
+    <td>firewall_nat_rule</td>
     <td>
         <div>Obtain metadata through a simple rule search</div>
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'policy': 'TestPolicy', 'rules': [{'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097166.2', 'pos': 1}, {'type': 'fw_ipv4_access_rule', 'name': 'ruletest', 'pos': 2}, {'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097168.0', 'pos': 3}, {'type': 'fw_ipv4_access_rule', 'name': 'nested', 'pos': 4}]}]</td>
+    <td align=center>[{'policy': 'TestPolicy', 'rules': [{'type': 'fw_ipv4_nat_rule', 'name': 'Rule @125.4', 'pos': 1}, {'type': 'fw_ipv4_nat_rule', 'name': 'Rule @122.5', 'pos': 2}, {'type': 'fw_ipv4_nat_rule', 'name': 'Rule @121.4', 'pos': 3}]}]</td>
     </tr>
     </table>
     </br></br>

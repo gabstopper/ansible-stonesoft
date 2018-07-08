@@ -75,22 +75,22 @@ EXAMPLES = '''
   gather_facts: no
   tasks:
   - name: Show rules for policy 'TestPolicy' (only shows name, type)
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       filter: TestPolicy
 
   - name: Search for specific rule/s using search value (partial searching supported)
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       filter: TestPolicy
       search: rulet
 
   - name: Dump the results in yaml format, showing details of rule
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       filter: TestPolicy
       search: rulet
       as_yaml: true
 
   - name: Resolve the source, destination and services fields
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       filter: TestPolicy
       search: rulet
       as_yaml: true
@@ -100,14 +100,13 @@ EXAMPLES = '''
       - services
 
   - name: Get specific rules based on range order (rules 1-10)
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       filter: TestPolicy
       rule_range: 1-3
       as_yaml: true
   
   - name: Get firewall rule as yaml
-    register: results
-    firewall_rule_facts:
+    firewall_nat_rule_facts:
       smc_logging:
        level: 10
        path: ansible-smc.log
@@ -121,44 +120,38 @@ EXAMPLES = '''
       - sources
   
   - name: Write the yaml using a jinja template
-    template: src=templates/facts_yaml.j2 dest=./firewall_rules_test.yml
+    template: src=templates/facts_yaml.j2 dest=./firewall_nat_rules_test.yml
     vars:
       playbook: firewall_rule
 '''
 
 
 RETURN = '''
-firewall_rule: 
+firewall_nat_rule: 
     description: Obtain metadata through a simple rule search
     returned: always
     type: list
     sample: [
     {
-        "comment": null, 
         "policy": "TestPolicy", 
         "rules": [
             {
-                "name": "Rule @2097166.2", 
+                "name": "Rule @125.4", 
                 "pos": 1, 
-                "type": "fw_ipv4_access_rule"
+                "type": "fw_ipv4_nat_rule"
             }, 
             {
-                "name": "ruletest", 
+                "name": "Rule @122.5", 
                 "pos": 2, 
-                "type": "fw_ipv4_access_rule"
+                "type": "fw_ipv4_nat_rule"
             }, 
             {
-                "name": "Rule @2097168.0", 
+                "name": "Rule @121.4", 
                 "pos": 3, 
-                "type": "fw_ipv4_access_rule"
-            }, 
-            {
-                "name": "nested", 
-                "pos": 4, 
-                "type": "fw_ipv4_access_rule"
-            }
-        ],
+                "type": "fw_ipv4_nat_rule"
+            }]
     }]
+
 '''
 
 import traceback
@@ -181,7 +174,8 @@ def to_yaml(rule, expand=None):
         'is_disabled': rule.is_disabled,
         'comment': rule.comment}
     
-    _rule.update(used_on=rule.used_on.name)
+    if getattr(rule, 'used_on', None) is not None:
+        _rule.update(used_on=rule.used_on.name)
     
     for field in ('sources', 'destinations', 'services'):
         if getattr(rule, field).is_any:
@@ -203,6 +197,39 @@ def to_yaml(rule, expand=None):
                 tmp = getattr(rule, field).all_as_href()
             _rule[field] = tmp
     
+    for nat in ('dynamic_src_nat', 'static_src_nat', 'static_dst_nat'):
+        if getattr(rule, nat).has_nat:
+            nat_rule = getattr(rule, nat)
+            if 'static_dst_nat' in nat:
+                if nat_rule.original_value.min_port:
+                    original_value = nat_rule.get(nat).get('original_value')
+                    original_value.pop('element', None)
+                    original_value.pop('ip_descriptor', None)
+                else:
+                    nat_rule.get(nat).pop('original_value', None)
+            else:
+                nat_rule.get(nat).pop('original_value', None)
+                   
+            _rule[nat] = nat_rule.data.get(nat)
+            
+            translated_value = nat_rule.translated_value.data
+            if nat_rule.translated_value.element:
+                element = nat_rule.translated_value.as_element
+                translated_value.pop('element', None)
+                translated_value.pop('ip_descriptor', None)
+                translated_value.update(
+                    type=element.typeof,
+                    name=element.name)
+            else:
+                translated_value.update(
+                    ip_descriptor=nat_rule.translated_value.ip_descriptor)   
+            
+            _attr = 'translated_value' if not 'dynamic_src_nat' in nat \
+                    else 'translation_values'
+            nat_rule.get(nat).pop(_attr, None)
+            nat_rule.get(nat).update(
+                translated_value=translated_value)
+
     return _rule
 
 

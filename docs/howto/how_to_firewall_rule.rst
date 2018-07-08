@@ -75,11 +75,7 @@ firewall_rule module. Elements can also be retrieved or created using the :ref:`
    gather_facts: no
    tasks:
    - name: Task output
-     register: result
      firewall_rule:
-       smc_logging:
-         level: 10
-         path: ansible-smc.log
        policy: TestPolicy
        rules:
        -   action: allow

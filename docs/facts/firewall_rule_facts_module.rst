@@ -385,7 +385,7 @@ Common return values are documented `Return Values <http://docs.ansible.com/ansi
     </td>
     <td align=center>always</td>
     <td align=center>list</td>
-    <td align=center>[{'comment': None, 'policy': 'TestPolicy', 'inspection_policy': 'High-Security Inspection Template', 'rules': [{'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097166.2', 'pos': 1}, {'type': 'fw_ipv4_access_rule', 'name': 'ruletest', 'pos': 2}, {'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097168.0', 'pos': 3}, {'type': 'fw_ipv4_access_rule', 'name': 'nested', 'pos': 4}], 'template': 'Firewall Inspection Template'}]</td>
+    <td align=center>[{'comment': None, 'policy': 'TestPolicy', 'rules': [{'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097166.2', 'pos': 1}, {'type': 'fw_ipv4_access_rule', 'name': 'ruletest', 'pos': 2}, {'type': 'fw_ipv4_access_rule', 'name': 'Rule @2097168.0', 'pos': 3}, {'type': 'fw_ipv4_access_rule', 'name': 'nested', 'pos': 4}]}]</td>
     </tr>
     </table>
     </br></br>
