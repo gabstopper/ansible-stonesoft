@@ -288,7 +288,8 @@ Examples
           action: reboot
           extra_args:
             comment: reboot fw log entry
-    
+
+
 
 Return Values
 -------------

@@ -292,6 +292,12 @@ options:
               - Optional network to bind to on the specified interface. Use if multiple
                 IP addresses exist and you want to bind to only one.
             type: str
+  enable_vpn:
+    description:
+      - Provide a list of IP addresses for which to enable VPN endpoints on. This should be a
+        list of string IP address identifiers. If enabling on a DHCP address, use the value specified
+        in the SMC under VPN endpoints, i.e. First DHCP Interface ip. 
+    type: list
   domain_server_address:
     description:
       - A list of IP addresses to use as DNS resolvers for the FW. Required to enable
@@ -747,6 +753,7 @@ class StonesoftEngine(StonesoftModuleBase):
             primary_heartbeat=dict(type='str'),
             backup_heartbeat=dict(type='str'),
             policy_vpn=dict(type='list'),
+            enable_vpn=dict(type='list', default=[]),
             tags=dict(type='list'),
             skip_interfaces=dict(type='bool', default=False),
             delete_undefined_interfaces=dict(type='bool', default=False),
@@ -771,6 +778,7 @@ class StonesoftEngine(StonesoftModuleBase):
         self.antivirus = None
         self.file_reputation = None
         self.policy_vpn = False
+        self.enable_vpn = []
         self.skip_interfaces = None
         self.delete_undefined_interfaces = None
         self.tags = None
@@ -815,11 +823,12 @@ class StonesoftEngine(StonesoftModuleBase):
                 if not self.primary_mgt in itf:
                     self.fail(msg='Management interface is not defined. Management was '
                         'specified on interface: %s' % self.primary_mgt)
-            
+                
             else:
                 self.type = engine.type
                 if self.interfaces and not self.skip_interfaces:
                     itf = self.check_interfaces()
+
                 else:
                     itf = []
 
@@ -1107,12 +1116,18 @@ class StonesoftEngine(StonesoftModuleBase):
                     if self.update_antispoofing(engine):
                         changed = True
                         engine_needs_update = True
-                    
+
                 if engine_needs_update:
                     engine.update()
                 
                 # Remainder of updates are done through references and
                 # therefore the core engine no longer needs updates
+                for _endpoint in self.enable_vpn:
+                    endpoint = engine.vpn_endpoint.get_contains(_endpoint)
+                    if not endpoint.enabled:
+                        endpoint.update(enabled=True)
+                        changed = True
+                        
                 if self.netlinks:
                     if self.update_netlinks(engine):
                         changed = True

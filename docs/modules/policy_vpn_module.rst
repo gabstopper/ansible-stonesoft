@@ -465,7 +465,7 @@ Examples
             type: external_gateway
         tags:
           - footag
-    
+
     # Retrieve tunnel_side_a and tunnel_side_b values by calling policy_vpn_facts
     - name: Change a preshared key for existing tunnel and enable the tunnel
       policy_vpn:
@@ -483,7 +483,7 @@ Examples
           - name: newextgw
             type: external_gateway
         state: absent
-    
+
     - name: Delete tags from a policy VPN
       policy_vpn:
         name: mynewvpn
@@ -495,6 +495,7 @@ Examples
       policy_vpn:
         name: mynewvpn
         state: absent
+
 
 Return Values
 -------------

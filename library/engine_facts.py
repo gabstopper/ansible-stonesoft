@@ -390,6 +390,11 @@ def yaml_cluster(engine):
         antivirus=engine.antivirus.status,
         file_reputation=engine.file_reputation.status)
     
+    for vpn_endpoint in engine.vpn_endpoint:
+        if vpn_endpoint.enabled:
+            yaml_engine.setdefault('enable_vpn', []).append(
+                vpn_endpoint.name)
+    
     if engine.dns:
         yaml_engine.update(
             domain_server_address=get_engine_dns(engine))

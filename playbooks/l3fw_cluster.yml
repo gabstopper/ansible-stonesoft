@@ -12,10 +12,14 @@
           enabled: false
           router_id: null
       cluster_mode: standby
+      primary_mgt: '2.4'
       comment: my new firewall
       default_nat: false
       domain_server_address:
-      - 8.8.8.8
+      - name: 172.18.1.20
+        type: ipaddress
+      - name: 8.8.8.8
+        type: ipaddress
       file_reputation: false
       interfaces:
       -   comment: foocomment
@@ -265,14 +269,14 @@
                   nodeid: 2
           type: tunnel_interface
       name: newcluster
-      policy_vpn:
-      -   central_node: true
-          mobile_gateway: true
-          name: ttesst
-          satellite_node: false
-      primary_heartbeat: '4.14'
-      primary_mgt: '68'
-      tags:
-      - footag2
-      - footag
+    #   policy_vpn:
+    #   -   central_node: true
+    #       mobile_gateway: true
+    #       name: ttesst
+    #       satellite_node: false
+    #   primary_heartbeat: '4.14'
+    #   primary_mgt: '68'
+    #   tags:
+    #   - footag2
+    #   - footag
       type: fw_cluster

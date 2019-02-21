@@ -356,12 +356,13 @@ Examples
             #    type: peer_address
             name: myrule3
         #delete_undefined_rules: false
-    
+
     - name: Delete an existing route map policy
         register: result
         route_map:
           name: routemap_for_aws
           state: absent
+
 
 Return Values
 -------------

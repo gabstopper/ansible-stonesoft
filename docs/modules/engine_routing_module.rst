@@ -597,7 +597,7 @@ Examples
             - name: foonet
               type: network
             interface_id: 0
-    
+
     - name: Engine routing configuration
       hosts: localhost
       gather_facts: no
@@ -614,6 +614,7 @@ Examples
               type: network
             interface_id: 0
           state: absent
+
 
 Return Values
 -------------

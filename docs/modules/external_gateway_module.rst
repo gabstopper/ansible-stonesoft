@@ -431,12 +431,13 @@ Examples
             network:
             - network-172.18.1.0/24
             - network-172.18.2.0/24
-    
-    
+
+
     - name: Delete an external gateway
       external_vpn_gw:
         name: myextgw
         state: absent
+
 
 Return Values
 -------------

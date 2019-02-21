@@ -288,16 +288,16 @@ Examples
       tasks:
       - name: Retrieve all Service elements
         service_element_facts:
-    
+
       - name: Retrieve only TCP Services
         service_element_facts:
           element: tcp_service
-    
+
       - name: Retrieve only TCP Services with port 8080
         service_element_facts:
           element: tcp_service
           filter: 8080
-    
+
       - name: Retrieve TCP Service with HTTP in name
         service_element_facts:
           element: tcp_service
@@ -309,6 +309,7 @@ Examples
           filter: mygroup
           expand:
             - group
+
 
 Return Values
 -------------

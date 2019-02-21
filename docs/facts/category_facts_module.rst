@@ -260,18 +260,19 @@ Examples
     
     - name: Return all categories
         category_facts:
-    
+
     - name: Return all categories and references for categories containing 'smc'
         category_facts:
           limit: 5
           filter: smc
-    
+
     - name: Return category information matching 'smc-python'.
         category_facts:
           limit: 1
           filter: smc-python
           exact_match: yes
           case_sensitive: yes
+
 
 Return Values
 -------------

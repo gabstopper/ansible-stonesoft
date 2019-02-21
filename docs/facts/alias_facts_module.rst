@@ -273,14 +273,14 @@ Examples
     - name: Retrieve all NAT entries
       alias_facts:
         limit: 0
-    
+
     - name: resolve all NAT aliases for engine myfirewall
       alias_facts:
         limit: 0
         engine: myfirewall
         exact_match: no
         case_sensitive: no
-    
+
     - name: Resolve any aliases with keyword nat for engine sg_vm
       alias_facts:
         limit: 0
@@ -288,6 +288,7 @@ Examples
         engine: sg_vm
         exact_match: no
         case_sensitive: no
+
 
 Return Values
 -------------

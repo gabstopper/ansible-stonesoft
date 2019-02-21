@@ -432,8 +432,8 @@ Examples
                 probe_address:
                     -   10.10.10.1
                 comment: added by ansible
-    
-    
+
+
     - name: Delete network elements. Use a list of elements by name
       network_element:
         smc_logging:
@@ -459,6 +459,7 @@ Examples
               - myrouter
           - ip_list:
               - myiplist
+
 
 Return Values
 -------------

@@ -483,12 +483,13 @@ Examples
         enable_sidewinder_proxy: yes
         tags: 
           - footag
-    
+
     # Delete a layer 3 firewall, using environment variables for credentials
     - name: delete firewall by name
       l3fw:
         name: myfirewall
         state: 'absent'
+
 
 Return Values
 -------------

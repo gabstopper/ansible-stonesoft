@@ -254,7 +254,7 @@ Examples
           name: somepolicy
           tags:
             - footag
-    
+
     # Delete a policy
     - name: Delete policy
       tasks:
@@ -262,6 +262,7 @@ Examples
         l3_policy:
           name: somepolicy
           state: absent
+
 
 Return Values
 -------------

@@ -285,13 +285,13 @@ Examples
     - name: All network elements, limit result to 10
       network_element_facts:
         limit: 10
-    
+
     - name: Find all hosts with an IP value of 1.1.1.1 
       network_element_facts:
         limit: 0
         element: host
         filter: 1.1.1.1
-    
+
     - name: Find an address range including 1.1.1.1
       network_element_facts:
         limit: 10
@@ -304,6 +304,7 @@ Examples
         filter: mygroup
         expand:
           - group
+
 
 Return Values
 -------------

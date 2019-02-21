@@ -313,18 +313,18 @@ Examples
       - name: Show rules for policy 'TestPolicy' (only shows name, type)
         firewall_nat_rule_facts:
           filter: TestPolicy
-    
+
       - name: Search for specific rule/s using search value (partial searching supported)
         firewall_nat_rule_facts:
           filter: TestPolicy
           search: rulet
-    
+
       - name: Dump the results in yaml format, showing details of rule
         firewall_nat_rule_facts:
           filter: TestPolicy
           search: rulet
           as_yaml: true
-    
+
       - name: Resolve the source, destination and services fields
         firewall_nat_rule_facts:
           filter: TestPolicy
@@ -334,7 +334,7 @@ Examples
           - sources
           - destinations
           - services
-    
+
       - name: Get specific rules based on range order (rules 1-10)
         firewall_nat_rule_facts:
           filter: TestPolicy
@@ -359,6 +359,7 @@ Examples
         template: src=templates/facts_yaml.j2 dest=./firewall_nat_rules_test.yml
         vars:
           playbook: firewall_rule
+
 
 Return Values
 -------------

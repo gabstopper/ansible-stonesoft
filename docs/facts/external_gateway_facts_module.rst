@@ -287,7 +287,7 @@ Examples
           expand:
             - gateway_profile
             - vpn_site
-    
+
       - name: Get engine details for 'myfw' and save in editable YAML format
         register: results
         engine_facts:
@@ -296,9 +296,10 @@ Examples
             path: ansible-smc.log
           filter: newcluster
           as_yaml: true
-    
+
       - name: Write the yaml using a jinja template
         template: src=templates/engine_yaml.j2 dest=./l3fw_cluster.yml
+
 
 Return Values
 -------------

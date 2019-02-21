@@ -783,12 +783,13 @@ Examples
           #skip_interfaces: false
           #delete_undefined_interfaces: false
           #state: absent
-    
+
     # Delete a cluster
     - name: layer 3 cluster with 3 members
       l3fw_cluster:
         name: mycluster
         state: absent
+
 
 Return Values
 -------------

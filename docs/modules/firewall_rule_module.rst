@@ -263,7 +263,7 @@ Examples
               log_level: stored
             is_disabled: false
             name: Log all continue rule
-    
+
     - name: Create a rule with specific sources and services
       firewall_rule:
         smc_logging:
@@ -366,7 +366,7 @@ Examples
                 any: true
             vpn_policy: MOBILE CLIENT VPN
         template: Firewall Inspection Template
-    
+
     - name: Add a deny rule after specified rule using add_after syntax
       firewall_rule:
         smc_logging:
@@ -379,13 +379,14 @@ Examples
             is_disabled: false
             name: my deny
             add_after: '2097193.0'
-    
+
     - name: Delete a rule
       firewall_rule:
         policy: TestPolicy
         rules:
         -   tag: '2097203.0'
         state: absent
+
 
 Return Values
 -------------

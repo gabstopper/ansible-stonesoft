@@ -277,7 +277,7 @@ Examples
       - name: Find all OSPF v2 areas
         ospf_element_facts:
           element: ospfv2_area
-    
+
       - name: Find a specific OSPF area with details
         ospf_element_facts:
           element: ospfv2_area
@@ -287,7 +287,7 @@ Examples
         ospf_element_facts:
           element: ospfv2_profile
           filter: Default
-    
+
       - name: Get details for autonomous system myas and save as yaml
         register: results
         ospf_element_facts:
@@ -298,11 +298,12 @@ Examples
           filter: myprofile
           exact_match: false
           as_yaml: true
-    
+
       - name: Write the yaml using a jinja template
         template: src=templates/facts_yaml.j2 dest=./ospf_element.yml
         vars:
           playbook: ospf_element
+
 
 Return Values
 -------------

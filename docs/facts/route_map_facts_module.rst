@@ -260,12 +260,12 @@ Examples
     
     - name: Return all route map policies
         route_map_facts:
-    
+
     - name: Return 5 route map policies containing 'my' in the name
         route_map_facts:
           limit: 5
           filter: my
-    
+
     - name: Return detailed information on route map named myroutemap
         route_map_facts:
           filter: myroutemap
@@ -280,11 +280,12 @@ Examples
             path: ansible-smc.log
           filter: newroutemap
           as_yaml: true
-    
+
       - name: Write the yaml using a jinja template
         template: src=templates/facts_yaml.j2 dest=./foo.yml
         vars:
           playbook: route_map
+
 
 Return Values
 -------------

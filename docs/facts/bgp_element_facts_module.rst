@@ -278,7 +278,7 @@ Examples
         bgp_facts:
           element: external_bgp_peer
           filter: externalpeer
-    
+
     - name: BGP Facts
       hosts: localhost
       gather_facts: no
@@ -297,6 +297,7 @@ Examples
           element: bgp_profile
           filter: Default BGP Profile
           case_sensitive: no
+
 
 Return Values
 -------------

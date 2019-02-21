@@ -266,6 +266,18 @@ Options
     </tr>
 
     <tr>
+    <td>enable_vpn<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Provide a list of IP addresses for which to enable VPN endpoints on. This should be a list of string IP address identifiers. If enabling on a DHCP address, use the value specified in the SMC under VPN endpoints, i.e. First DHCP Interface ip.</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>file_reputation<br/><div style="font-size: small;"></div></td>
     <td>no</td>
     <td></td>
@@ -914,13 +926,14 @@ Examples
             - '1'
             snmp_location: test
           type: single_fw
-    
-    
+
+
     # Delete a layer 3 firewall, using environment variables for credentials
     - name: delete firewall by name
       engine:
         name: myfirewall
         state: 'absent'
+
 
 Return Values
 -------------

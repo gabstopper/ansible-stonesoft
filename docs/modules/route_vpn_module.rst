@@ -451,7 +451,7 @@ Examples
                 - network-172.18.15.0/24
                 - network-172.18.1.0/24
                 - network-172.18.2.0/24
-    
+
     - name: Create a new Route VPN with internal gateways
       route_vpn:
         smc_logging:
@@ -470,6 +470,7 @@ Examples
           interface_id: 0  
       tags:
         - footag     
+
 
 Return Values
 -------------

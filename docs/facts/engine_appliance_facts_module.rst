@@ -285,12 +285,12 @@ Examples
     - name: Retrieve all stats (hardware, interface, info) for engine sg_vm
       engine_appliance_facts:
         filter: sg_vm
-    
+
     - name: Retrieve all stats (hardware, interface, info) on for node 1
       engine_appliance_facts:
         filter: sg_vm
         nodeid: 1
-    
+
     - name: Retrieve all stats (hardware, interface, info) for node 1 using items
       engine_appliance_facts:
         filter: sg_vm
@@ -299,6 +299,7 @@ Examples
         - status
         - filesystem
         - interfaces
+
 
 Return Values
 -------------

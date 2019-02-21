@@ -445,7 +445,7 @@ Examples
               members:
                   ip_service:
                   - new service
-    
+
     - name: Delete all service elements
       register: result
       service_element:
@@ -476,6 +476,7 @@ Examples
               - custom icmp
           - icmp_ipv6_service:
               - my v6 icmp
+
 
 Return Values
 -------------
