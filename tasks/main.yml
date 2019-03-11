@@ -1,0 +1,4 @@
+---
+# install required libraries
+- pip:
+    name: smc-python
