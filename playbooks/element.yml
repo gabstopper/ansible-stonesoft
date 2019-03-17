@@ -4,8 +4,6 @@
   tasks:
   - name: Example network element creation
     generic_element:
-      smc_address: http://172.18.1.150:8082
-      smc_api_key: EiGpKD4QxlLJ25dbBEp20001
       smc_logging:
         level: 10
         path: ansible-smc.log
