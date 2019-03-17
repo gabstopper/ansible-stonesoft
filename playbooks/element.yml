@@ -1,0 +1,31 @@
+- name: Create a network element
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Example network element creation
+    generic_element:
+      smc_address: http://172.18.1.150:8082
+      smc_api_key: EiGpKD4QxlLJ25dbBEp20001
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      elements:
+      - vpn_profile: 
+          name: MyVPNProfile
+          comment: mycomment
+          capabilities:
+            aes256_for_ike: True
+            aes256_for_ipsec: True
+            dh_group_2_for_ike: True
+            esp_for_ipsec: True
+            ike_v2: True
+            main_mode: True
+            pre_shared_key_for_ike: True
+            sa_per_net: True
+            sha1_for_ike: True
+            sha1_for_ipsec: True
+            sha2_ike_hash_length: 256
+            sha2_ipsec_hash_length: 256
+            vpn_client_rsa_signature_for_ike: True
+            vpn_client_sa_per_net: True
+          

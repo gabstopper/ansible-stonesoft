@@ -9,7 +9,7 @@ from ansible.module_utils.basic import AnsibleModule
 
 
 try:
-    from smc import session
+    from smc import session, set_file_logger
     from smc.base.model import lookup_class
     import smc.elements.network as network
     import smc.elements.netlink as netlink
@@ -471,7 +471,7 @@ class StonesoftModuleBase(object):
             required_if=required_if,
             bypass_checks=bypass_checks,
             no_log=no_log,
-            check_invalid_arguments=check_invalid_arguments,
+            #check_invalid_arguments=check_invalid_arguments, # Deprecated in 2.9
             mutually_exclusive=mutually_exclusive,
             required_together=required_together,
             required_one_of=required_one_of,
@@ -499,11 +499,11 @@ class StonesoftModuleBase(object):
             if params.get('smc_logging') is not None:
                 if 'path' not in params['smc_logging']:
                     self.fail(msg='You must specify a path parameter for SMC logging.')
-        
-                session.set_file_logger(
+
+                set_file_logger(
                     log_level=params['smc_logging'].get('level', 10),
                     path=params['smc_logging']['path'])
-            
+
             if 'smc_address' and 'smc_api_key' in params:    
                 extra_args = params.get('smc_extra_args')
                 # When connection parameters are defined, alt_filepath is ignored.
