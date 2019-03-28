@@ -753,6 +753,7 @@ class StonesoftEngine(StonesoftModuleBase):
             backup_mgt=dict(type='str'),
             primary_heartbeat=dict(type='str'),
             backup_heartbeat=dict(type='str'),
+            auth_request=dict(type='str'),
             policy_vpn=dict(type='list'),
             enable_vpn=dict(type='list', default=[]),
             tags=dict(type='list'),
