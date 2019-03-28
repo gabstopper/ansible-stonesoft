@@ -15,6 +15,7 @@ try:
     import smc.elements.netlink as netlink
     import smc.elements.group as group
     import smc.elements.service as service
+    import smc.elements.protocols as protocol
     from smc.core.engine import Engine
     from smc.base.collection import Search
     from smc.elements.other import Category
@@ -71,7 +72,7 @@ class Cache(object):
             _user, _domain = user.split(',domain=')
             domain_dict.setdefault(_domain, []).append(_user)
         
-        func = 'get_groups' if typeof == 'groups' else 'get_users'
+        #func = 'get_groups' if typeof == 'groups' else 'get_users'
     
         for domain, uids in domain_dict.items():
             # Get domain first
@@ -87,9 +88,14 @@ class Cache(object):
                          name=domain,
                          type=entry_point))
                 continue
+            
             for uid in uids:
+                print("UID: %s" % uid)
                 try:
-                    result = getattr(ldap, func)([uid])
+                    #result = getattr(ldap, func)([uid])
+                    #result = getattr(ldap, func)([uid])
+                    result = ldap.browse()
+                    print("Result of browse: %s" % result)
                     self.cache.setdefault('user_element', []).extend(
                         result)
                 except UserElementNotFound as e:
@@ -295,7 +301,8 @@ def ro_service_type_dict():
     types = dict(
         url_category=dict(type=service.URLCategory),
         application_situation=dict(type=service.ApplicationSituation),
-        protocol=dict(type=service.Protocol),
+        #protocol=dict(type=service.Protocol),
+        protocol=dict(type=protocol.ProtocolAgent),
         rpc_service=dict(type=service.RPCService))
     
     for t in types.keys():
@@ -456,8 +463,7 @@ def fact_argument_spec():
 
 class StonesoftModuleBase(object):
     def __init__(self, module_args, required_if=None, bypass_checks=False,
-                 no_log=False, check_invalid_arguments=True,
-                 mutually_exclusive=None, required_together=None,
+                 no_log=False, mutually_exclusive=None, required_together=None,
                  required_one_of=None, add_file_common_args=False,
                  supports_check_mode=False, is_fact=False):
         
@@ -480,7 +486,7 @@ class StonesoftModuleBase(object):
         
         if not HAS_LIB:
             self.module.fail_json(msg='Could not import smc-python required by this module')
-        
+
         self.check_mode = self.module.check_mode
         self.connect(self.module.params)
             

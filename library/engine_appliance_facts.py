@@ -72,6 +72,13 @@ EXAMPLES = '''
     - status
     - filesystem
     - interfaces
+
+- name: Only retrieve engine status facts
+  engine_appliance_facts:
+    filter: sg_vm
+    nodeid: 1
+    items:
+    - status
 '''
 
 
@@ -223,6 +230,7 @@ engines:
         }
     }]
 '''
+
 from ansible.module_utils.stonesoft_util import StonesoftModuleBase
 
 

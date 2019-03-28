@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+from smc.core.interfaces import SwitchPhysicalInterface
 
 
 ANSIBLE_METADATA = {
@@ -271,7 +272,8 @@ def yaml_cluster(engine):
     
     for interface in engine.interface:
         if not isinstance(interface,
-            (ClusterPhysicalInterface, Layer3PhysicalInterface, TunnelInterface)):
+            (ClusterPhysicalInterface, Layer3PhysicalInterface, TunnelInterface,
+                SwitchPhysicalInterface)):
             continue
         top_itf = {}
         
@@ -289,10 +291,52 @@ def yaml_cluster(engine):
         cvi_mode = getattr(interface, 'cvi_mode', None)
         if cvi_mode is not None and cvi_mode != 'none':
             top_itf.update(cvi_mode=interface.cvi_mode)
-        
+            
         if 'physical_interface' not in interface.typeof:
             top_itf.update(type=interface.typeof)
         
+        if 'switch_physical_interface' in interface.typeof:
+            top_itf.update(type='switch_physical_interface',
+                appliance_switch_module=getattr(interface.appliance_switch_module, 'conf_value', None))
+            
+            for port_group in interface.port_group_interface:
+                _port_group = {'switch_physical_interface_port': port_group.data.get(
+                    'switch_physical_interface_port'),'interface_id': port_group.interface_id}
+                if port_group.zone_ref:
+                    _port_group.update(zone_ref=zone_finder(
+                        zone_cache, port_group.zone_ref))
+                                          
+                if port_group.has_interfaces: # Port group has an assigned IP
+                    _interfaces = []    
+                    nodes = {}
+                     
+                    for sub_intf in port_group.all_interfaces:
+                        node = {}
+                        if getattr(sub_intf, 'dynamic', None):
+                            node.update(dynamic=True, dynamic_index=
+                               getattr(sub_intf, 'dynamic_index', 0))
+                        else:
+                            node.update(
+                               address=sub_intf.address,
+                               network_value=sub_intf.network_value,
+                               nodeid=sub_intf.nodeid)
+                        
+                        for role in management:
+                            if getattr(sub_intf, role, None):
+                                yaml_engine[role] = getattr(sub_intf, 'nicid')
+                            
+                        nodes.setdefault('nodes', []).append(node)
+                     
+                    if nodes:
+                        _interfaces.append(nodes)
+                    if _interfaces:
+                        _port_group.update(interfaces=_interfaces)
+                 
+                top_itf.setdefault('port_group_interface', []).append(_port_group)
+             
+            interfaces.append(top_itf)
+            continue
+         
         if interface.has_interfaces:
             _interfaces = []    
             nodes = {}
@@ -315,10 +359,14 @@ def yaml_cluster(engine):
                             address=sub_interface.address,
                             network_value=sub_interface.network_value,
                             nodeid=sub_interface.nodeid)
-                        
-                        for role in management:
-                            if getattr(sub_interface, role, None):
-                                yaml_engine[role] = getattr(sub_interface, 'nicid')    
+                     
+                    for role in management:
+                        if getattr(sub_interface, role, None):
+                            yaml_engine[role] = getattr(sub_interface, 'nicid')    
+
+#                         for role in management:
+#                             if getattr(sub_interface, role, None):
+#                                 yaml_engine[role] = getattr(sub_interface, 'nicid')    
 
                 nodes.setdefault('nodes', []).append(node)
             
@@ -457,7 +505,7 @@ def yaml_cluster(engine):
     if tags:
         yaml_engine.update(tags=tags)
     return yaml_engine
-
+                    
 
 def get_engine_dns(engine):
     """

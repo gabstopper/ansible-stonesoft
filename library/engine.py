@@ -310,8 +310,9 @@ options:
         type: str
       type:
         description:
-          - Type of element. Valid entries are ipaddress, host, dns_server. If using element
-            that is not ipaddress, it must pre-exist in the SMC
+          - Type of element. Valid entries are ipaddress, host, dns_server or
+            dynamic_interface_alias. If using an element that is not ipaddress,
+            it must pre-exist in the SMC
         type: str
   antivirus:
     description:
@@ -840,10 +841,10 @@ class StonesoftEngine(StonesoftModuleBase):
                     self.fail(msg='DNS entries must be in dict format with keys name and type, '
                         'received: %s' % dns)
                 element_type = dns.get('type')
-                if element_type not in ('ipaddress', 'host', 'dns_server'):
+                if element_type not in ('ipaddress', 'host', 'dns_server', 'dynamic_interface_alias'):
                     self.fail(msg='DNS server entries can only be of type ipaddress, '
                         'host or dns_server. Specified: %s' % dns)
-                if element_type in ('host', 'dns_server'):
+                if element_type in ('host', 'dns_server', 'dynamic_interface_alias'):
                     cache._add_entry(element_type, dns.get('name'))
             
             if cache.missing:
@@ -1610,11 +1611,17 @@ class StonesoftEngine(StonesoftModuleBase):
         
             for node in getattr(interface, 'nodes', []):
                 node_values = set(node.keys())
-                if node_values ^ node_req and node_values ^ dynamic_node_req:
+                if not all(elem in node_values for elem in node_req) and \
+                    not all(elem in node_values for elem in dynamic_node_req):
                     self.fail(msg='Invalid or missing field for node. Nodes must define '
                         'an interface address using: %s or a dynamic address using: %s. '
                         'Provided values: %s' % (list(node_req), list(dynamic_node_req),
-                            list(node_values)))
+                        list(node_values)))
+#                 if node_values ^ node_req and node_values ^ dynamic_node_req:
+#                     self.fail(msg='Invalid or missing field for node. Nodes must define '
+#                         'an interface address using: %s or a dynamic address using: %s. '
+#                         'Provided values: %s' % (list(node_req), list(dynamic_node_req),
+#                             list(node_values)))
         return itf
     
     def get_dns_entries(self):
@@ -1628,7 +1635,7 @@ class StonesoftEngine(StonesoftModuleBase):
         elements = []
         for dns in self.domain_server_address:
             element_type = dns.get('type')
-            if element_type in ('host', 'dns_server'):
+            if element_type in ('host', 'dns_server', 'dynamic_interface_alias'):
                 elements.append(
                     self.cache.get(element_type, dns.get('name')))
                 continue

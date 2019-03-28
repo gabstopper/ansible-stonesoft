@@ -1,8 +1,8 @@
-- name: Create a network element
+- name: Create a generic element
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Example network element creation
+  - name: Example creation of multiple elements
     generic_element:
       smc_logging:
         level: 10

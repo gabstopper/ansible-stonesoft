@@ -175,7 +175,10 @@ def to_yaml(rule, expand=None):
         'comment': rule.comment}
     
     if getattr(rule, 'used_on', None) is not None:
-        _rule.update(used_on=rule.used_on.name)
+        if getattr(rule.used_on, 'name', None):
+            _rule.update(used_on=rule.used_on.name)
+        else:
+            _rule.update(used_on=rule.used_on)
     
     for field in ('sources', 'destinations', 'services'):
         if getattr(rule, field).is_any:

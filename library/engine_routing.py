@@ -347,14 +347,13 @@ class StonesoftEngineRouting(StonesoftModuleBase):
         state = kwargs.pop('state', 'present')
         for name, value in kwargs.items():
             setattr(self, name, value)
-            
+        
         changed = False
         engine = self.fetch_element(Engine)
         if not engine:
             self.fail(msg='Engine specified cannot be found: %s' % self.name)
         
         self.cache = Cache()
-        
         try:
             if state == 'present':
                 
@@ -521,12 +520,12 @@ class StonesoftEngineRouting(StonesoftModuleBase):
                 if 'interface_id' not in it or 'name' not in it:
                     self.fail(msg='All routing elements require the name and interface_id '
                               'parameters. Invalid: %s, %s' % (element, it))
-
-                if element == 'static_route':
-                    self.cache._add_entry('router', it.get('name'))
-                else:
-                    self.cache._add_entry(element, it.get('name'))
-        
+                
+#                 if element == 'static_route':
+#                     self.cache._add_entry('router', it.get('name'))
+                #else:
+                #    self.cache._add_entry(element, it.get('name'))
+                
                 if 'destination' in it and isinstance(it['destination'], list):
                     for destinations in it['destination']:
                         if 'name' not in destinations or 'type' not in destinations:
@@ -545,6 +544,10 @@ class StonesoftEngineRouting(StonesoftModuleBase):
                                 self.fail(msg='A Netlink or static route destination element can '
                                     'only be of type: %s. Invalid: %s' % (
                                         list(srt_or_netlink_elem), element))
+                        
+                        if element == 'static_route':
+                            self.cache._add_entry('router', it.get('name'))
+                        
                         # Add to cache for later check
                         self.cache._add_entry(
                             typeof=destinations.get('type'),
