@@ -2,12 +2,12 @@
   hosts: localhost
   gather_facts: no
   tasks:
-  - name: Add routing elements to engine sg_vm
+  - name: Add routing elements to engine
     engine_routing:
       smc_logging:
         level: 10
         path: ansible-smc.log
-      name: myfw4
+      name: _dhcpfw2
       bgp_peering:
       - destination:
         - name: bgppeer

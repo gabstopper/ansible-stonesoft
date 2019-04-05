@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # Copyright (c) 2017 David LePage
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+from smc.core.interfaces import SwitchPhysicalInterface
+
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -499,7 +501,8 @@ try:
     from smc.api.exceptions import SMCException, PolicyCommandFailed, \
         UnsupportedEngineFeature, InterfaceNotFound
     from smc.core.interfaces import TunnelInterface, Layer3PhysicalInterface, \
-        Layer2PhysicalInterface, ClusterPhysicalInterface, PhysicalInterface
+        Layer2PhysicalInterface, ClusterPhysicalInterface, PhysicalInterface, \
+        SwitchPhysicalInterface
 except ImportError:
     pass
 
@@ -550,6 +553,8 @@ class SingleFWInterface(_Interface):
     def as_obj(self):
         if getattr(self, 'type', None) == 'tunnel_interface':
             return TunnelInterface(**vars(self))
+        elif getattr(self, 'type', None) == 'switch_physical_interface':
+            return SwitchPhysicalInterface(**vars(self))
         return Layer3PhysicalInterface(**vars(self))
     
 
@@ -1085,6 +1090,7 @@ class StonesoftEngine(StonesoftModuleBase):
                     if not self.skip_interfaces and self.delete_undefined_interfaces:
                         self.check_for_deletes(engine)
                     
+
                 ######                
                 # Check for configurations that are not fed into the engine during creation
                 # and would require a post create modification because the settings are
@@ -1144,7 +1150,7 @@ class StonesoftEngine(StonesoftModuleBase):
                 else:
                     if self.clear_tags(engine):
                         changed = True
-
+                
             elif state == 'absent':
                 if engine:
                     engine.delete()
@@ -1181,7 +1187,7 @@ class StonesoftEngine(StonesoftModuleBase):
                         not 'fw_cluster' in self.type:
                         continue
                     management = engine.interface.get(getattr(self, option))
-                    if not isinstance(management, PhysicalInterface):
+                    if not isinstance(management, (PhysicalInterface, SwitchPhysicalInterface)):
                         continue
                     if not getattr(management, 'is_%s' % option):
                         getattr(interface_options, 'set_%s' % option)(getattr(self, option))
@@ -1194,7 +1200,6 @@ class StonesoftEngine(StonesoftModuleBase):
                                 'action': 'updated'})
         except InterfaceNotFound:
             pass
-        
         return changed
     
     def check_for_deletes(self, engine):
