@@ -177,15 +177,19 @@ EXAMPLES = '''
         -   address: 33.33.33.41
             enabled: true
             name: extgw3 (33.33.33.41)
+            connection_type: 'Active 1'
         -   address: 34.34.34.34
             enabled: true
             name: endpoint2 (34.34.34.34)
+            connection_type: 'Active 1'
         -   address: 44.44.44.44
             enabled: false
             name: extgw4 (44.44.44.44)
+            connection_type: 'Active 1'
         -   address: 33.33.33.50
             enabled: false
             name: endpoint1 (33.33.33.50)
+            connection_type: 'Active 1'
         name: extgw3
         preshared_key: '********'
         type: external_gateway
@@ -310,16 +314,26 @@ class StonesoftRouteVPN(StonesoftModuleBase):
                         self.fail(msg='Missing required field for the external endpoint '
                             'configuration: %s' % required)
                 
+                cache = Cache()
                 external_gateway = dict(name=self.remote_gw['name'])
                 # External Endpoints are defined in the External Gateway.
                 # Build the data structures for a call to ExternalGateway.update_or_create
-                external_endpoint = []
+                ctypes = [] # connection_type element
                 for endpoint in self.remote_gw['external_endpoint']:
                     if 'name' not in endpoint or 'address' not in endpoint:
                         self.fail(msg='An external endpoint must have at least a '
                             'name and an address definition.')
-                    external_endpoint.append(endpoint)
-                external_gateway.update(external_endpoint=external_endpoint)
+                    
+                    # SMC version 6.5 requires the connection type element to specify
+                    # the role for the given external endpoint
+                    if 'connection_type' not in endpoint:
+                        self.fail(msg='You must provide the connection_type parameter '
+                            'when creating an external endpoint')
+                    ctypes.append(endpoint.get('connection_type'))                
+                
+                cache.add(dict(connection_type=ctypes))
+                if cache.missing:
+                    self.fail(msg=cache.missing)
                 
                 # Verify specified VPN Sites exist before continuing
                 if 'vpn_site' in self.remote_gw:
@@ -328,15 +342,24 @@ class StonesoftRouteVPN(StonesoftModuleBase):
                         self.fail(msg='A VPN site requires a name to continue')
                     
                     # Get the elements
-                    cache = Cache()
                     cache.add(self.remote_gw.get('vpn_site', {}))
+                    vpn_site_types = self.remote_gw.get('vpn_site', {}).keys() # Save the VPN site types for retrieval
                     if cache.missing:
                         self.fail(msg='Could not find the specified elements for the '
                             'VPN site configuration: %s' % cache.missing)
-                    site_element = [value.href for _, values in cache.cache.items()
-                        for value in values]
+
+                    site_element = [element.href for element_type in vpn_site_types
+                        for element in cache.get_type(element_type)]
                     external_gateway.update(
                         vpn_site=[dict(name=site_name, site_element=site_element)])
+                
+                external_endpoint = []
+                for endpoint in self.remote_gw['external_endpoint']:
+                    endpoint.update(connection_type_ref=\
+                        cache.get('connection_type',endpoint.pop('connection_type')).href)
+                    external_endpoint.append(endpoint)
+                external_gateway.update(external_endpoint=external_endpoint)
+            
 
         try:
             if state == 'present':

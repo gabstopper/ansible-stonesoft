@@ -72,6 +72,11 @@ options:
           - The cluster nic ID for this interface. Required.
         type: int
         required: true
+      type:
+        description:
+          - The type of interface. Default is physical_interface. This is only required
+            if the interface type is tunnel_interface or switch_physical_interface
+        type: str
       cluster_virtual:
         description:
           - The cluster virtual (shared) IP address for all cluster members. Not
@@ -390,8 +395,8 @@ EXAMPLES = '''
         host:
         - 2.2.2.23
         network:
-        - gateway_129.47.0.0/16
-        - gateway_129.48.0.0/16
+        - network-5.5.5.0/24
+        - network-50.50.50.0/24
       antivirus: true
       bgp:
         announced_network:
@@ -443,10 +448,24 @@ EXAMPLES = '''
           - address: 1.1.1.1
             network_value: 1.1.1.0/24
             nodeid: 1
+      - interface_id: SWP_0
+        appliance_switch_module: 110
+        type: switch_physical_interface
+        port_group_interface:
+        - interface_id: SWP_0.4
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: port 2
+            switch_physical_interface_port_number: 2
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 4
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 5
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 6
       name: myfw3
       netlinks:
       - destination:
-        - name: IP_10.3.3.1
+        - name: host-3.3.3.3
           type: host
         interface_id: '2.1'
         name: netlink-21.21.21.0
@@ -461,7 +480,7 @@ EXAMPLES = '''
       policy_vpn:
       - central_gateway: true
         mobile_gateway: false
-        name: myvpn
+        name: new_policy_vpn
         satellite_gateway: false
       primary_mgt: '0'
       snmp:
@@ -531,6 +550,14 @@ class _Interface(object):
                 yield node
     
     @property
+    def switch_ports(self):
+        """
+        Return all switch ports defined in top level switch
+        """
+        return [interface.get('interface_id') for interface in 
+                getattr(self, 'port_group_interface', [])]
+    
+    @property
     def vlan_ids(self):
         """
         Return all defined VLAN ids
@@ -591,10 +618,20 @@ class Interfaces(object):
             yield self.type_map.get(self._type)(interface)
 
     def __contains__(self, interface_id):
-        if '.' in str(interface_id):
+        if 'SWP_' in str(interface_id):
+            """ Extract switch physical interfaces """
+            itf, _ = str(interface_id).split('.')
+            if self.get(itf) is not None: # Top level switch exists
+                if str(interface_id) and str(interface_id) in \
+                    self.get(itf).switch_ports:
+                    return True
+            return False
+        
+        elif '.' in str(interface_id):
             itf, vlan = str(interface_id).split('.')
             if self.get(itf) and vlan in self.get(itf).vlan_ids:
                 return True
+    
         elif self.get(interface_id):
             return True
         return False
@@ -1089,7 +1126,6 @@ class StonesoftEngine(StonesoftModuleBase):
                     # was not provided and that delete_undefined_interfaces is set to True
                     if not self.skip_interfaces and self.delete_undefined_interfaces:
                         self.check_for_deletes(engine)
-                    
 
                 ######                
                 # Check for configurations that are not fed into the engine during creation
@@ -1178,7 +1214,7 @@ class StonesoftEngine(StonesoftModuleBase):
         :rtype: bool
         """
         changed = False
-        mgt = ('primary_mgt', 'backup_mgt', 'primary_heartbeat', 'backup_heartbeat')
+        mgt = ('primary_mgt', 'backup_mgt', 'primary_heartbeat', 'backup_heartbeat', 'auth_request')
         interface_options = engine.interface_options
         try:
             for option in mgt:
@@ -1594,6 +1630,7 @@ class StonesoftEngine(StonesoftModuleBase):
         node_req = set(['address', 'network_value', 'nodeid'])
         dynamic_node_req = set(['dynamic', 'dynamic_index'])
         itf = Interfaces(self.type, self.interfaces)
+        
         for interface in itf:
             if interface.interface_id is None:
                 self.fail(msg='interface_id is required for all interface '
@@ -1614,7 +1651,7 @@ class StonesoftEngine(StonesoftModuleBase):
                             self.fail(msg='Cluster virtual interface require a macaddress and '
                                 'cvi_mode be defined, invalid entry, interface_id: %s' %
                                 interface.interface_id)
-        
+            
             for node in getattr(interface, 'nodes', []):
                 node_values = set(node.keys())
                 if not all(elem in node_values for elem in node_req) and \
@@ -1623,11 +1660,7 @@ class StonesoftEngine(StonesoftModuleBase):
                         'an interface address using: %s or a dynamic address using: %s. '
                         'Provided values: %s' % (list(node_req), list(dynamic_node_req),
                         list(node_values)))
-#                 if node_values ^ node_req and node_values ^ dynamic_node_req:
-#                     self.fail(msg='Invalid or missing field for node. Nodes must define '
-#                         'an interface address using: %s or a dynamic address using: %s. '
-#                         'Provided values: %s' % (list(node_req), list(dynamic_node_req),
-#                             list(node_values)))
+
         return itf
     
     def get_dns_entries(self):
