@@ -39,7 +39,8 @@ options:
     description:
       - Source elements to add to the rule. Elements need to specify the type of
         element to add. If source is not provided, the rule source cell will be
-        set to none and the rule will effectively be disabled.
+        set to none and the rule will effectively be disabled. SMC version 6.6 or
+        greater requires actions as a list versus string
     type: list
     suboptions:
       action:
@@ -497,7 +498,7 @@ from ansible.module_utils.six import integer_types
 from ansible.module_utils.six import string_types
 
 from ansible.module_utils.stonesoft_util import (
-    StonesoftModuleBase, Cache)
+    StonesoftModuleBase, Cache, is_sixdotsix_compat)
 
 
 try:
@@ -531,11 +532,25 @@ service_targets = ('service_group', 'tcp_service_group', 'udp_service_group', 'i
 sentinel = object()
 
 
+def _action_is_valid(rule_action):
+    """
+    Get the action field for a rule. In SMC 6.6 actions have to be in list
+    format whereas in SMC < 6.6 they were string.
+    
+    :param str,list action: provided action in create constructor
+    :rtype: bool
+    """
+    if isinstance(rule_action, list):
+        return all(_action in action for _action in rule_action)
+    return rule_action in action
+            
+    
 def validate_rule_syntax(rule):
     """
     Validate the rule by checking fields that do not require a call
     to the SMC. Sources, Destinations and Services are not validated
-    in this initial check.
+    in this initial check. Version <= SMC 6.5 require that the action
+    is in string format. SMC >= 6.6 require list format.
     
     :param dict rule: firewall rule defined in yaml
     :return: None
@@ -544,19 +559,23 @@ def validate_rule_syntax(rule):
         raise Exception('A rule must have either a rule tag or a '
             'name field: %s' % rule)
     
-    if 'action' in rule and rule['action'] not in action:
-        raise Exception('Invalid action specified: %s, valid options: %s' %
-            (rule['action'], action))
-    
-    if rule.get('action') in ('forward_vpn', 'enforce_vpn', 'apply_vpn'):
-        if 'mobile_vpn' not in rule and 'vpn_policy' not in rule:
-            raise Exception('You must provide a value for mobile_vpn or vpn_policy '
-                'when using a VPN action: %s' % rule['action'])
-    
-    elif rule.get('action') == 'jump':
-        if 'sub_policy' not in rule:
-            raise Exception('Jump policy specified in rule: %s but no sub_policy '
-                'parameter was specified' % rule.get('name'))
+    if 'action' in rule: # Otherwise set to default
+        if is_sixdotsix_compat() and not isinstance(rule['action'], list):
+            raise Exception('Actions with SMC 6.6 must be of type list, rule: %s' % rule)
+        
+        if not _action_is_valid(rule['action']):
+            raise Exception('Invalid action specified: %s, valid options: %s' %
+                (rule['action'], action))
+
+        if any(_action in rule['action'] for _action in ('forward_vpn', 'enforce_vpn', 'apply_vpn')):
+            if 'mobile_vpn' not in rule and 'vpn_policy' not in rule:
+                raise Exception('You must provide a value for mobile_vpn or vpn_policy '
+                    'when using a VPN action: %s' % rule['action'])
+
+        if 'jump' in rule['action']:
+            if 'sub_policy' not in rule:
+                raise Exception('Jump policy specified in rule: %s but no sub_policy '
+                    'parameter was specified' % rule.get('name'))
         
     if 'connection_tracking' in rule:
         ct = rule['connection_tracking']
@@ -622,7 +641,8 @@ def validate_rule_syntax(rule):
 
 def compare_rules(rule, rule_dict):
     """
-    Compare two rules.
+    Compare two rules. This is used when a rule is updated by specifying
+    the rule tag and making a modification.
     
     :param IPv4Rule rule: rule fetched from policy
     :param dict rule_dict: rule dict from yaml, matching the create
@@ -649,21 +669,29 @@ def compare_rules(rule, rule_dict):
         changes.append('name')
     
     yaml_action = rule_dict.get('action').action
-    if rule.action.action != yaml_action:
+    
+    action_has_changed = False
+    if isinstance(rule.action.action, list) and set(rule.action.action) ^ set(yaml_action):
+        action_has_changed = True
+    elif rule.action.action != yaml_action: # str
+        action_has_changed = True
+    
+    if action_has_changed: # Account for list versus string
         vpn_action = ('apply_vpn', 'enforce_vpn', 'forward_vpn')
-        # Undo VPN setting
-        if yaml_action == 'jump':
+        if 'jump' in yaml_action:
             rule.action.sub_policy = rule_dict.get('sub_policy')
-        elif rule.action.action in vpn_action and yaml_action not in vpn_action:
-            rule.action.vpn = None
-            rule.action.mobile_vpn = False
-        # YAML action switches to VPN or VPN type is changed
-        elif yaml_action in vpn_action and rule.action.action not in vpn_action or \
-            yaml_action in vpn_action and rule.action.action in vpn_action:
-            if rule_dict.get('vpn_policy', None):
-                rule.action.vpn = rule_dict.get('vpn_policy')
-            else: #mobile VPN
-                rule.action.mobile_vpn = True
+        else:
+            vpn_in_rule = any(vpn in rule.action.action for vpn in vpn_action)
+            vpn_in_yaml = any(vpn in yaml_action for vpn in vpn_action)
+            
+            if vpn_in_rule and not vpn_in_yaml: # VPN removed from previous rule
+                rule.action.vpn = None
+                rule.action.mobile_vpn = False
+            elif vpn_in_yaml and not vpn_in_rule or vpn_in_yaml and vpn_in_rule:
+                if rule_dict.get('vpn_policy', None):
+                    rule.action.vpn = rule_dict.get('vpn_policy')
+                else: #mobile VPN
+                    rule.action.mobile_vpn = True
         
         rule.action.action = yaml_action
         changes.append('action')
@@ -842,8 +870,11 @@ class FirewallRule(StonesoftModuleBase):
                         connection_tracking.update(rule.get('connection_tracking',{}))
                         rule_dict.update(connection_tracking=connection_tracking)
                     
-                    action = Action()
-                    action.action = rule.get('action', 'allow')
+                    action = Action() # If no action, set to default based on version
+                    if 'action' not in rule:
+                        action.action = 'allow' if not is_sixdotsix_compat() else ['allow']
+                    else:
+                        action.action = rule.get('action')
                     
                     if 'inspection_options' in rule:
                         _inspection = rule['inspection_options']

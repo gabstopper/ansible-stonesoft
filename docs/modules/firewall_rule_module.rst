@@ -55,7 +55,7 @@ Options
     <td></td>
     <td></td>
     <td>
-        <div>Source elements to add to the rule. Elements need to specify the type of element to add. If source is not provided, the rule source cell will be set to none and the rule will effectively be disabled.</div>
+        <div>Source elements to add to the rule. Elements need to specify the type of element to add. If source is not provided, the rule source cell will be set to none and the rule will effectively be disabled. SMC version 6.6 or greater requires actions as a list versus string</div>
     </tr>
 
     <tr>

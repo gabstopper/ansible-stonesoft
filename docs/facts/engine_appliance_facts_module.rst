@@ -300,6 +300,13 @@ Examples
         - filesystem
         - interfaces
 
+    - name: Only retrieve engine status facts
+      engine_appliance_facts:
+        filter: sg_vm
+        nodeid: 1
+        items:
+        - status
+
 
 Return Values
 -------------

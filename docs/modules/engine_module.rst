@@ -244,7 +244,7 @@ Options
         <td></td>
         <td></td>
         <td>
-            <div>Type of element. Valid entries are ipaddress, host, dns_server. If using element that is not ipaddress, it must pre-exist in the SMC</div>
+            <div>Type of element. Valid entries are ipaddress, host, dns_server or dynamic_interface_alias. If using an element that is not ipaddress, it must pre-exist in the SMC</div>
         </td>
         </tr>
 
@@ -341,22 +341,32 @@ Options
         </tr>
 
         <tr>
-        <td>network_value<br/><div style="font-size: small;"></div></td>
-        <td>no</td>
-        <td></td>
-        <td></td>
-        <td>
-            <div>The cluster netmask for the cluster_vip. Required if <em>cluster_virtual</em></div>
-        </td>
-        </tr>
-
-        <tr>
         <td>cluster_virtual<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
         <td></td>
         <td>
             <div>The cluster virtual (shared) IP address for all cluster members. Not required if only creating NDI's</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>interface_id<br/><div style="font-size: small;"></div></td>
+        <td>yes</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster nic ID for this interface. Required.</div>
+        </td>
+        </tr>
+
+        <tr>
+        <td>network_value<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>The cluster netmask for the cluster_vip. Required if <em>cluster_virtual</em></div>
         </td>
         </tr>
 
@@ -371,12 +381,12 @@ Options
         </tr>
 
         <tr>
-        <td>interface_id<br/><div style="font-size: small;"></div></td>
-        <td>yes</td>
+        <td>type<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
         <td></td>
         <td></td>
         <td>
-            <div>The cluster nic ID for this interface. Required.</div>
+            <div>The type of interface. Default is physical_interface. This is only required if the interface type is tunnel_interface or switch_physical_interface</div>
         </td>
         </tr>
 
@@ -846,8 +856,8 @@ Examples
             host:
             - 2.2.2.23
             network:
-            - gateway_129.47.0.0/16
-            - gateway_129.48.0.0/16
+            - network-5.5.5.0/24
+            - network-50.50.50.0/24
           antivirus: true
           bgp:
             announced_network:
@@ -899,10 +909,24 @@ Examples
               - address: 1.1.1.1
                 network_value: 1.1.1.0/24
                 nodeid: 1
+          - interface_id: SWP_0
+            appliance_switch_module: 110
+            type: switch_physical_interface
+            port_group_interface:
+            - interface_id: SWP_0.4
+              switch_physical_interface_port:
+              - switch_physical_interface_port_comment: port 2
+                switch_physical_interface_port_number: 2
+              - switch_physical_interface_port_comment: ''
+                switch_physical_interface_port_number: 4
+              - switch_physical_interface_port_comment: ''
+                switch_physical_interface_port_number: 5
+              - switch_physical_interface_port_comment: ''
+                switch_physical_interface_port_number: 6
           name: myfw3
           netlinks:
           - destination:
-            - name: IP_10.3.3.1
+            - name: host-3.3.3.3
               type: host
             interface_id: '2.1'
             name: netlink-21.21.21.0
@@ -917,7 +941,7 @@ Examples
           policy_vpn:
           - central_gateway: true
             mobile_gateway: false
-            name: myvpn
+            name: new_policy_vpn
             satellite_gateway: false
           primary_mgt: '0'
           snmp:

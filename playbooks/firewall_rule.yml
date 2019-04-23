@@ -10,7 +10,8 @@
         path: ansible-smc.log
       policy: TestPolicy3
       rules:
-      - action: allow
+      - action:
+        - allow
         authentication_options:
           methods: []
           require_auth: false
@@ -41,8 +42,8 @@
           - 100Bao
         sources:
           any: true
-        tag: '2097490.2'
-      - action: allow
+      - action:
+        - allow
         authentication_options:
           methods: []
           require_auth: false
@@ -72,8 +73,8 @@
           none: true
         sources:
           none: true
-        tag: '2097489.2'
-      - action: enforce_vpn
+      - action:
+        - enforce_vpn
         authentication_options:
           methods: []
           require_auth: false
@@ -104,8 +105,18 @@
           any: true
         sources:
           any: true
-        tag: '2097494.0'
+      - action: ['allow']
+        name: anyrule
+        comment: an allow rule
+        source:
+          any: true
+        destination:
+          any: true
+        services:
+          ip_service:
+            - TCP
+        log_options:
+            log_level: stored
       - comment: mysection
         is_disabled: false
         name: Rule @2097492.0
-        tag: '2097492.0'

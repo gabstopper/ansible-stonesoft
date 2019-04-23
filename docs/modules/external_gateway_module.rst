@@ -65,6 +65,16 @@ Options
         </tr>
 
         <tr>
+        <td>connection_type<br/><div style="font-size: small;"></div></td>
+        <td>no</td>
+        <td></td>
+        <td></td>
+        <td>
+            <div>optional connection_type setting to identify the type of external endpoint. Defaults to Active. This is only relevant for SMC &gt;= 6.5.1</div>
+        </td>
+        </tr>
+
+        <tr>
         <td>force_nat_t<br/><div style="font-size: small;"></div></td>
         <td>no</td>
         <td></td>
@@ -412,15 +422,19 @@ Examples
         -   address: 33.33.33.41
             enabled: true
             name: extgw3 (33.33.33.41)
+            connection_type: 'Active'
         -   address: 34.34.34.34
             enabled: true
             name: endpoint2 (34.34.34.34)
+            connection_type: 'Active 1'
         -   address: 44.44.44.44
             enabled: true
             name: extgw4 (44.44.44.44)
+            connection_type: 'Passive'
         -   address: 33.33.33.50
             enabled: true
             name: endpoint1 (33.33.33.50)
+            connection_type: 'Aggregate'
         name: extgw3555
         vpn_site:
             group:

@@ -79,13 +79,18 @@ options:
         default: false
       balancing_mode:
         description:
-          - The role for this VPN gateway. 
+          - The role for this VPN gateway.
         type: str
         choices:
           - active
           - standby
           - aggregate
         default: active
+      connection_type:
+        description:
+          - optional connection_type setting to identify the type of external
+            endpoint. Defaults to Active. This is only relevant for SMC >= 6.5.1
+        type: str
       enabled:
         description:
           - Whether to enable the VPN endpoint
@@ -122,7 +127,7 @@ EXAMPLES = '''
     -   address: 33.33.33.41
         enabled: true
         name: extgw3 (33.33.33.41)
-        connection_type: 'Active 1'
+        connection_type: 'Active'
     -   address: 34.34.34.34
         enabled: true
         name: endpoint2 (34.34.34.34)
@@ -130,11 +135,11 @@ EXAMPLES = '''
     -   address: 44.44.44.44
         enabled: true
         name: extgw4 (44.44.44.44)
-        connection_type: 'Passive 1'
+        connection_type: 'Passive'
     -   address: 33.33.33.50
         enabled: true
         name: endpoint1 (33.33.33.50)
-        connection_type: 'Passive 1'
+        connection_type: 'Aggregate'
     name: extgw3555
     vpn_site:
         group:
@@ -218,12 +223,9 @@ class ExternalVPNGW(StonesoftModuleBase):
                     self.fail(msg='An external endpoint must have at least a '
                         'name and an address definition.')
                 
-                # SMC version 6.5 requires the connection type element to specify
-                # the role for the given external endpoint
-                if 'connection_type' not in endpoint:
-                    self.fail(msg='You must provide the connection_type parameter '
-                        'when creating an external endpoint')
-                ctypes.append(endpoint.get('connection_type'))                
+                # SMC version 6.5 provides the ability to add connection_type settings
+                if 'connection_type' in endpoint:
+                    ctypes.append(endpoint.get('connection_type'))                
             
             cache.add(dict(connection_type=ctypes))
             if cache.missing:
@@ -247,8 +249,9 @@ class ExternalVPNGW(StonesoftModuleBase):
             
             external_endpoint = []
             for endpoint in self.external_endpoint:
-                endpoint.update(connection_type_ref=\
-                    cache.get('connection_type',endpoint.pop('connection_type')).href)
+                if 'connection_type' in endpoint:
+                    endpoint.update(connection_type_ref=\
+                        cache.get('connection_type',endpoint.pop('connection_type')).href)
                 external_endpoint.append(endpoint)
             external_gateway.update(external_endpoint=external_endpoint)
                 

@@ -433,15 +433,19 @@ Examples
             -   address: 33.33.33.41
                 enabled: true
                 name: extgw3 (33.33.33.41)
+                connection_type: 'Active 1'
             -   address: 34.34.34.34
                 enabled: true
                 name: endpoint2 (34.34.34.34)
+                connection_type: 'Active 1'
             -   address: 44.44.44.44
                 enabled: false
                 name: extgw4 (44.44.44.44)
+                connection_type: 'Active 1'
             -   address: 33.33.33.50
                 enabled: false
                 name: endpoint1 (33.33.33.50)
+                connection_type: 'Active 1'
             name: extgw3
             preshared_key: '********'
             type: external_gateway

@@ -72,8 +72,6 @@ class Cache(object):
             _user, _domain = user.split(',domain=')
             domain_dict.setdefault(_domain, []).append(_user)
         
-        #func = 'get_groups' if typeof == 'groups' else 'get_users'
-    
         for domain, uids in domain_dict.items():
             # Get domain first
             entry_point = 'external_ldap_user_domain' if domain != \
@@ -90,12 +88,8 @@ class Cache(object):
                 continue
             
             for uid in uids:
-                print("UID: %s" % uid)
                 try:
-                    #result = getattr(ldap, func)([uid])
-                    #result = getattr(ldap, func)([uid])
                     result = ldap.browse()
-                    print("Result of browse: %s" % result)
                     self.cache.setdefault('user_element', []).extend(
                         result)
                 except UserElementNotFound as e:
@@ -301,7 +295,6 @@ def ro_service_type_dict():
     types = dict(
         url_category=dict(type=service.URLCategory),
         application_situation=dict(type=service.ApplicationSituation),
-        #protocol=dict(type=service.Protocol),
         protocol=dict(type=protocol.ProtocolAgent),
         rpc_service=dict(type=service.RPCService))
     
@@ -437,6 +430,24 @@ def element_dict_from_obj(element, type_dict, expand=None):
     else:
         return dict(name=element.name, type=element.typeof)
 
+
+def is_sixdotsix_compat():
+    """
+    Switch to validate version of SMC. There were changes in 6.6 that
+    break backwards compatibility and require this check to ensure
+    idempotence against several areas such as rule actions and virtual
+    engines.
+    
+    :rtype: bool
+    """
+    try:
+        major, minor = '{:01.1f}'.format(session.api_version).split('.')
+        if int(major) >= 6 and int(minor) >= 6:
+            return True
+    except ValueError:
+        pass
+    return False
+    
 
 def smc_argument_spec():
     return dict(

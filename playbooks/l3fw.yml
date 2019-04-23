@@ -13,8 +13,8 @@
         host:
         - 2.2.2.23
         network:
-        - gateway_129.47.0.0/16
-        - gateway_129.48.0.0/16
+        - network-5.5.5.0/24
+        - network-50.50.50.0/24
       antivirus: true
       bgp:
         announced_network:
@@ -66,10 +66,24 @@
           - address: 1.1.1.1
             network_value: 1.1.1.0/24
             nodeid: 1
+      - interface_id: SWP_0
+        appliance_switch_module: 110
+        type: switch_physical_interface
+        port_group_interface:
+        - interface_id: SWP_0.4
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: port 2
+            switch_physical_interface_port_number: 2
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 4
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 5
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 6
       name: myfw3
       netlinks:
       - destination:
-        - name: IP_10.3.3.1
+        - name: host-3.3.3.3
           type: host
         interface_id: '2.1'
         name: netlink-21.21.21.0
@@ -84,7 +98,7 @@
       policy_vpn:
       - central_gateway: true
         mobile_gateway: false
-        name: ttesst
+        name: new_policy_vpn
         satellite_gateway: false
       primary_mgt: '0'
       snmp:

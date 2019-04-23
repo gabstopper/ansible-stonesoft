@@ -1,4 +1,4 @@
-- name: 
+- name: Create an external gateway with external endpoints and VPN sites
   hosts: localhost
   gather_facts: no
   tasks:
@@ -11,18 +11,23 @@
       external_endpoint:
       -   address: 33.33.33.50
           enabled: true
+          connection_type: Active 1
           name: extgw3 (33.33.33.41)
       -   address: 45.45.45.45
           enabled: true
+          connection_type: Active 1
           name: newname
       -   address: 34.34.34.34
           enabled: true
+          connection_type: Active 1
           name: endpoint2 (34.34.34.34)
       -   address: 44.44.44.44
           enabled: true
+          connection_type: Standby 1
           name: extgw4 (44.44.44.44)
       -   address: 33.33.33.50
           enabled: true
+          connection_type: Standby 1
           name: endpoint1 (33.33.33.50)
       name: extgw3
       vpn_site:
