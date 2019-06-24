@@ -509,7 +509,8 @@ state:
 '''
 
 import traceback
-from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache
+from ansible.module_utils.stonesoft_util import StonesoftModuleBase, Cache,\
+    is_sixdotsix_compat
 
 try:
     from smc.core.engines import Layer3Firewall, FirewallCluster
@@ -888,10 +889,16 @@ class StonesoftEngine(StonesoftModuleBase):
                         'host or dns_server. Specified: %s' % dns)
                 if element_type in ('host', 'dns_server', 'dynamic_interface_alias'):
                     cache._add_entry(element_type, dns.get('name'))
-            
+                
             if cache.missing:
                 self.fail(msg='DNS entries specified are missing: %s' % cache.missing)
             
+            # Log Server specified
+            if self.log_server:
+                cache._add_entry('log_server', self.log_server)
+                if cache.missing:
+                    self.fail(msg='Log Server specified: %s is not found' % self.log_server)
+                    
             # SNMP settings
             if self.snmp and self.snmp.get('enabled', True):
                 cache._add_entry('snmp_agent', self.snmp.get('snmp_agent', None))
@@ -1059,15 +1066,24 @@ class StonesoftEngine(StonesoftModuleBase):
                         name=self.name,
                         primary_mgt=self.primary_mgt,
                         backup_mgt=self.backup_mgt,
-                        log_server_ref=self.log_server,
                         domain_server_address=self.get_dns_entries(),
                         default_nat=self.default_nat,
                         enable_antivirus=self.antivirus,
-                        enable_gti=self.file_reputation,
                         location_ref=self.location,
                         snmp=self.snmp,
                         comment=self.comment)
                     
+                    if self.log_server:
+                        firewall.update(log_server_ref=self.cache.get_href('log_server', self.log_server))
+                        
+                    if self.file_reputation:
+                        extra_opts = {}
+                        if is_sixdotsix_compat():
+                            extra_opts.update(file_reputation_settings={'file_reputation_context': 'gti_cloud_only'})
+                        else:
+                            extra_opts.update(gti_settings={'file_reputation_context': 'gti_cloud_only'})
+                        firewall.update(extra_opts=extra_opts)
+                               
                     if self.check_mode:
                         return self.results
                     
@@ -1097,6 +1113,9 @@ class StonesoftEngine(StonesoftModuleBase):
                     if 'fw_cluster' in self.type and \
                         (self.cluster_mode and engine.cluster_mode != self.cluster_mode):
                         engine.data.update(cluster_mode=self.cluster_mode)
+                        changed = True
+                    
+                    if self.update_log_server(engine):
                         changed = True
                     
                     if self.check_mode:
@@ -1293,6 +1312,21 @@ class StonesoftEngine(StonesoftModuleBase):
                     'type': interface.typeof,
                     'action': 'created' if created else 'updated'})        
 
+    def update_log_server(self, engine):
+        """
+        Update the log server if modified
+        """
+        changed = False
+        log_server = getattr(engine, 'log_server', None)
+        if self.log_server and log_server.name != self.log_server:
+            engine.data.update(log_server_ref=self.cache.get_href('log_server', self.log_server))
+            changed = True
+            self.results['state'].append({
+                'name': self.log_server,
+                'type': 'log_server',
+                'action': 'updated'})
+        return changed
+        
     def update_general(self, engine):
         """
         Update general settings on the engine
@@ -1306,9 +1340,16 @@ class StonesoftEngine(StonesoftModuleBase):
                 if not status and getattr(self, feature):
                     getattr(engine, feature).enable()
                     changed = True
+                    
                 elif status and not getattr(self, feature):
                     getattr(engine, feature).disable()
                     changed = True
+            
+#                 if changed:
+#                     self.results['state'].append({
+#                         'name': feature,
+#                         'type': 'addon',
+#                         'action': 'updated'})
         
         if self.domain_server_address:
             dns_elements = [d.value if d.value else d.element

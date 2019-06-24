@@ -1,0 +1,78 @@
+- name: Firewall Template
+  hosts: localhost
+  gather_facts: no
+  tasks:
+  - name: Layer 3 FW template
+    engine:
+      smc_logging:
+        level: 10
+        path: ansible-smc.log
+      antivirus: false
+      backup_mgt: SWP_0.3
+      bgp:
+        enabled: false
+        router_id: null
+      default_nat: false
+      domain_server_address:
+      - name: 8.8.8.8
+        type: ipaddress
+      file_reputation: false
+      interfaces:
+      - appliance_switch_module: 110
+        interface_id: SWP_0
+        port_group_interface:
+        - interface_id: SWP_0.1
+          interfaces:
+          - nodes:
+            - address: 12.12.12.12
+              network_value: 12.12.12.0/24
+              nodeid: 1
+              auth_request: True
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 0
+          zone_ref: Internal
+        - interface_id: SWP_0.2
+          interfaces:
+          - nodes:
+            - dynamic: true
+              dynamic_index: 3
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 1
+          zone_ref: External
+        - interface_id: SWP_0.3
+          interfaces:
+          - nodes:
+            - dynamic: true
+              dynamic_index: 4
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 3
+          zone_ref: External
+        - interface_id: SWP_0.4
+          switch_physical_interface_port:
+          - switch_physical_interface_port_comment: port 2
+            switch_physical_interface_port_number: 2
+          - switch_physical_interface_port_comment: 'add comment'
+            switch_physical_interface_port_number: 4
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 5
+          - switch_physical_interface_port_comment: ''
+            switch_physical_interface_port_number: 6
+        type: switch_physical_interface
+      - interface_id: '0'
+        interfaces:
+        - nodes:
+          - address: 1.1.1.1
+            network_value: 1.1.1.0/24
+            nodeid: 1
+      name: azure123
+      ospf:
+        enabled: false
+        router_id: null
+      primary_mgt: SWP_0.1
+      #auth_request: 0
+      type: single_fw
+      delete_undefined_interfaces: true
+

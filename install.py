@@ -31,6 +31,7 @@ def main():
     # Copy the module document fragments to the module docs directory so the 
     # documentation fragments display properly for the modules
     module_doc_path = os.path.join(ansible_path, 'utils', 'module_docs_fragments')
+    print("Module doc path: %s" % module_doc_path)
     if not os.path.exists(module_doc_path):
         print('Could not find ansible document module path!')
         sys.exit(1)
