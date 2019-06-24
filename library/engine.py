@@ -54,6 +54,11 @@ options:
       - Specify an interface by ID that will be the backup heartbeat. If the interface
         is a VLAN, specify in '2.4' format. If the interface cannot be used as this management
         type, operation is skipped.
+  log_server:
+    description:
+      - Name of the log server to assign. If not provided, the default (primary) log server will
+        be used
+    type: str
   location:
     description:
       - Location identifier for the engine. Used when engine is behind NAT. If
@@ -462,6 +467,7 @@ EXAMPLES = '''
           - switch_physical_interface_port_comment: ''
             switch_physical_interface_port_number: 6
       name: myfw3
+      log_server: my_custom_log_server
       netlinks:
       - destination:
         - name: host-3.3.3.3

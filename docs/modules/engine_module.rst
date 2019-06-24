@@ -410,6 +410,18 @@ Options
     </tr>
 
     <tr>
+    <td>log_server<br/><div style="font-size: small;"></div></td>
+    <td>no</td>
+    <td></td>
+    <td></td>
+	<td>
+        <p>Name of the log server to assign. If not provided, the default (primary) log server will be used</p>
+	</td>
+	</tr>
+    </td>
+    </tr>
+
+    <tr>
     <td>name<br/><div style="font-size: small;"></div></td>
     <td>yes</td>
     <td></td>
@@ -924,6 +936,7 @@ Examples
               - switch_physical_interface_port_comment: ''
                 switch_physical_interface_port_number: 6
           name: myfw3
+          log_server: my_custom_log_server
           netlinks:
           - destination:
             - name: host-3.3.3.3
