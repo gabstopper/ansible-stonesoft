@@ -267,7 +267,7 @@ def yaml_cluster(engine):
     # Prefetch all zones to reduce queries
     zone_cache = list(Zone.objects.all())
     management = ('primary_mgt', 'backup_mgt', 'primary_heartbeat', 'backup_heartbeat')
-    yaml_engine = {'name': engine.name, 'type': engine.type}
+    yaml_engine = {'name': engine.name, 'type': engine.type, 'log_server': engine.log_server.name}
     interfaces = []
     
     for interface in engine.interface:
